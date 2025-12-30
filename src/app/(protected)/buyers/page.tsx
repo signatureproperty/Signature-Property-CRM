@@ -97,41 +97,30 @@ export default function BuyersPage() {
     const firestore = useFirestore();
     const importInputRef = useRef<HTMLInputElement>(null);
     
-    // Agent: Fetch leads they created
-    const agentCreatedQuery = useMemoFirebase(() => {
-        if (!profile.agency_id || !user?.uid || profile.role !== 'Agent') return null;
-        return query(collection(firestore, 'agencies', profile.agency_id, 'buyers'), where('created_by', '==', user.uid));
-    }, [profile.agency_id, profile.role, user?.uid, firestore]);
-    const { data: agentCreatedBuyers, isLoading: isCreatedLoading } = useCollection<Buyer>(agentCreatedQuery);
-
-    // Agent: Fetch leads assigned to them
-    const agentAssignedQuery = useMemoFirebase(() => {
-        if (!profile.agency_id || !user?.uid || profile.role !== 'Agent') return null;
-        return query(collection(firestore, 'agencies', profile.agency_id, 'buyers'), where('assignedTo', '==', user.uid));
-    }, [profile.agency_id, profile.role, user?.uid, firestore]);
-    const { data: agentAssignedBuyers, isLoading: isAssignedLoading } = useCollection<Buyer>(agentAssignedQuery);
-
-    // Admin: Fetch all agency leads
-    const adminQuery = useMemoFirebase(() => {
-        if (!profile.agency_id || profile.role !== 'Admin') return null;
+    // Fetch all buyers for the agency
+    const allAgencyBuyersQuery = useMemoFirebase(() => {
+        if (!profile.agency_id) return null;
         return query(collection(firestore, 'agencies', profile.agency_id, 'buyers'));
-    }, [profile.agency_id, profile.role, firestore]);
-    const { data: adminBuyers, isLoading: isAdminLoading } = useCollection<Buyer>(adminQuery);
+    }, [profile.agency_id, firestore]);
+    const { data: allBuyers, isLoading: isAgencyLoading } = useCollection<Buyer>(allAgencyBuyersQuery);
 
-    const allBuyers = useMemo(() => {
+    const agentLeads = useMemo(() => {
+        if (profile.role !== 'Agent' || !user?.uid || !allBuyers) {
+            return [];
+        }
+        return allBuyers.filter(buyer => buyer.created_by === user.uid || buyer.assignedTo === user.uid);
+    }, [profile.role, user?.uid, allBuyers]);
+
+    const buyersToDisplay = useMemo(() => {
         if (profile.role === 'Admin') {
-            return adminBuyers;
+            return allBuyers;
         }
         if (profile.role === 'Agent') {
-            const combined = [...(agentCreatedBuyers || []), ...(agentAssignedBuyers || [])];
-            // Remove duplicates in case a lead is both created by and assigned to the same agent
-            return Array.from(new Map(combined.map(item => [item.id, item])).values());
+            return agentLeads;
         }
         return [];
-    }, [profile.role, adminBuyers, agentCreatedBuyers, agentAssignedBuyers]);
+    }, [profile.role, allBuyers, agentLeads]);
     
-    const isAgencyLoading = isAdminLoading || isCreatedLoading || isAssignedLoading;
-
     
     const teamMembersQuery = useMemoFirebase(() => profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'teamMembers') : null, [profile.agency_id, firestore]);
     const { data: teamMembers } = useCollection<User>(teamMembersQuery);
@@ -421,9 +410,9 @@ export default function BuyersPage() {
     };
 
     const filteredBuyers = useMemo(() => {
-        if (!allBuyers) return [];
+        if (!buyersToDisplay) return [];
         
-        let buyers = allBuyers.filter(b => !b.is_deleted);
+        let buyers = buyersToDisplay.filter(b => !b.is_deleted);
 
         // Filter by active tab (For Sale/For Rent)
         buyers = buyers.filter(b => (b.listing_type || 'For Sale') === activeTab);
@@ -477,7 +466,7 @@ export default function BuyersPage() {
             const bNum = parseInt(b.serial_no.split('-')[1] || '0', 10);
             return sortOrder === 'asc' ? aNum - bNum : bNum - aNum;
         });
-    }, [allBuyers, activeTab, activeStatusFilter, searchQuery, filters, sortOrder]);
+    }, [buyersToDisplay, activeTab, activeStatusFilter, searchQuery, filters, sortOrder]);
 
 
     const totalPages = Math.ceil(filteredBuyers.length / ITEMS_PER_PAGE);
@@ -912,8 +901,9 @@ export default function BuyersPage() {
         if (buyers.length === 0) return <div className="text-center py-10 text-muted-foreground">No buyers found for the current filters.</div>;
         return (
             <div className="space-y-4">
-                {buyers.map(buyer => (
-                    <Card key={buyer.id}>
+                {buyers.map(buyer => {
+                    return (
+                        <Card key={buyer.id}>
                         <CardHeader>
                             <CardTitle className="flex justify-between items-start">
                                 <div className="flex items-start gap-2">
@@ -1011,7 +1001,8 @@ export default function BuyersPage() {
                             </Sheet>
                         </CardFooter>
                     </Card>
-                ))}
+                    )
+                })}
             </div>
         );
     };
@@ -1356,3 +1347,4 @@ export default function BuyersPage() {
     
 
     
+
