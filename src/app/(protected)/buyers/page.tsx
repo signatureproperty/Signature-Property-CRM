@@ -25,7 +25,7 @@ import { useCurrency } from '@/context/currency-context';
 import { useProfile } from '@/context/profile-context';
 import { useFirestore } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, addDoc, setDoc, doc, deleteDoc, serverTimestamp, updateDoc, writeBatch, query, where } from 'firebase/firestore';
+import { collection, addDoc, setDoc, doc, deleteDoc, serverTimestamp, updateDoc, writeBatch, query, where, or } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/hooks';
 import { AddFollowUpDialog } from '@/components/add-follow-up-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -97,11 +97,25 @@ export default function BuyersPage() {
     const firestore = useFirestore();
     const importInputRef = useRef<HTMLInputElement>(null);
     
-    // Fetch all buyers for the agency
+    // Fetch all buyers for the agency (Updated for Agent Assignment)
     const allAgencyBuyersQuery = useMemoFirebase(() => {
         if (!profile.agency_id) return null;
-        return query(collection(firestore, 'agencies', profile.agency_id, 'buyers'));
-    }, [profile.agency_id, firestore]);
+        
+        const buyersRef = collection(firestore, 'agencies', profile.agency_id, 'buyers');
+
+        // Agar Agent hai, to sirf uske Assigned ya Created buyers mangwao
+        if (profile.role === 'Agent' && user?.uid) {
+            return query(buyersRef, 
+                or(
+                    where('created_by', '==', user.uid),
+                    where('assignedTo', '==', user.uid)
+                )
+            );
+        }
+
+        // Agar Admin hai, to sab uthao
+        return query(buyersRef);
+    }, [profile.agency_id, firestore, profile.role, user?.uid]);
     const { data: allBuyers, isLoading: isAgencyLoading } = useCollection<Buyer>(allAgencyBuyersQuery);
 
     const agentLeads = useMemo(() => {

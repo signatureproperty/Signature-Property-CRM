@@ -1,152 +1,158 @@
-# Prompt for Building a Real Estate CRM: "Asaan Estate"
+# Prompt for Building Signature Property CRM
 
 ## 1. Application Overview
 
-**App Name:** Asaan Estate
+**App Name:** Signature Property CRM
 
-**Core Idea:** A comprehensive Customer Relationship Management (CRM) application designed specifically for real estate agencies in Pakistan. It helps agents and admins manage properties, buyers, team members, appointments, and performance, all in one place.
+**Core Idea:** A comprehensive Customer Relationship Management (CRM) application designed specifically for real estate agencies in Pakistan. It helps agents and admins manage properties, buyers, team members, appointments, and performance, all in one place. The system is multi-tenant, where an "Agency" is the top-level entity, and all data (properties, buyers, team) is scoped to that agency.
 
 ---
 
-## 2. Core Features
+## 2. Core Features & User Roles
 
-### 2.1. User Authentication & Roles
+The system supports three distinct user roles with specific permissions:
 
-The system must support two distinct user roles with separate login/signup flows:
-
-1.  **Agency Admin:**
-    *   **Signup:** An Admin creates the entire "Agency." Their account is the master account.
-    *   **Login:** They use the main login page.
-    *   **Permissions:** Full access to all features, including adding/managing properties, buyers, team members, viewing all appointments, and seeing agency-wide analytics. They are the only ones who can manage the team and see subscription/upgrade pages.
+1.  **Agency Admin (Owner):**
+    *   **Signup:** Creates the entire "Agency" account. Their user ID becomes the agency ID.
+    *   **Permissions:** Full access to all features. They can manage properties, buyers, and the entire team (invite, edit roles, remove). They view agency-wide analytics, reports, settings, and handle subscription upgrades. They are the only ones who can perform destructive actions like permanently deleting items from the trash or resetting the account.
 
 2.  **Agent:**
-    *   **Signup/Invitation:** Agents cannot sign up directly. They must be invited by an Agency Admin via email. Once invited, they can create their account. When they accept an invitation, they become part of that agency.
-    *   **Login:** They use a separate "Agent Portal" login page.
-    *   **Permissions:**
-        *   They can add and manage their own properties and buyers.
-        *   They can view properties and buyers assigned to them by the agency.
-        *   They have a restricted view of the dashboard, showing only their personal stats and assigned leads.
-        *   They cannot access Team Management, Settings, or Upgrade pages.
+    *   **Signup:** Cannot sign up directly. They create a personal "Agent" account and must be invited by an Agency Admin to join an agency. They can be part of multiple agencies.
+    *   **Permissions:** A restricted view focused on their leads.
+        *   Can add and manage their own properties and buyers.
+        *   Can view and manage properties and buyers assigned to them.
+        *   Dashboard shows personal stats.
+        *   Cannot access Team Management, agency-wide Analytics, Reports, or Settings.
 
-### 2.2. Property Management (Lead Management - Properties)
-
-This is a core feature for managing property listings.
-
-*   **Add/Edit Property:**
-    *   A comprehensive form to add new properties with the following fields:
-        *   **Basic Info:** Serial No (auto-generated, e.g., P-1, P-2), City, Area, Full Address.
-        *   **Specification:** Property Type (House, Plot, Flat, Shop, Commercial, etc.), Size (e.g., 5 Marla), Dimensions (Front/Length in ft), Road Size (ft), Storeys (e.g., Single, Double).
-        *   **Financials:** Demand Price (e.g., 90 Lacs), Potential Rent (e.g., 30 Thousand).
-        *   **Contact:** Owner's Phone Number.
-        *   **Utilities:** Checkboxes for Electricity, Gas, Water.
-        *   **Documents:** A text field to list available documents (e.g., Registry, Fard).
-    *   **Auto-Generated Title:** The system should automatically generate a title based on key details (e.g., "5 Marla House in DHA Phase 5").
-    *   **Status:** Every property has a status, primarily "Available" or "Sold".
-
-*   **View Properties:**
-    *   Display all properties in a table and a card view (for mobile).
-    *   Admins see all properties. Agents see properties they created AND properties assigned to them.
-    *   Implement robust filtering options: by Area, Property Type, Size, and Demand.
-    *   Implement tab-based filtering for main statuses: "All," "Available," "Sold."
-
-*   **Property Actions:**
-    *   **View Details:** A popup (dialog) showing all details of a single property.
-    *   **Mark as Sold:** A special form to update a property's status to "Sold." This form should capture:
-        *   Final Sold Price.
-        *   Commission received from both buyer and seller (as a percentage or fixed amount).
-        *   The agent who closed the deal.
-        *   The date of the sale.
-    *   **Delete/Trash:** A "soft delete" functionality that moves a property to a "Trash" page instead of deleting it permanently.
-    *   **Restore:** From the "Trash" page, an admin should be able to restore a deleted property.
-
-### 2.3. Buyer Management (Lead Management - Buyers)
-
-This feature is for managing potential buyers.
-
-*   **Add/Edit Buyer:**
-    *   A form to capture buyer details:
-        *   **Basic Info:** Serial No (auto-generated, e.g., B-1, B-2), Name, Phone, Email.
-        *   **Requirements:** Preferred Area, Preferred Property Type.
-        *   **Budget:** Minimum and Maximum budget (e.g., 80 Lacs to 95 Lacs).
-        *   **Size Preference:** Minimum and Maximum size (e.g., 5 Marla to 8 Marla).
-        *   **Status:** A dropdown to select the buyer's status (e.g., "New," "Interested," "Follow Up," "Deal Closed").
-        *   **Investor Flag:** A checkbox to mark the buyer as an investor.
-
-*   **View Buyers:**
-    *   Display all buyers in a table and card view.
-    *   Admins see all buyers. Agents see buyers they created AND buyers assigned to them.
-    *   Filter buyers by status, area, budget, etc.
-
-*   **Buyer Actions:**
-    *   **View Details:** A detailed popup showing all information about a buyer.
-    *   **Assign Agent (Admin only):** Inside the buyer details popup, an Admin should see an "Assign Agent" option. This opens a list of all active agents. The admin can select an agent to assign the buyer to. The assigned agent's name should then be visible on the buyer's profile.
-    *   **Change Status:** Quickly change a buyer's status (e.g., from "New" to "Interested").
-
-### 2.4. Dashboard & Analytics
-
-The main dashboard should provide a quick overview of the agency's performance.
-
-*   **Key Performance Indicators (KPIs):** Displayed as small cards with icons and statistics.
-    *   Total Properties
-    *   Total Buyers
-    *   Properties Sold (in the last 30 days)
-    *   Total Revenue (Commission earned in the last 30 days)
-    *   Number of "Interested" Buyers
-    *   Leads requiring "Follow-up"
-    *   **For Agents Only:** "Assigned Properties" and "Assigned Buyers" count.
-*   **Charts:**
-    *   A bar chart showing year-over-year revenue growth.
-    *   A pie chart showing the distribution of buyer statuses (e.g., % Interested vs. % Follow Up).
-
-### 2.5. Team & Appointment Management
-
-*   **Team Management (Admin only):**
-    *   An interface to view all team members (Admins and Agents).
-    *   An "Invite Member" button that opens a form to send an email invitation to a new agent.
-    *   The main view should show each member's name, email, role, and status ("Active" or "Pending Invitation").
-    *   Admins can revoke a pending invitation or remove an active member.
-*   **Appointment Management:**
-    *   A dedicated page to schedule and view appointments.
-    *   An "Add Appointment" form to schedule a meeting between an agent, a buyer, and a property owner.
-    *   Fields should include: Contact Name, Contact Type (Buyer/Owner), Agent, Date, Time, and a brief message/purpose.
-    *   Display appointments as cards, separated into "Buyer Appointments" and "Owner Appointments."
-    *   Each appointment card should have actions to "Mark as Completed," "Mark as Cancelled," or "Reschedule."
-*   **Follow-up Automation:**
-    *   When a buyer's status is changed to "Follow Up," create a task in the "Follow-ups" page.
-    *   The Follow-ups page should display a list of buyers needing a call or meeting, showing their name, interest, and the last contact date.
-
-### 2.6. Tools & Utilities
-
-*   **List Generator Tool:**
-    *   A tool that allows an admin to generate a formatted text list of available properties.
-    *   The user should be able to filter properties (e.g., by area) and then select which properties to include in the list.
-    *   The user should also be able to select which fields to include in the final text (e.g., Serial No, Size, Demand, etc.).
-    *   The generated text should be neatly formatted (e.g., using asterisks for bolding) and ready to be copied and pasted into WhatsApp or other platforms.
-*   **Shareable Text Generator (per property):**
-    *   From a property's details page, there should be a "Share" or "Copy" button.
-    *   This should generate two versions of a formatted text description:
-        1.  **For Customer:** Includes property details but hides the owner's number and full address.
-        2.  **For Agent:** Includes all details, including the owner's number and full address.
+3.  **Video Recorder:**
+    *   **Creation:** Cannot sign up. An Admin creates their account directly from the "Team" page, setting a password for them.
+    *   **Permissions:** Highly restricted role focused on a specific workflow.
+        *   Can only see properties assigned to them for video recording.
+        *   Has access to the "Recording" and "Editing" queue pages.
+        *   Cannot see any other CRM data (buyers, financials, other pages).
 
 ---
 
-## 3. UI/UX Style & Component Guidelines
+## 3. Page-by-Page Feature Breakdown
 
-*   **Primary Color:** Deep Blue (`#293B5F`) - Used for primary buttons, active links, and important icons.
-*   **Background Color:** Light Gray (`#E7E8EA`) - For the main app background.
-*   **Accent Color:** Warm Yellow (`#FFC857`) - Used for highlighting key actions, notifications, and secondary information.
-*   **Fonts:**
-    *   **Headlines:** 'Poppins' (bold) for all major titles and headings.
-    *   **Body:** 'Poppins' (regular) for all other content, labels, and descriptions.
-*   **Layout:**
-    *   The main interface should have a persistent sidebar on the left (for desktop) and a main content area.
-    *   For mobile, the sidebar should be replaced with a bottom navigation bar for core features.
-    *   The entire UI should be built using a **card-based layout**. Every main element (KPI card, property card, appointment card) should be a distinct card with rounded corners (`1rem` radius) and a subtle drop shadow.
-*   **Components:**
-    *   **Buttons:** Primary buttons should have a slight "glow" effect on hover.
-    *   **Dialogs/Modals:** All popups for adding/editing/viewing details should have a "glass morphism" effect (semi-transparent, blurred background).
-    *   **Forms:** Use clean, modern input fields, dropdowns, and checkboxes. All forms must have clear labels and validation messages for required fields.
-    *   **Tables:** Use clean, modern tables with alternating row colors on hover for better readability.
-    *   **Icons:** Use the `lucide-react` icon library for a consistent, flat, and modern look.
+### 3.1. Auth Pages (`/login`, `/signup`, `/agent/signup`)
 
-This detailed prompt provides a complete blueprint for the Asaan Estate application. The AI should be able to use this to build the application feature by feature, using Supabase as its backend.
+*   **Login:** Unified login page for all roles. Supports email/password and Google Sign-In.
+*   **Agency Signup:** A form for an Admin to create a new agency account.
+*   **Agent Signup:** A separate form for an individual agent to create their personal account before they can accept agency invitations.
+
+### 3.2. Dashboard / Overview (`/overview`)
+
+This is the main landing page after login, providing a snapshot of the agency's or user's activity.
+
+*   **Quick Add Lead:** A form to quickly add a new Property or Buyer lead with just a phone number, which can be completed later.
+*   **Statistics Cards:** A grid of key performance indicators (KPIs) with values and changes over the last 30 days.
+    *   **Admin/Agent View:** Sale Properties, Sale Buyers, Rent Properties, Rent Buyers, Properties Sold, Sale Revenue, Rent Outs, Rent Revenue, Paid Videos, Recording Revenue, Interested Buyers, Follow-up Leads, Appointments, etc.
+    *   **Video Recorder View:** Pending Recordings, In Editing, Editing Complete, and payment statuses (Unpaid, Paid Online, Pending Cash).
+*   **Upcoming Events:** An interactive calendar/event list showing scheduled appointments and custom events for the selected day. Users can add new appointments or events directly from here.
+
+### 3.3. Properties (`/properties`)
+
+The central hub for managing all property listings.
+
+*   **Tabs:** Separate tabs for "For Sale" and "For Rent" properties.
+*   **Filtering:**
+    *   **Primary Filter:** A dropdown to filter by status (e.g., All, Pending, Available, Sold, Recorded).
+    *   **Advanced Filters (Popover):** Filter by Serial No, Area, Property Type, Size, and Demand range. Includes a filter for properties with video links.
+    *   **Payment Status Tabs:** Tabs to filter recorded properties by their payment status (All, Unpaid, Pending, Paid).
+*   **View:** Displays properties in a responsive Table (desktop) or Card (mobile) layout.
+*   **Actions (via Dropdown Menu):**
+    *   View Details, Chat on WhatsApp, Set Appointment.
+    *   **Assign (Admin only):** Assign a property to an Agent or Video Recorder. If assigned to a recorder, a dialog appears to set the recording payment status.
+    *   **Mark as Sold/Rent Out:** Opens a detailed form to record the final deal price, commissions, agent's share, buyer/tenant info, and dates.
+    *   **Mark as Recorded:** Opens a form to add video links (TikTok, YouTube, etc.). The property is marked "Recorded" if at least one link is present.
+    *   **Edit/Delete:** Standard update and soft-delete (moves to Trash) functionality.
+*   **Bulk Actions:** Select multiple properties to perform bulk assignment or deletion.
+*   **Usage Progress Bar:** Shows the agency how many properties they have added out of their current plan's limit.
+*   **Import/Export:** Admins can bulk import properties from a CSV file or export the current list to CSV.
+
+### 3.4. Buyers (`/buyers`)
+
+The central hub for managing all buyer leads.
+
+*   **Tabs:** "For Sale Buyers" and "For Rent Buyers".
+*   **Filtering:** Filter by status (New, Interested, Follow Up, etc.), and advanced filters for area, budget, size, and property type.
+*   **View:** Displays buyers in a responsive Table (desktop) or Card (mobile) layout.
+*   **Actions (via Dropdown Menu):**
+    *   View Details, Chat on WhatsApp, Set Appointment.
+    *   **Recommend Properties:** Opens an AI-powered dialog that suggests the best matching properties for that buyer based on their requirements.
+    *   **Assign Agent (Admin only):** Assign the buyer lead to a specific agent.
+    *   **Change Status:** Quickly update the buyer's status. If changed to "Follow Up," a follow-up task is created.
+    *   **Edit/Delete:** Standard update and soft-delete functionality.
+*   **Bulk Actions & Usage Bar:** Similar to the properties page.
+*   **Import/Export:** Admins can bulk import/export buyer data via CSV.
+
+### 3.5. Productivity Suite
+
+*   **Appointments (`/appointments`):**
+    *   View scheduled appointments on cards, separated by "Buyer" and "Owner" tabs. A "History" tab shows completed/cancelled appointments from the last 7 days.
+    *   Each card has actions to mark as completed/cancelled, reschedule, or delete.
+    *   A "Add to Calendar" button generates a Google Calendar event link.
+*   **Follow-ups (`/follow-ups`):**
+    *   Displays a grid of cards for each buyer whose status is "Follow Up."
+    *   Each card shows the last contact date, next reminder date/time, and notes.
+    *   Actions include rescheduling the follow-up, setting an appointment, or changing the buyer's status (which removes them from this page).
+*   **Activities (`/activities`):**
+    *   A real-time log of all major actions in the last 7 days (e.g., property added, status updated, lead assigned).
+    *   Admins can clear the entire activity history.
+*   **Inbox (`/inbox`):**
+    *   An internal messaging system for Admins.
+    *   **"Cannot Record" Tab:** Shows notifications from Video Recorders when they are unable to record a video, with the reason. Admin can re-assign the property.
+    *   **"Payments" Tab:** Shows notifications when a recorder confirms a cash payment has been received for a video.
+
+### 3.6. Growth Suite (Admin/Agent)
+
+*   **Analytics (`/analytics`):**
+    *   A dashboard with visual charts to analyze performance.
+    *   **Performance Chart:** Revenue over time.
+    *   **Leads Chart:** New properties vs. new buyers over time.
+    *   **Sales Breakdown Chart:** Agency sales vs. external sales.
+    *   **Buyer Breakdown Chart:** Deals won vs. deals lost.
+    *   **Property Types Chart:** A bar chart showing the distribution of different property types in the inventory.
+*   **Reports (`/reports`):**
+    *   **Sales Report Tab:** A detailed table of all "Sold" properties, showing sale price, commissions, agent share, and agency profit.
+    *   **Rental Report Tab:** A table for all "Rent Out" properties with similar financial details.
+    *   Both reports can be downloaded as a PDF.
+*   **Tools (`/tools`):**
+    *   **List Generator:** A tool to create formatted WhatsApp-ready lists of available properties. Users can filter properties and select which data fields to include in the generated text.
+    *   **Find By Budget:** A search tool to find buyers that match a specific budget, area, and property type. It includes a "Share Detail" feature to send a formatted property message to the found buyers via WhatsApp.
+
+### 3.7. Management & Settings
+
+*   **Team (`/team`) (Admin only):**
+    *   View all team members, their roles, and invitation status ("Active" or "Pending").
+    *   Invite new members (Agent or Admin) via email.
+    *   Create accounts directly for "Video Recorder" role.
+    *   Edit member roles or remove them from the agency.
+*   **Documents (`/documents`) (Admin only):**
+    *   A central place to upload and manage documents (e.g., Registry, Fard, NOC) for any property.
+    *   Documents are linked to a specific property and can be downloaded or deleted.
+*   **Trash (`/trash`):**
+    *   View all soft-deleted properties and buyers.
+    *   Provides options to either "Restore" an item or "Delete Permanently."
+    *   Admins have an option to "Empty Trash," which permanently deletes all items.
+*   **Settings (`/settings`):**
+    *   **Profile:** Update personal/agency name, phone number, and profile picture.
+    *   **Security:** Change account password.
+    *   **Appearance:** Change theme (Light/Dark) and currency (PKR, USD, AED).
+    *   **Backup & Restore:** Download a full JSON backup of all agency data.
+    *   **Danger Zone (Admin only):** Reset account (deletes all CRM data) or delete the entire agency account permanently.
+
+---
+
+## 4. UI/UX Style & Component Guidelines
+
+*   **Theme:** Modern, professional, and clean with both Light and Dark modes.
+*   **Primary Color:** A bright, engaging blue (`hsl(217 91% 60%)`).
+*   **Layout:** Collapsible sidebar on desktop for maximum content visibility. Bottom navigation on mobile for core features, with secondary features in a "More" menu.
+*   **Cards:** The primary layout element, used for properties, buyers, appointments, etc. They have a subtle "glass morphism" effect (`bg-card/80 backdrop-blur-md`).
+*   **Interactivity:** Buttons have a "glowing" effect on hover. Pages and elements load with subtle animations (`framer-motion`).
+*   **Icons:** `lucide-react` is used exclusively for a consistent and modern look.
+*   **Forms:** All forms use `shadcn/ui` components and `zod` for validation, ensuring a consistent and user-friendly data entry experience.
+*   **Responsiveness:** The entire application is fully responsive, with mobile-first card layouts and desktop-optimized table views.
+
