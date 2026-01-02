@@ -128,6 +128,9 @@ export type Property = {
   recording_payment_status?: RecordingPaymentStatus;
   recording_payment_amount?: number;
   recording_payment_date?: string;
+
+  // Tags
+  tags?: string[];
 };
 
 export type RecommendedProperty = Property & {
@@ -182,6 +185,7 @@ export type Buyer = {
         sharedAt: string;
     }[];
     deal_lost_date?: string; // New field
+    tags?: string[];
 };
 
 export type FollowUpStatus = 'Scheduled' | 'Completed';

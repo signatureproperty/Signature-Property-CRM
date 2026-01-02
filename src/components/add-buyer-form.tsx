@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useForm, useWatch } from 'react-hook-form';
@@ -68,6 +67,7 @@ const formSchema = z.object({
   budget_max_amount: z.coerce.number().optional().nullable(),
   budget_max_unit: z.enum(priceUnits).optional(),
   notes: z.string().optional(),
+  tags: z.string().optional(),
   created_at: z.string().optional(),
   created_by: z.string().optional(),
 });
@@ -114,6 +114,7 @@ const getInitialFormValues = (
             budget_max_amount: buyerToEdit.budget_max_amount ?? 0,
             is_investor: buyerToEdit.is_investor || false,
             listing_type: buyerToEdit.listing_type || 'For Sale',
+            tags: buyerToEdit.tags?.join(', ') || '',
         };
     }
 
@@ -144,6 +145,7 @@ const getInitialFormValues = (
         budget_max_amount: 0,
         created_at: new Date().toISOString(),
         created_by: userId || '',
+        tags: '',
     };
 };
 
@@ -191,6 +193,7 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
         is_deleted: buyerToEdit?.is_deleted || false,
         created_by: buyerToEdit?.created_by || user?.uid || '',
         agency_id: buyerToEdit?.agency_id || profile.agency_id || '',
+        tags: values.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [],
     };
     onSave(buyerData);
     setDialogOpen(false);
@@ -546,6 +549,19 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
                         )}
                     />
                 </div>
+                <FormField
+                  control={form.control}
+                  name="tags"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tags</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="e.g. Urgent, VIP, Hot Lead" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <FormField
                 control={form.control}
                 name="notes"
