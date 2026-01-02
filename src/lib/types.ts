@@ -24,6 +24,17 @@ export type User = {
   planStartDate?: string;
 };
 
+export type Tag = {
+  id: string;
+  name: string;
+  color: string;
+  createdAt: string;
+  createdBy: string;
+  agency_id: string;
+  entityType: 'property' | 'buyer';
+};
+
+
 export type PropertyType = 'House' | 'Flat' | 'Farm House' | 'Penthouse' | 'Plot' | 'Residential Plot' | 'Commercial Plot' | 'Agricultural Land' | 'Industrial Land' | 'Office' | 'Shop' | 'Warehouse' | 'Factory' | 'Building' | 'Commercial Property' | 'Semi Commercial' | 'Residential Property' | 'Old House' | '';
 export type SizeUnit = 'Marla' | 'SqFt' | 'Kanal' | 'Acre' | 'Maraba';
 export type PriceUnit = 'Thousand' | 'Lacs' | 'Crore';
