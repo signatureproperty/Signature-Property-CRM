@@ -83,148 +83,6 @@ const StatCard = ({ title, value, change, icon, color, href, isLoading }: StatCa
     );
 };
 
-const QuickAdd = () => {
-    const [leadType, setLeadType] = useState<"Property" | "Buyer">("Property");
-    const [listingType, setListingType] = useState<ListingType>("For Sale");
-    const [phoneNumber, setPhoneNumber] = useState("");
-    const [countryCode, setCountryCode] = useState("+92");
-    const [isLoading, setIsLoading] = useState(false);
-    const { toast } = useToast();
-    const { profile } = useProfile();
-    const { user } = useUser();
-    const firestore = useFirestore();
-
-    const propertiesQuery = useMemoFirebase(() => profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'properties') : null, [profile.agency_id, firestore]);
-    const { data: allProperties } = useCollection<Property>(propertiesQuery);
-    
-    const buyersQuery = useMemoFirebase(() => profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'buyers') : null, [profile.agency_id, firestore]);
-    const { data: allBuyers } = useCollection<Buyer>(buyersQuery);
-
-
-    const handleSave = async () => {
-        if (!phoneNumber) {
-            toast({ title: "Phone number required", variant: "destructive" });
-            return;
-        }
-        setIsLoading(true);
-
-        try {
-            if (leadType === 'Property') {
-                const totalSale = allProperties?.filter(p => p.listing_type === 'For Sale').length || 0;
-                const totalRent = allProperties?.filter(p => p.listing_type === 'For Rent').length || 0;
-                const newProperty: Omit<Property, 'id'> = {
-                    serial_no: listingType === 'For Sale' ? `P-${totalSale + 1}` : `RP-${totalRent + 1}`,
-                    auto_title: `Pending Lead: ${phoneNumber}`,
-                    owner_number: formatPhoneNumberForWhatsApp(phoneNumber, countryCode),
-                    city: '', area: '', address: '',
-                    property_type: 'House',
-                    size_value: 0, size_unit: 'Marla',
-                    demand_amount: 0, demand_unit: 'Lacs',
-                    status: 'Pending',
-                    created_at: new Date().toISOString(),
-                    created_by: user!.uid,
-                    agency_id: profile.agency_id,
-                    listing_type: listingType,
-                    is_for_rent: listingType === 'For Rent',
-                    is_recorded: false,
-                    country_code: countryCode,
-                };
-                await addDoc(collection(firestore, 'agencies', profile.agency_id, 'properties'), newProperty);
-            } else { // Buyer
-                const totalSale = allBuyers?.filter(b => (!b.listing_type || b.listing_type === 'For Sale')).length || 0;
-                const totalRent = allBuyers?.filter(b => b.listing_type === 'For Rent').length || 0;
-                const newBuyer: Omit<Buyer, 'id'> = {
-                    serial_no: listingType === 'For Sale' ? `B-${totalSale + 1}` : `RB-${totalRent + 1}`,
-                    name: `Pending Lead: ${phoneNumber}`,
-                    phone: formatPhoneNumberForWhatsApp(phoneNumber, countryCode),
-                    country_code: countryCode,
-                    status: 'Pending',
-                    listing_type: listingType,
-                    created_at: new Date().toISOString(),
-                    created_by: user!.uid,
-                    agency_id: profile.agency_id,
-                };
-                await addDoc(collection(firestore, 'agencies', profile.agency_id, 'buyers'), newBuyer);
-            }
-            toast({ title: 'Quick Lead Saved!', description: `Details for ${phoneNumber} can be completed later.` });
-            setPhoneNumber('');
-            setCountryCode('+92');
-        } catch (error) {
-            console.error("Quick add failed:", error);
-            toast({ title: "Failed to save lead", variant: "destructive" });
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Quick Add Lead</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col sm:flex-row gap-2">
-                <Select value={leadType} onValueChange={(v) => setLeadType(v as any)}>
-                    <SelectTrigger className="w-full sm:w-[150px]"><SelectValue/></SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="Property">Property</SelectItem>
-                        <SelectItem value="Buyer">Buyer</SelectItem>
-                    </SelectContent>
-                </Select>
-                <Select value={listingType} onValueChange={(v) => setListingType(v as any)}>
-                    <SelectTrigger className="w-full sm:w-[150px]"><SelectValue/></SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="For Sale">For Sale</SelectItem>
-                        <SelectItem value="For Rent">For Rent</SelectItem>
-                    </SelectContent>
-                </Select>
-                <div className="flex gap-2 flex-1">
-                    <Popover>
-                        <PopoverTrigger asChild>
-                            <Button variant="outline" role="combobox" className="w-1/3 justify-between">
-                                {countryCode}
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                            <Command>
-                                <CommandInput placeholder="Search code..." />
-                                <CommandList>
-                                    <CommandEmpty>No country found.</CommandEmpty>
-                                    <CommandGroup>
-                                        {countryCodes.map((c) => (
-                                            <CommandItem
-                                                key={c.code}
-                                                value={c.dial_code}
-                                                onSelect={(currentValue) => {
-                                                    setCountryCode(currentValue);
-                                                }}
-                                            >
-                                                <Check className={cn("mr-2 h-4 w-4", countryCode === c.dial_code ? "opacity-100" : "opacity-0")} />
-                                                {c.dial_code} ({c.name})
-                                            </CommandItem>
-                                        ))}
-                                    </CommandGroup>
-                                </CommandList>
-                            </Command>
-                        </PopoverContent>
-                    </Popover>
-                    <Input
-                        placeholder="Enter phone number..."
-                        value={phoneNumber}
-                        onChange={(e) => setPhoneNumber(e.target.value)}
-                        type="tel"
-                        className="w-2/3 flex-1"
-                    />
-                </div>
-                 <Button onClick={handleSave} disabled={isLoading} className="w-full sm:w-auto">
-                    {isLoading ? <Loader2 className="animate-spin" /> : "Save Lead"}
-                </Button>
-            </CardContent>
-        </Card>
-    );
-}
-
-
 
 export default function OverviewPage() {
     const { profile, isLoading: isProfileLoading } = useProfile();
@@ -680,7 +538,6 @@ export default function OverviewPage() {
     
     return (
         <div className="space-y-8">
-            <QuickAdd />
 
             <div>
                 <h1 className="text-3xl font-bold tracking-tight font-headline flex items-center gap-3"><TrendingUp/> Statistics</h1>
@@ -764,3 +621,4 @@ export default function OverviewPage() {
         </div>
     );
 }
+
