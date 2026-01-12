@@ -12,7 +12,8 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  useSidebar
+  useSidebar,
+  SidebarTrigger,
 } from '@/components/ui/sidebar';
 import {
   LayoutDashboard,
@@ -96,7 +97,6 @@ const productivityMenuItems = [
 ];
 
 const growthMenuItems = [
-    { href: '/analytics', label: 'Analytics', icon: <PieChart />, roles: ['Admin'] },
     { href: '/reports', label: 'Reports', icon: <ClipboardList />, roles: ['Admin'] },
     { href: '/tools', label: 'Tools', icon: <Rocket />, roles: ['Admin', 'Agent'] },
 ];
@@ -413,20 +413,19 @@ export function AppSidebar() {
     <>
     <TooltipProvider>
       <Sidebar
-        variant="sidebar"
         collapsible="icon"
         className="hidden md:flex flex-col bg-card dark:bg-neutral-900"
       >
         <SidebarHeader>
           <SidebarMenuButton asChild size="lg" className="justify-start my-2">
-            <Link href="/overview">
+             <SidebarTrigger>
                 <div className="flex items-center gap-2">
                     
                     <span className="font-bold text-xl font-headline text-foreground">
                         S.P CRM
                     </span>
                 </div>
-            </Link>
+            </SidebarTrigger>
           </SidebarMenuButton>
         </SidebarHeader>
 

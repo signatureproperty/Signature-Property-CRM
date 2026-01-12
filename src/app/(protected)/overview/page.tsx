@@ -476,7 +476,7 @@ export default function OverviewPage() {
             change: `+${stats.newProperties30d} in last 30 days`,
             icon: <Home className="h-4 w-4" />,
             color: "bg-sky-100 dark:bg-neutral-800 text-sky-600 dark:text-sky-300",
-            href: "/properties?status=All (Sale)",
+            href: "/properties?status=All%20(Sale)",
             isLoading
         },
         {
@@ -608,7 +608,7 @@ export default function OverviewPage() {
     if (profile.role === 'Video Recorder') {
         const assignedProperties = properties || [];
         const pendingCount = assignedProperties.filter(p => !p.is_recorded).length;
-        const editingCount = assignedProperties.filter(p => p.is_recorded && p.editing_status === 'In Editing').length;
+        const inEditing = assignedProperties.filter(p => p.is_recorded && p.editing_status === 'In Editing').length;
         const completedCount = assignedProperties.filter(p => p.is_recorded && p.editing_status === 'Complete' && p.recording_payment_status !== 'Unpaid').length;
 
         const unpaidCount = assignedProperties.filter(p => (p.recording_payment_status || 'Unpaid') === 'Unpaid').length;
@@ -626,7 +626,7 @@ export default function OverviewPage() {
             },
             {
                 title: "In Editing",
-                value: editingCount,
+                value: inEditing,
                 icon: <PlayCircle className="h-4 w-4" />,
                 color: "bg-yellow-100 dark:bg-neutral-800 text-yellow-600 dark:text-yellow-300",
                 isLoading,
