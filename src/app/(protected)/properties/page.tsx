@@ -807,6 +807,7 @@ export default function PropertiesPage() {
                         </div>
                       </div>
                       <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <Button variant="ghost" onClick={clearFilters}>Clear All</Button>
                         <AlertDialogAction onClick={() => setIsFilterPopoverOpen(false)}>Apply</AlertDialogAction>
                       </AlertDialogFooter>
