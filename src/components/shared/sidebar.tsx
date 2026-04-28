@@ -416,17 +416,12 @@ export function AppSidebar() {
         collapsible="icon"
         className="hidden md:flex flex-col bg-card dark:bg-neutral-900"
       >
-        <SidebarHeader>
-          <SidebarMenuButton asChild size="lg" className="justify-start my-2">
-             <SidebarTrigger>
-                <div className="flex items-center gap-2">
-                    
-                    <span className="font-bold text-xl font-headline text-foreground">
-                        Signature CRM
-                    </span>
-                </div>
-            </SidebarTrigger>
-          </SidebarMenuButton>
+        <SidebarHeader className="p-6">
+            <div className="flex items-center gap-2">
+                <span className="font-bold text-xl font-headline text-foreground tracking-tight">
+                    Signature CRM
+                </span>
+            </div>
         </SidebarHeader>
 
         <SidebarContent className="flex-1 p-3">
