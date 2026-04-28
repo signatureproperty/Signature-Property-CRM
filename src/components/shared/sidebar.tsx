@@ -422,7 +422,7 @@ export function AppSidebar() {
                 <div className="flex items-center gap-2">
                     
                     <span className="font-bold text-xl font-headline text-foreground">
-                        S.P CRM
+                        Signature CRM
                     </span>
                 </div>
             </SidebarTrigger>
