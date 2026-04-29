@@ -432,20 +432,7 @@ export function AppSidebar() {
           
            <SidebarMenu className="mt-4">
             <h3 className="text-xs text-muted-foreground font-semibold pl-4 mb-1 group-data-[state=collapsed]:pl-0 group-data-[state=collapsed]:text-center">Leads</h3>
-            <CollapsibleMenuItem label="Properties" icon={<Building2 />} parentPath="/properties" roles={['Admin', 'Agent']}>
-                <p className="text-xs font-semibold text-muted-foreground px-4 py-2">Sale Properties</p>
-                <CollapsibleSubItem href="/properties?status=All%20(Sale)" label="All (Sale)" />
-                <CollapsibleSubItem href="/properties?status=Pending" label="Pending" />
-                <CollapsibleSubItem href="/properties?status=Available%20(Sale)" label="Available" />
-                <CollapsibleSubItem href="/properties?status=Sold" label="Sold" />
-                <CollapsibleSubItem href="/properties?status=Sold%20(External)" label="Sold (External)" />
-                <CollapsibleSubItem href="/properties?status=Recorded" label="Recorded" />
-                <Separator className="my-2" />
-                <p className="text-xs font-semibold text-muted-foreground px-4 py-2">Rent Properties</p>
-                <CollapsibleSubItem href="/properties?status=All%20(Rent)" label="All (Rent)" />
-                <CollapsibleSubItem href="/properties?status=Available%20(Rent)" label="Available" />
-                <CollapsibleSubItem href="/properties?status=Rent%20Out" label="Rent Out" />
-            </CollapsibleMenuItem>
+            {renderMenuItem({ href: '/properties', label: 'Properties', icon: <Building2 />, roles: ['Admin', 'Agent'] })}
             <CollapsibleMenuItem
               label="Buyers"
               icon={<Users />}
@@ -472,7 +459,7 @@ export function AppSidebar() {
           </SidebarMenu>
 
           <SidebarMenu className="mt-4">
-             <h3 className="text-xs text-muted-foreground font-semibold pl-4 mb-1 group-data-[state=collapsed]:pl-0 group-data-[state=collapsed]:text-center">Management</h3>
+             <h3 className="text-xs text-muted-foreground font-semibold font-semibold pl-4 mb-1 group-data-[state=collapsed]:pl-0 group-data-[state=collapsed]:text-center">Management</h3>
             {managementMenuItems.map(renderMenuItem)}
           </SidebarMenu>
         </SidebarContent>
