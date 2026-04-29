@@ -26,6 +26,8 @@ import { Trash2, Plus, Tag as TagIcon, X } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
 import { Tag } from '@/lib/types';
+import { cn } from '@/lib/utils';
+import { Separator } from '@/components/ui/separator';
 
 interface ManageTagsDialogProps {
   isOpen: boolean;
@@ -179,3 +181,4 @@ export function ManageTagsDialog({ isOpen, setIsOpen }: ManageTagsDialogProps) {
     </Dialog>
   );
 }
+
