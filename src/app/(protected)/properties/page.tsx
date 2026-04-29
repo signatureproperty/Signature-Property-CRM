@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -124,12 +123,10 @@ interface Filters {
 }
 
 const statusOptions = [
-  { value: 'All', label: 'All', color: 'bg-gray-100 text-gray-700' },
-  { value: 'Available', label: 'Available', color: 'bg-emerald-100 text-emerald-700' },
-  { value: 'Sold', label: 'Sold', color: 'bg-green-100 text-green-700' },
-  { value: 'Rent Out', label: 'Rent Out', color: 'bg-blue-100 text-blue-700' },
-  { value: 'Pending', label: 'Pending', color: 'bg-amber-100 text-amber-700' },
-  { value: 'Sold (External)', label: 'External Sale', color: 'bg-slate-100 text-slate-700' },
+  { value: 'All', label: 'All', color: 'bg-gray-100 text-gray-700', listing: 'All' },
+  { value: 'Available', label: 'Available', color: 'bg-emerald-100 text-emerald-700', listing: 'All' },
+  { value: 'Sold', label: 'Sold', color: 'bg-green-100 text-green-700', listing: 'For Sale' },
+  { value: 'Rent Out', label: 'Rent Out', color: 'bg-blue-100 text-blue-700', listing: 'For Rent' },
 ];
 
 const propertyTypesForFilter: (PropertyType | 'All' | 'Other')[] = [
@@ -149,9 +146,6 @@ export default function PropertiesPage() {
   const { currency } = useCurrency();
   const firestore = useFirestore();
 
-  const importInputRef = useRef<HTMLInputElement>(null);
-  const [importType, setImportType] = useState<'For Sale' | 'For Rent' | null>(null);
-
   const agencyPropertiesQuery = useMemoFirebase(
     () => (profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'properties') : null),
     [profile.agency_id, firestore]
@@ -169,8 +163,6 @@ export default function PropertiesPage() {
 
   const [activeAgencyTab, setActiveAgencyTab] = useState(profile.agencies?.[0]?.agency_id);
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
-  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
-  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [selectedProperties, setSelectedProperties] = useState<string[]>([]);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isSoldOpen, setIsSoldOpen] = useState(false);
@@ -178,22 +170,13 @@ export default function PropertiesPage() {
   const [isRecordVideoOpen, setIsRecordVideoOpen] = useState(false);
   const [isAddPropertyOpen, setIsAddPropertyOpen] = useState(false);
   const [isAppointmentOpen, setIsAppointmentOpen] = useState(false);
-  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [isManageTagsOpen, setIsManageTagsOpen] = useState(false);
   const [isEditTagsOpen, setIsEditTagsOpen] = useState(false);
-  const [assignmentDetails, setAssignmentDetails] = useState<{ property: Property, agentId: string, agentName: string } | null>(null);
 
-  // Tags/Filter State
   const [activeListingType, setActiveListingType] = useState<ListingType | 'All'>('All');
   const [activeStatus, setActiveStatus] = useState<string>('All');
   const [activeCustomTags, setActiveCustomTags] = useState<string[]>([]);
 
-  const [appointmentDetails, setAppointmentDetails] = useState<{
-    contactType: AppointmentContactType;
-    contactName: string;
-    contactSerialNo?: string;
-    message: string;
-  } | null>(null);
   const [propertyToEdit, setPropertyToEdit] = useState<Property | null>(null);
   const [propertyForDetails, setPropertyForDetails] = useState<Property | null>(null);
   const [filters, setFilters] = useState<Filters>({
@@ -248,6 +231,12 @@ export default function PropertiesPage() {
     );
   };
 
+  useEffect(() => {
+    if (activeListingType === 'For Sale' && activeStatus === 'Rent Out') setActiveStatus('All');
+    if (activeListingType === 'For Rent' && activeStatus === 'Sold') setActiveStatus('All');
+    setActiveCustomTags([]);
+  }, [activeListingType, activeStatus]);
+
   const filteredProperties = useMemo(() => {
     if (!allProperties) return [];
     let baseProperties = allProperties.filter(p => !p.is_deleted);
@@ -256,7 +245,6 @@ export default function PropertiesPage() {
         baseProperties = baseProperties.filter(p => p.assignedTo === user.uid || p.created_by === user.uid);
     }
 
-    // Horizontal Tags Filters
     if (activeListingType !== 'All') {
         baseProperties = baseProperties.filter(p => p.listing_type === activeListingType);
     }
@@ -269,7 +257,6 @@ export default function PropertiesPage() {
         );
     }
 
-    // Search and Popover Filters
     if (searchQuery) {
       const lowercasedQuery = searchQuery.toLowerCase();
       baseProperties = baseProperties.filter((prop) =>
@@ -290,8 +277,6 @@ export default function PropertiesPage() {
             baseProperties = baseProperties.filter((p) => p.property_type === filters.propertyType);
         }
     }
-    if (filters.minSize) baseProperties = baseProperties.filter((p) => p.size_value >= Number(filters.minSize));
-    if (filters.maxSize) baseProperties = baseProperties.filter((p) => p.size_value <= Number(filters.maxSize));
     
     return baseProperties.sort((a, b) => {
       const aNum = parseInt(a.serial_no.split('-')[1] || '0', 10);
@@ -316,9 +301,6 @@ export default function PropertiesPage() {
     setIsEditTagsOpen(true);
   };
 
-  const handleMarkAsSold = (prop: Property) => { setPropertyForDetails(prop); setIsSoldOpen(true); };
-  const handleMarkAsRentOut = (prop: Property) => { setPropertyForDetails(prop); setIsRentOutOpen(true); };
-  const handleRecordVideo = (prop: Property) => { setPropertyForDetails(prop); setIsRecordVideoOpen(true); };
   const handleEdit = (prop: Property) => { setPropertyToEdit(prop); setIsAddPropertyOpen(true); };
 
   const handleSaveProperty = async (propertyData: Omit<Property, 'id'> & { id?: string }) => {
@@ -401,9 +383,7 @@ export default function PropertiesPage() {
                     <Badge variant="default" className={cn('font-mono text-[10px]', prop.serial_no.startsWith('RP') ? 'bg-emerald-100 text-emerald-700' : 'bg-primary/20 text-primary')}>{prop.serial_no}</Badge>
                     {prop.tags?.map(tagName => {
                         const tagObj = agencyTags?.find(t => t.name === tagName);
-                        return (
-                            <Badge key={tagName} variant="outline" className={cn("text-[9px] px-1 py-0", tagObj?.color || "bg-gray-100")}>{tagName}</Badge>
-                        )
+                        return <Badge key={tagName} variant="outline" className={cn("text-[9px] px-1 py-0", tagObj?.color || "bg-gray-100")}>{tagName}</Badge>
                     })}
                 </div>
               </TableCell>
@@ -446,7 +426,6 @@ export default function PropertiesPage() {
                          const tagObj = agencyTags?.find(t => t.name === tagName);
                          return <Badge key={tagName} variant="outline" className={cn("text-[8px]", tagObj?.color || "bg-gray-100")}>{tagName}</Badge>
                     })}
-                    {prop.tags && prop.tags.length > 3 && <span className="text-[8px] text-muted-foreground">+{prop.tags.length - 3} more</span>}
                  </div>
                  <Button variant="ghost" size="sm" onClick={() => handleRowClick(prop)}>View Details</Button>
               </CardFooter>
@@ -476,13 +455,13 @@ export default function PropertiesPage() {
                   <Button variant="destructive" className="rounded-full" onClick={handleBulkDelete}><Trash2 className="mr-2 h-4 w-4" /> Delete ({selectedProperties.length})</Button>
                 </div>
               )}
-               <AlertDialog open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
+              <AlertDialog open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
                 <AlertDialogTrigger asChild>
-                    <Button variant="outline" className="rounded-full"><Filter className="mr-2 h-4 w-4" /> Filters {filters.area.length > 0 && `(${filters.area.length})`}</Button>
+                  <Button variant="outline" className="rounded-full"><Filter className="mr-2 h-4 w-4" /> Filters {filters.area.length > 0 && `(${filters.area.length})`}</Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent className="max-w-md glass-card">
-                    <AlertDialogHeader><AlertDialogTitle>Refine Property Search</AlertDialogTitle></AlertDialogHeader>
-                    <div className="grid gap-4 py-4">
+                  <AlertDialogHeader><AlertDialogTitle>Refine Property Search</AlertDialogTitle></AlertDialogHeader>
+                  <div className="grid gap-4 py-4">
                     <div className="grid grid-cols-3 items-center gap-4">
                         <Label>Serial No</Label>
                         <div className="col-span-2 grid grid-cols-2 gap-2">
@@ -509,84 +488,52 @@ export default function PropertiesPage() {
                         </Popover>
                         </div>
                     </div>
-                    <div className="grid grid-cols-3 items-center gap-4">
-                        <Label>Type</Label>
-                        <Select value={filters.propertyType} onValueChange={(v) => handleFilterChange('propertyType', v)}>
-                        <SelectTrigger className="col-span-2 h-8"><SelectValue /></SelectTrigger>
-                        <SelectContent>{propertyTypesForFilter.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                        </Select>
-                    </div>
-                    </div>
-                    <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><Button variant="ghost" onClick={clearFilters}>Clear All</Button><AlertDialogAction onClick={() => setIsFilterPopoverOpen(false)}>Apply</AlertDialogAction></AlertDialogFooter>
+                  </div>
+                  <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><Button variant="ghost" onClick={clearFilters}>Clear All</Button><AlertDialogAction onClick={() => setIsFilterPopoverOpen(false)}>Apply</AlertDialogAction></AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-              <Button variant="outline" className="rounded-full" onClick={() => setIsImportDialogOpen(true)}><Upload className="mr-2 h-4 w-4" /> Import</Button>
-              <Button variant="outline" className="rounded-full" onClick={() => setIsExportDialogOpen(true)}><Download className="mr-2 h-4 w-4" /> Export</Button>
+              {profile.role !== 'Agent' && (
+                <Button className="rounded-full glowing-btn" onClick={() => { setIsAddPropertyOpen(true); setPropertyToEdit(null); }}>
+                  <PlusCircle className="mr-2 h-4 w-4" /> Add Property
+                </Button>
+              )}
             </div>
           </div>
 
-          {/* New Horizontal Tags Bar */}
+          {/* Smart Horizontal Filter Bar */}
           <Card className="border-none shadow-none bg-transparent">
             <ScrollArea className="w-full whitespace-nowrap pb-4">
               <div className="flex items-center gap-3">
-                {/* Listing Type Section */}
+                {/* 1. Listing Type Selection */}
                 <div className="flex items-center gap-2 pr-4 border-r border-border/50">
-                    <Badge 
-                        variant={activeListingType === 'All' ? 'default' : 'outline'} 
-                        className={cn("cursor-pointer px-4 py-1.5 rounded-full transition-all", activeListingType === 'All' ? "bg-primary" : "hover:bg-accent")}
-                        onClick={() => setActiveListingType('All')}
-                    >All Types</Badge>
-                    <Badge 
-                        variant={activeListingType === 'For Sale' ? 'default' : 'outline'} 
-                        className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-blue-50 text-blue-700 border-blue-100 hover:bg-blue-100", activeListingType === 'For Sale' && "ring-2 ring-primary ring-offset-2")}
-                        onClick={() => setActiveListingType('For Sale')}
-                    >For Sale</Badge>
-                    <Badge 
-                        variant={activeListingType === 'For Rent' ? 'default' : 'outline'} 
-                        className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100", activeListingType === 'For Rent' && "ring-2 ring-primary ring-offset-2")}
-                        onClick={() => setActiveListingType('For Rent')}
-                    >For Rent</Badge>
+                    <Badge variant={activeListingType === 'All' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full", activeListingType === 'All' ? "bg-primary" : "hover:bg-accent")} onClick={() => setActiveListingType('All')}>All Types</Badge>
+                    <Badge variant={activeListingType === 'For Sale' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-blue-50 text-blue-700 border-blue-100", activeListingType === 'For Sale' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Sale')}>For Sale</Badge>
+                    <Badge variant={activeListingType === 'For Rent' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border-emerald-100", activeListingType === 'For Rent' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Rent')}>For Rent</Badge>
                 </div>
 
-                {/* Status Section */}
+                {/* 2. Dynamic Status Section (Filters based on Sale/Rent) */}
                 <div className="flex items-center gap-2 pr-4 border-r border-border/50">
-                    {statusOptions.map(opt => (
+                    {statusOptions.filter(opt => activeListingType === 'All' || opt.listing === 'All' || opt.listing === activeListingType).map(opt => (
                         <Badge 
                             key={opt.value}
                             variant={activeStatus === opt.value ? 'default' : 'outline'}
-                            className={cn(
-                                "cursor-pointer px-4 py-1.5 rounded-full transition-all",
-                                opt.color,
-                                activeStatus === opt.value && "ring-2 ring-primary ring-offset-2"
-                            )}
+                            className={cn("cursor-pointer px-4 py-1.5 rounded-full transition-all", opt.color, activeStatus === opt.value && "ring-2 ring-primary ring-offset-2")}
                             onClick={() => setActiveStatus(opt.value)}
                         >{opt.label}</Badge>
                     ))}
                 </div>
 
-                {/* Custom Tags Section */}
+                {/* 3. Custom Tags (Filtered by Listing Type) */}
                 <div className="flex items-center gap-2">
-                    {agencyTags?.map(tag => (
+                    {agencyTags?.filter(tag => activeListingType === 'All' || !tag.listingType || tag.listingType === 'All' || tag.listingType === activeListingType).map(tag => (
                         <Badge 
                             key={tag.id}
                             variant={activeCustomTags.includes(tag.name) ? 'default' : 'outline'}
-                            className={cn(
-                                "cursor-pointer px-4 py-1.5 rounded-full transition-all",
-                                tag.color,
-                                activeCustomTags.includes(tag.name) && "ring-2 ring-primary ring-offset-2"
-                            )}
+                            className={cn("cursor-pointer px-4 py-1.5 rounded-full transition-all", tag.color, activeCustomTags.includes(tag.name) && "ring-2 ring-primary ring-offset-2")}
                             onClick={() => handleToggleCustomTag(tag.name)}
                         >{tag.name}</Badge>
                     ))}
-                    <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="rounded-full h-8 px-4 text-xs font-bold gap-2 text-primary hover:bg-primary/10"
-                        onClick={() => setIsManageTagsOpen(true)}
-                    >
-                        <PlusCircle className="h-4 w-4" />
-                        Manage Tags
-                    </Button>
+                    <Button variant="ghost" size="sm" className="rounded-full h-8 px-4 text-xs font-bold gap-2 text-primary hover:bg-primary/10" onClick={() => setIsManageTagsOpen(true)}><PlusCircle className="h-4 w-4" />Manage Tags</Button>
                 </div>
               </div>
               <ScrollBar orientation="horizontal" />
@@ -614,6 +561,7 @@ export default function PropertiesPage() {
       )}
 
       <AddPropertyDialog isOpen={isAddPropertyOpen} setIsOpen={setIsAddPropertyOpen} propertyToEdit={propertyToEdit} allProperties={allProperties || []} onSave={handleSaveProperty} listingType={activeListingType === 'For Rent' ? 'For Rent' : 'For Sale'} limitReached={false} />
+      
       <ManageTagsDialog isOpen={isManageTagsOpen} setIsOpen={setIsManageTagsOpen} />
       
       {propertyForDetails && (
