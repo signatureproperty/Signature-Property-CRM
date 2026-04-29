@@ -27,11 +27,9 @@ export type User = {
 export type Tag = {
   id: string;
   name: string;
-  color: string;
-  createdAt: string;
-  createdBy: string;
+  color: string; // Hex or tailwind class
   agency_id: string;
-  entityType: 'property' | 'buyer';
+  createdAt: string;
 };
 
 
