@@ -268,6 +268,7 @@ export default function PropertiesPage() {
     }
 
     if (filters.area.length > 0) baseProperties = baseProperties.filter((p) => filters.area.includes(p.area));
+    
     if (filters.propertyType !== 'All') {
         if (filters.propertyType === 'Other') {
             if (filters.otherPropertyType) {
@@ -276,6 +277,30 @@ export default function PropertiesPage() {
         } else {
             baseProperties = baseProperties.filter((p) => p.property_type === filters.propertyType);
         }
+    }
+
+    if (filters.minSize) baseProperties = baseProperties.filter(p => p.size_value >= Number(filters.minSize));
+    if (filters.maxSize) baseProperties = baseProperties.filter(p => p.size_value <= Number(filters.maxSize));
+    if (filters.sizeUnit !== 'All') baseProperties = baseProperties.filter(p => p.size_unit === filters.sizeUnit);
+
+    if (filters.minDemand) {
+        baseProperties = baseProperties.filter(p => {
+            const val = formatUnit(p.demand_amount, p.demand_unit);
+            const filterVal = formatUnit(Number(filters.minDemand), filters.demandUnit as PriceUnit || 'Lacs');
+            return val >= filterVal;
+        });
+    }
+    if (filters.maxDemand) {
+        baseProperties = baseProperties.filter(p => {
+            const val = formatUnit(p.demand_amount, p.demand_unit);
+            const filterVal = formatUnit(Number(filters.maxDemand), filters.demandUnit as PriceUnit || 'Lacs');
+            return val <= filterVal;
+        });
+    }
+
+    if (filters.serialNo && filters.serialNoPrefix !== 'All') {
+      const fullSerialNo = `${filters.serialNoPrefix}-${filters.serialNo}`;
+      baseProperties = baseProperties.filter((p) => p.serial_no === fullSerialNo);
     }
     
     return baseProperties.sort((a, b) => {
@@ -488,8 +513,71 @@ export default function PropertiesPage() {
                         </Popover>
                         </div>
                     </div>
+                    <div className="grid grid-cols-3 items-center gap-4">
+                        <Label htmlFor="propertyType">Type</Label>
+                        <Select value={filters.propertyType} onValueChange={(value: any) => handleFilterChange('propertyType', value)}>
+                            <SelectTrigger className="col-span-2 h-8">
+                                <SelectValue placeholder="Property Type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {propertyTypesForFilter.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="grid grid-cols-3 items-center gap-4">
+                        <Label>Size</Label>
+                        <div className="col-span-2 grid grid-cols-2 gap-2">
+                            <Input placeholder="Min" type="number" value={filters.minSize} onChange={e => handleFilterChange('minSize', e.target.value)} className="h-8" />
+                            <Input placeholder="Max" type="number" value={filters.maxSize} onChange={e => handleFilterChange('maxSize', e.target.value)} className="h-8" />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-3 items-center gap-4">
+                        <Label></Label>
+                        <div className="col-span-2">
+                            <Select value={filters.sizeUnit} onValueChange={(value: any) => handleFilterChange('sizeUnit', value)}>
+                                <SelectTrigger className="h-8">
+                                    <SelectValue placeholder="Unit" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="All">All Units</SelectItem>
+                                    <SelectItem value="Marla">Marla</SelectItem>
+                                    <SelectItem value="SqFt">SqFt</SelectItem>
+                                    <SelectItem value="Kanal">Kanal</SelectItem>
+                                    <SelectItem value="Acre">Acre</SelectItem>
+                                    <SelectItem value="Maraba">Maraba</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-3 items-center gap-4">
+                        <Label>Demand</Label>
+                        <div className="col-span-2 grid grid-cols-2 gap-2">
+                            <Input placeholder="Min" type="number" value={filters.minDemand} onChange={e => handleFilterChange('minDemand', e.target.value)} className="h-8" />
+                            <Input placeholder="Max" type="number" value={filters.maxDemand} onChange={e => handleFilterChange('maxDemand', e.target.value)} className="h-8" />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-3 items-center gap-4">
+                        <Label></Label>
+                        <div className="col-span-2">
+                            <Select value={filters.demandUnit} onValueChange={(value: any) => handleFilterChange('demandUnit', value)}>
+                                <SelectTrigger className="h-8">
+                                    <SelectValue placeholder="Unit" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="All">All Units</SelectItem>
+                                    <SelectItem value="Thousand">Thousand</SelectItem>
+                                    <SelectItem value="Lacs">Lacs</SelectItem>
+                                    <SelectItem value="Crore">Crore</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
                   </div>
-                  <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><Button variant="ghost" onClick={clearFilters}>Clear All</Button><AlertDialogAction onClick={() => setIsFilterPopoverOpen(false)}>Apply</AlertDialogAction></AlertDialogFooter>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <Button variant="ghost" onClick={clearFilters}>Clear All</Button>
+                    <AlertDialogAction onClick={() => setIsFilterPopoverOpen(false)}>Apply</AlertDialogAction>
+                  </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
               {profile.role !== 'Agent' && (
