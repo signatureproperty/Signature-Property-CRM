@@ -161,7 +161,6 @@ function PropertiesPageContent() {
   );
   const { data: agencyTags } = useCollection<Tag>(tagsQuery);
 
-  const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
   const [selectedProperties, setSelectedProperties] = useState<string[]>([]);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isSoldOpen, setIsSoldOpen] = useState(false);
@@ -635,15 +634,6 @@ function PropertiesPageContent() {
           )}
         </div>
       </TooltipProvider>
-
-      {profile.role !== 'Agent' && (
-        <div className={cn('fixed bottom-24 right-4 md:bottom-8 md:right-8 z-50', isMoreMenuOpen && 'opacity-0')}>
-          <Popover open={isAddMenuOpen} onOpenChange={setIsAddMenuOpen}>
-            <PopoverTrigger asChild><Button className="rounded-full w-14 h-14 shadow-lg glowing-btn" size="icon"><PlusCircle className="h-6 w-6" /></Button></PopoverTrigger>
-            <PopoverContent className="w-40 p-2 mb-2"><div className="flex flex-col gap-2"><Button variant="ghost" onClick={() => { setIsAddPropertyOpen(true); setPropertyToEdit(null); }}>For Sale</Button><Button variant="ghost" onClick={() => { setIsAddPropertyOpen(true); setPropertyToEdit(null); }}>For Rent</Button></div></PopoverContent>
-          </Popover>
-        </div>
-      )}
 
       <AddPropertyDialog isOpen={isAddPropertyOpen} setIsOpen={setIsAddPropertyOpen} propertyToEdit={propertyToEdit} allProperties={allProperties || []} onSave={handleSaveProperty} listingType={activeListingType === 'For Rent' ? 'For Rent' : 'For Sale'} limitReached={false} />
       
