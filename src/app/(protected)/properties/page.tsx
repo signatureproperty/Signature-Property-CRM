@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -60,7 +61,7 @@ import {
 import { AddPropertyDialog } from '@/components/add-property-dialog';
 import { Input } from '@/components/ui/input';
 import type { Property, PropertyType, SizeUnit, PriceUnit, AppointmentContactType, Appointment, ListingType, PlanName, PropertyStatus, User, Activity, RecordingPaymentStatus, Tag } from '@/lib/types';
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, Suspense } from 'react';
 import { PropertyDetailsDialog } from '@/components/property-details-dialog';
 import { MarkAsSoldDialog } from '@/components/mark-as-sold-dialog';
 import { MarkAsRentOutDialog } from '@/components/mark-as-rent-out-dialog';
@@ -100,7 +101,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
 import { motion } from 'framer-motion';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { SetRecordingPaymentDialog } from '@/components/set-recording-payment-dialog';
 import { ManageTagsDialog } from '@/components/manage-tags-dialog';
 import { EditPropertyTagsDialog } from '@/components/edit-property-tags-dialog';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
@@ -133,7 +133,7 @@ const propertyTypesForFilter: (PropertyType | 'All' | 'Other')[] = [
   'All', 'House', 'Flat', 'Farm House', 'Penthouse', 'Plot', 'Residential Plot', 'Commercial Plot', 'Agricultural Land', 'Industrial Land', 'Office', 'Shop', 'Warehouse', 'Factory', 'Building', 'Residential Property', 'Commercial Property', 'Semi Commercial', 'Other'
 ];
 
-export default function PropertiesPage() {
+function PropertiesPageContent() {
   const isMobile = useIsMobile();
   const router = useRouter();
   const pathname = usePathname();
@@ -161,7 +161,6 @@ export default function PropertiesPage() {
   );
   const { data: agencyTags } = useCollection<Tag>(tagsQuery);
 
-  const [activeAgencyTab, setActiveAgencyTab] = useState(profile.agencies?.[0]?.agency_id);
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
   const [selectedProperties, setSelectedProperties] = useState<string[]>([]);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -169,7 +168,6 @@ export default function PropertiesPage() {
   const [isRentOutOpen, setIsRentOutOpen] = useState(false);
   const [isRecordVideoOpen, setIsRecordVideoOpen] = useState(false);
   const [isAddPropertyOpen, setIsAddPropertyOpen] = useState(false);
-  const [isAppointmentOpen, setIsAppointmentOpen] = useState(false);
   const [isManageTagsOpen, setIsManageTagsOpen] = useState(false);
   const [isEditTagsOpen, setIsEditTagsOpen] = useState(false);
 
@@ -198,7 +196,6 @@ export default function PropertiesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
-  const isAgent = profile.role === 'Agent';
   const activeTeamMembers = useMemo(() => {
     return teamMembers?.filter(m => m.status === 'Active') || [];
   }, [teamMembers]);
@@ -663,4 +660,12 @@ export default function PropertiesPage() {
       )}
     </>
   );
+}
+
+export default function PropertiesPage() {
+  return (
+    <Suspense fallback={<div>Loading properties...</div>}>
+      <PropertiesPageContent />
+    </Suspense>
+  )
 }

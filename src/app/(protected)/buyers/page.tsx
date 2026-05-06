@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { buyerStatuses } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Edit, MoreHorizontal, PlusCircle, Trash2, Phone, Home, Search, Filter, Wallet, Bookmark, Upload, Download, Ruler, Eye, CalendarPlus, UserCheck, Briefcase, Check, X, UserPlus, UserX, ChevronDown, MessageSquare, Sparkles, ChevronLeft, ChevronRight, DollarSign, ArrowUpDown } from 'lucide-react';
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, Suspense } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useIsMobile } from '@/hooks/use-is-mobile';
 import { Buyer, BuyerStatus, PriceUnit, SizeUnit, PropertyType, AppointmentContactType, Appointment, FollowUp, User, Activity, ListingType, PlanName, Property } from '@/lib/types';
@@ -80,7 +80,7 @@ interface Filters {
     serialNo: string;
 }
 
-export default function BuyersPage() {
+function BuyersPageContent() {
     const isMobile = useIsMobile();
     const router = useRouter();
     const pathname = usePathname();
@@ -97,13 +97,12 @@ export default function BuyersPage() {
     const firestore = useFirestore();
     const importInputRef = useRef<HTMLInputElement>(null);
     
-    // Fetch all buyers for the agency (Updated for Agent Assignment)
+    // Fetch all buyers for the agency
     const allAgencyBuyersQuery = useMemoFirebase(() => {
         if (!profile.agency_id) return null;
         
         const buyersRef = collection(firestore, 'agencies', profile.agency_id, 'buyers');
 
-        // Agar Agent hai, to sirf uske Assigned ya Created buyers mangwao
         if (profile.role === 'Agent' && user?.uid) {
             return query(buyersRef, 
                 or(
@@ -113,7 +112,6 @@ export default function BuyersPage() {
             );
         }
 
-        // Agar Admin hai, to sab uthao
         return query(buyersRef);
     }, [profile.agency_id, firestore, profile.role, user?.uid]);
     const { data: allBuyers, isLoading: isAgencyLoading } = useCollection<Buyer>(allAgencyBuyersQuery);
@@ -145,16 +143,7 @@ export default function BuyersPage() {
     const agencyPropertiesQuery = useMemoFirebase(() => profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'properties') : null, [profile.agency_id, firestore]);
     const { data: allProperties } = useCollection<Property>(agencyPropertiesQuery);
     
-    const agencyIdFromUrl = searchParams.get('agency') || (profile.role === 'Admin' ? profile.agency_id : profile.agencies?.[0]?.agency_id);
     const activeTab = listingTypeFilterFromURL || 'For Sale';
-    const [activeAgencyTab, setActiveAgencyTab] = useState(agencyIdFromUrl);
-
-    useEffect(() => {
-        if (!activeAgencyTab && profile.agencies && profile.agencies.length > 0) {
-            setActiveAgencyTab(profile.agencies[0].agency_id);
-        }
-    }, [profile.agencies, activeAgencyTab]);
-
 
     const assignableAgents = useMemo(() => {
         return teamMembers?.filter(m => m.status === 'Active' && (m.role === 'Admin' || m.role === 'Agent')) || [];
@@ -286,7 +275,7 @@ export default function BuyersPage() {
     const handleSaveAppointment = async (appointment: Appointment) => {
         if (!profile.agency_id) return;
         const { id, ...newAppointmentData } = appointment;
-        const newAppointmentRef = await addDoc(collection(firestore, 'agencies', profile.agency_id, 'appointments'), newAppointmentData);
+        await addDoc(collection(firestore, 'agencies', profile.agency_id, 'appointments'), newAppointmentData);
         await logActivity('scheduled an appointment for buyer', appointment.contactName || 'N/A', 'Appointment');
     };
 
@@ -410,7 +399,7 @@ export default function BuyersPage() {
             if (!profile.agency_id) return;
             const collectionRef = collection(firestore, 'agencies', profile.agency_id, 'buyers');
             const { id, ...restOfData } = buyerData;
-            const newDocRef = await addDoc(collectionRef, { ...restOfData, agency_id: profile.agency_id, created_by: user?.uid });
+            await addDoc(collectionRef, { ...restOfData, agency_id: profile.agency_id, created_by: user?.uid });
             await logActivity('added a new buyer', buyerData.name, 'Buyer');
             toast({ title: 'Buyer Added' });
         }
@@ -493,7 +482,7 @@ export default function BuyersPage() {
     useEffect(() => {
         setCurrentPage(1);
         setSelectedBuyers([]);
-    }, [searchQuery, filters, activeTab, activeStatusFilter, activeAgencyTab]);
+    }, [searchQuery, filters, activeTab, activeStatusFilter]);
 
 
     const handleTabChange = (value: string) => {
@@ -676,7 +665,7 @@ export default function BuyersPage() {
             let newBuyersCount = 0;
             let skippedCount = 0;
             let batch = writeBatch(firestore);
-            const BATCH_SIZE = 499; // Firestore batch limit is 500
+            const BATCH_SIZE = 499;
 
             for (let i = 1; i < rows.length; i++) {
             const row = rows[i];
@@ -750,7 +739,7 @@ export default function BuyersPage() {
             }
             
             try {
-            await batch.commit(); // Commit the last batch
+            await batch.commit(); 
             toast({ 
                 title: 'Import Complete', 
                 description: `${newBuyersCount} new buyers have been added. ${skippedCount > 0 ? `${skippedCount} rows were skipped due to missing phone numbers.` : ''}` 
@@ -898,7 +887,7 @@ export default function BuyersPage() {
                                                     ))}
                                                 </DropdownMenuSubContent>
                                             </DropdownMenuPortal>
-                                        </DropdownMenuSub>
+                                        </DropdownMenu>
                                         {(profile.role !== 'Agent') && (<DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleDelete(buyer); }} className="text-destructive focus:text-destructive-foreground focus:bg-destructive"><Trash2 />Delete</DropdownMenuItem>)}
                                     </DropdownMenuContent>
                                 </DropdownMenu>
@@ -1225,19 +1214,6 @@ export default function BuyersPage() {
                     </CardContent>
                 </Card>
                 )}
-                
-                {isAgent && profile.agencies && profile.agencies.length > 1 && (
-                    <Tabs value={activeAgencyTab} onValueChange={setActiveAgencyTab}>
-                        <TabsList>
-                            {profile.agencies.map(agency => (
-                                <TabsTrigger key={agency.agency_id} value={agency.agency_id}>
-                                    {agency.agency_name}
-                                </TabsTrigger>
-                            ))}
-                        </TabsList>
-                    </Tabs>
-                )}
-
 
                 <div className="flex items-center justify-between gap-4">
                     <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
@@ -1358,7 +1334,10 @@ export default function BuyersPage() {
     );
 }
 
-    
-
-    
-
+export default function BuyersPage() {
+    return (
+        <Suspense fallback={<div>Loading buyers...</div>}>
+            <BuyersPageContent />
+        </Suspense>
+    );
+}
