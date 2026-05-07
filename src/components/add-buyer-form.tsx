@@ -1,6 +1,6 @@
 'use client';
 
-import { useForm, useWatch } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -23,9 +23,8 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState } from 'react';
-import type { Buyer, BuyerStatus, PriceUnit, PropertyType, SizeUnit, ListingType } from '@/lib/types';
+import type { Buyer, PriceUnit, PropertyType, SizeUnit, ListingType } from '@/lib/types';
 import { Separator } from './ui/separator';
-import { ScrollArea } from './ui/scroll-area';
 import { buyerStatuses, punjabCities, countryCodes } from '@/lib/data';
 import { Checkbox } from './ui/checkbox';
 import { useUser } from '@/firebase/auth/use-user';
@@ -36,12 +35,12 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from '@/lib/utils';
 import { Check, ChevronsUpDown, Hash, Calendar, User, Phone, MapPin, Building, Ruler, Wallet, Tag } from 'lucide-react';
 
-const propertyTypes: (PropertyType | 'Other')[] = [
+const propertyTypeValues = [
     'House', 'Flat', 'Farm House', 'Penthouse', 'Plot', 'Residential Plot', 'Commercial Plot', 'Agricultural Land', 'Industrial Land', 'Office', 'Shop', 'Warehouse', 'Factory', 'Building', 'Residential Property', 'Commercial Property', 'Semi Commercial', 'Other'
-];
+] as const;
+
 const sizeUnits: SizeUnit[] = ['Marla', 'SqFt', 'Kanal', 'Acre', 'Maraba'];
 const priceUnits: PriceUnit[] = ['Thousand', 'Lacs', 'Crore'];
-
 
 const formSchema = z.object({
   id: z.string().optional(),
@@ -51,20 +50,20 @@ const formSchema = z.object({
   country_code: z.string().default('+92'),
   phone: z.string().min(1, 'Phone number is required'),
   email: z.string().email().optional().or(z.literal('')),
-  status: z.enum(buyerStatuses).default('New'),
+  status: z.string().default('New'),
   is_investor: z.boolean().optional().default(false),
   city: z.string().optional(),
   area_preference: z.string().optional(),
-  property_type_preference: z.enum(propertyTypes).optional(),
+  property_type_preference: z.string().optional(),
   property_type_other: z.string().optional(),
   size_min_value: z.coerce.number().optional().nullable(),
-  size_min_unit: z.enum(sizeUnits).optional(),
+  size_min_unit: z.enum(['Marla', 'SqFt', 'Kanal', 'Acre', 'Maraba']).optional(),
   size_max_value: z.coerce.number().optional().nullable(),
-  size_max_unit: z.enum(sizeUnits).optional(),
+  size_max_unit: z.enum(['Marla', 'SqFt', 'Kanal', 'Acre', 'Maraba']).optional(),
   budget_min_amount: z.coerce.number().optional().nullable(),
-  budget_min_unit: z.enum(priceUnits).optional(),
+  budget_min_unit: z.enum(['Thousand', 'Lacs', 'Crore']).optional(),
   budget_max_amount: z.coerce.number().optional().nullable(),
-  budget_max_unit: z.enum(priceUnits).optional(),
+  budget_max_unit: z.enum(['Thousand', 'Lacs', 'Crore']).optional(),
   notes: z.string().optional(),
   tags: z.string().optional(),
   created_at: z.string().optional(),
@@ -78,90 +77,46 @@ interface AddBuyerFormProps {
   totalSaleBuyers: number;
   totalRentBuyers: number;
   buyerToEdit?: Buyer | null;
-  onSave: (buyer: Omit<Buyer, 'id'> & { id?: string }) => void;
+  onSave: (buyer: any) => void;
   listingType: ListingType;
 }
 
-const getInitialFormValues = (
-    listingType: ListingType, 
-    totalSaleBuyers: number, 
-    totalRentBuyers: number, 
-    buyerToEdit: Buyer | null | undefined, 
-    userId?: string
-): AddBuyerFormValues => {
-    if (buyerToEdit) {
-        const phoneWithoutCode = buyerToEdit.phone.replace(buyerToEdit.country_code || '+92', '');
-        const isOtherType = buyerToEdit.property_type_preference ? !propertyTypes.includes(buyerToEdit.property_type_preference) : false;
-
-        return {
-            ...buyerToEdit,
-            country_code: buyerToEdit.country_code || '+92',
-            phone: phoneWithoutCode,
-            property_type_preference: isOtherType ? 'Other' : (buyerToEdit.property_type_preference || undefined),
-            property_type_other: isOtherType ? buyerToEdit.property_type_preference : '',
-            size_min_unit: buyerToEdit.size_min_unit || 'Marla',
-            size_max_unit: buyerToEdit.size_max_unit || 'Marla',
-            budget_min_unit: buyerToEdit.budget_min_unit || 'Lacs',
-            budget_max_unit: buyerToEdit.budget_max_unit || 'Lacs',
-            name: buyerToEdit.name || '',
-            email: buyerToEdit.email || '',
-            city: buyerToEdit.city || '',
-            area_preference: buyerToEdit.area_preference || '',
-            notes: buyerToEdit.notes || '',
-            size_min_value: buyerToEdit.size_min_value ?? 0,
-            size_max_value: buyerToEdit.size_max_value ?? 0,
-            budget_min_amount: buyerToEdit.budget_min_amount ?? 0,
-            budget_max_amount: buyerToEdit.budget_max_amount ?? 0,
-            is_investor: buyerToEdit.is_investor || false,
-            listing_type: buyerToEdit.listing_type || 'For Sale',
-            tags: buyerToEdit.tags?.join(', ') || '',
-        };
-    }
-
-    const serialPrefix = listingType === 'For Rent' ? 'RB' : 'B';
-    const nextSerialNum = listingType === 'For Rent' ? totalRentBuyers + 1 : totalSaleBuyers + 1;
-
-    return {
-        name: '',
-        listing_type: listingType,
-        country_code: '+92',
-        phone: '',
-        email: '',
-        city: 'Lahore',
-        area_preference: '',
-        property_type_preference: undefined,
-        property_type_other: '',
-        notes: '',
-        status: 'New',
-        is_investor: false,
-        serial_no: `${serialPrefix}-${nextSerialNum}`,
-        size_min_unit: 'Marla',
-        size_max_unit: 'Marla',
-        budget_min_unit: 'Lacs',
-        budget_max_unit: 'Lacs',
-        size_min_value: 0,
-        size_max_value: 0,
-        budget_min_amount: 0,
-        budget_max_amount: 0,
-        created_at: new Date().toISOString(),
-        created_by: userId || '',
-        tags: '',
-    };
-};
-
-
 export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, buyerToEdit, onSave, listingType }: AddBuyerFormProps) {
-  const { toast } = useToast();
   const { user } = useUser();
   const { profile } = useProfile();
   const [countryCodePopoverOpen, setCountryCodePopoverOpen] = useState(false);
   
   const form = useForm<AddBuyerFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: getInitialFormValues(listingType, totalSaleBuyers, totalRentBuyers, buyerToEdit, user?.uid)
+    defaultValues: {
+        name: buyerToEdit?.name || '',
+        listing_type: listingType,
+        country_code: buyerToEdit?.country_code || '+92',
+        phone: buyerToEdit?.phone.replace(buyerToEdit.country_code || '+92', '') || '',
+        email: buyerToEdit?.email || '',
+        city: buyerToEdit?.city || 'Lahore',
+        area_preference: buyerToEdit?.area_preference || '',
+        property_type_preference: buyerToEdit?.property_type_preference || 'House',
+        property_type_other: '',
+        notes: buyerToEdit?.notes || '',
+        status: buyerToEdit?.status || 'New',
+        is_investor: buyerToEdit?.is_investor || false,
+        serial_no: buyerToEdit?.serial_no || (listingType === 'For Rent' ? `RB-${totalRentBuyers + 1}` : `B-${totalSaleBuyers + 1}`),
+        size_min_unit: buyerToEdit?.size_min_unit || 'Marla',
+        size_max_unit: buyerToEdit?.size_max_unit || 'Marla',
+        budget_min_unit: buyerToEdit?.budget_min_unit || 'Lacs',
+        budget_max_unit: buyerToEdit?.budget_max_unit || 'Lacs',
+        size_min_value: buyerToEdit?.size_min_value ?? 0,
+        size_max_value: buyerToEdit?.size_max_value ?? 0,
+        budget_min_amount: buyerToEdit?.budget_min_amount ?? 0,
+        budget_max_amount: buyerToEdit?.budget_max_amount ?? 0,
+        tags: buyerToEdit?.tags?.join(', ') || '',
+        created_at: buyerToEdit?.created_at || new Date().toISOString(),
+        created_by: buyerToEdit?.created_by || user?.uid || '',
+    }
   });
 
-  const { reset, setValue, watch, control } = form;
+  const { reset, setValue, watch } = form;
   const watchedPropertyType = watch('property_type_preference');
 
   useEffect(() => {
@@ -173,19 +128,12 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
     }
   }, [listingType, totalSaleBuyers, totalRentBuyers, setValue, buyerToEdit]);
 
-  useEffect(() => {
-    if (buyerToEdit) {
-        reset(getInitialFormValues(listingType, totalSaleBuyers, totalRentBuyers, buyerToEdit, user?.uid));
-    }
-  }, [buyerToEdit, reset, listingType, totalSaleBuyers, totalRentBuyers, user]);
-
   function onSubmit(values: AddBuyerFormValues) {
      const finalPropertyType = values.property_type_preference === 'Other' && values.property_type_other
         ? values.property_type_other
         : values.property_type_preference;
 
      const buyerData = {
-        ...buyerToEdit,
         ...values,
         property_type_preference: finalPropertyType,
         phone: formatPhoneNumber(values.phone, values.country_code),
@@ -209,15 +157,15 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
                 name="serial_no"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel className="flex items-center gap-2"><Hash className="h-3.5 w-3.5" /> Serial No</FormLabel>
+                    <FormLabel className="flex items-center gap-2 text-xs text-muted-foreground uppercase"><Hash className="h-3.5 w-3.5" /> Serial No</FormLabel>
                     <FormControl>
-                        <Input {...field} value={field.value ?? ''} readOnly className="bg-muted/50 h-9" />
+                        <Input {...field} value={field.value ?? ''} readOnly className="bg-muted/50 h-9 font-mono" />
                     </FormControl>
                     </FormItem>
                 )}
                 />
                 <FormItem>
-                    <FormLabel className="flex items-center gap-2"><Calendar className="h-3.5 w-3.5" /> Date Added</FormLabel>
+                    <FormLabel className="flex items-center gap-2 text-xs text-muted-foreground uppercase"><Calendar className="h-3.5 w-3.5" /> Date Added</FormLabel>
                     <Input value={new Date(form.getValues('created_at') || new Date()).toLocaleDateString()} readOnly className="bg-muted/50 h-9" />
                 </FormItem>
             </div>
@@ -225,7 +173,7 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
             <Separator />
             
             <div className="space-y-4">
-                <h4 className="text-sm font-bold flex items-center gap-2 uppercase tracking-wider"><User className="h-4 w-4" /> Contact Information</h4>
+                <h4 className="text-sm font-bold flex items-center gap-2 uppercase tracking-wider text-primary"><User className="h-4 w-4" /> Contact Information</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                     control={form.control}
@@ -234,7 +182,7 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
                         <FormItem>
                         <FormLabel>Buyer Name</FormLabel>
                         <FormControl>
-                            <Input {...field} placeholder="e.g. Ali Khan" className="h-9" />
+                            <Input {...field} placeholder="e.g. Ahmed Khan" className="h-9" />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -251,7 +199,7 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
                                 <Popover open={countryCodePopoverOpen} onOpenChange={setCountryCodePopoverOpen}>
                                     <PopoverTrigger asChild>
                                     <FormControl>
-                                        <Button variant="outline" role="combobox" className="w-full justify-between h-9">
+                                        <Button variant="outline" role="combobox" className="w-full justify-between h-9 px-2">
                                         {field.value || "Code"}
                                         </Button>
                                     </FormControl>
@@ -296,25 +244,12 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
                         </div>
                     </FormItem>
                 </div>
-                <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Email Address (Optional)</FormLabel>
-                        <FormControl>
-                            <Input type="email" {...field} value={field.value ?? ''} placeholder="buyer@example.com" className="h-9" />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
             </div>
 
             <Separator />
             
             <div className="space-y-4">
-                <h4 className="text-sm font-bold flex items-center gap-2 uppercase tracking-wider"><MapPin className="h-4 w-4" /> Preference Details</h4>
+                <h4 className="text-sm font-bold flex items-center gap-2 uppercase tracking-wider text-primary"><MapPin className="h-4 w-4" /> Requirements</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                         control={form.control}
@@ -355,11 +290,10 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
                     name="area_preference"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Preferred Areas</FormLabel>
+                        <FormLabel>Area Preference</FormLabel>
                         <FormControl>
-                            <Input {...field} value={field.value ?? ''} placeholder="e.g. DHA, Bahria, Gulberg" className="h-9" />
+                            <Input {...field} value={field.value ?? ''} placeholder="e.g. DHA Phase 6" className="h-9" />
                         </FormControl>
-                        </FormMessage />
                         </FormItem>
                     )}
                     />
@@ -370,10 +304,10 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
                         name="property_type_preference"
                         render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Preferred Property Type</FormLabel>
+                            <FormLabel>Property Type</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value || ''}>
                             <FormControl><SelectTrigger className="h-9"><SelectValue placeholder="Select type..." /></SelectTrigger></FormControl>
-                            <SelectContent>{propertyTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent>
+                            <SelectContent>{propertyTypeValues.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent>
                             </Select>
                         </FormItem>
                         )}
@@ -384,7 +318,7 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
                             name="property_type_other"
                             render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Custom Property Type</FormLabel>
+                                <FormLabel>Custom Type</FormLabel>
                                 <FormControl><Input placeholder="e.g. Penthouse" {...field} className="h-9" /></FormControl>
                             </FormItem>
                             )}
@@ -394,7 +328,7 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                        <FormLabel className="flex items-center gap-2"><Ruler className="h-3.5 w-3.5" /> Size Range</FormLabel>
+                        <FormLabel className="flex items-center gap-2 text-xs font-bold uppercase"><Ruler className="h-3.5 w-3.5" /> Size Preference</FormLabel>
                         <div className="grid grid-cols-2 gap-2">
                             <FormField control={form.control} name="size_min_value" render={({field}) => (
                                 <FormItem><FormControl><Input type="number" {...field} value={field.value ?? 0} placeholder="Min" className="h-9" /></FormControl></FormItem>
@@ -413,7 +347,7 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
                         </div>
                     </div>
                     <div className="space-y-2">
-                        <FormLabel className="flex items-center gap-2"><Wallet className="h-3.5 w-3.5" /> Budget Range</FormLabel>
+                        <FormLabel className="flex items-center gap-2 text-xs font-bold uppercase"><Wallet className="h-3.5 w-3.5" /> Budget Range</FormLabel>
                         <div className="grid grid-cols-2 gap-2">
                             <FormField control={form.control} name="budget_min_amount" render={({field}) => (
                                 <FormItem><FormControl><Input type="number" {...field} value={field.value ?? 0} placeholder="Min" className="h-9" /></FormControl></FormItem>
@@ -437,14 +371,14 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
             <Separator />
 
             <div className="space-y-4">
-                <h4 className="text-sm font-bold flex items-center gap-2 uppercase tracking-wider"><Tag className="h-4 w-4" /> Status & Tags</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                <h4 className="text-sm font-bold flex items-center gap-2 uppercase tracking-wider text-primary"><Tag className="h-4 w-4" /> Status & Details</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                     <FormField
                     control={form.control}
                     name="status"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Lead Status</FormLabel>
+                        <FormLabel>Buyer Status</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl><SelectTrigger className="h-9"><SelectValue /></SelectTrigger></FormControl>
                             <SelectContent>{buyerStatuses.map(status => <SelectItem key={status} value={status}>{status}</SelectItem>)}</SelectContent>
@@ -456,9 +390,9 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
                         control={form.control}
                         name="is_investor"
                         render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-start space-x-3 space-y-0 rounded-md border p-3 shadow-sm h-10 mt-8 bg-background">
+                            <FormItem className="flex flex-row items-center justify-start space-x-3 space-y-0 rounded-md border p-2 h-9 bg-background">
                             <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                            <div className="space-y-1 leading-none"><FormLabel className="cursor-pointer">Mark as Investor</FormLabel></div>
+                            <div className="space-y-1 leading-none"><FormLabel className="cursor-pointer text-xs uppercase font-bold">Investor</FormLabel></div>
                             </FormItem>
                         )}
                     />
@@ -469,7 +403,7 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Custom Tags (comma separated)</FormLabel>
-                      <FormControl><Input {...field} placeholder="e.g. Urgent, VIP, Hot Lead" className="h-9" /></FormControl>
+                      <FormControl><Input {...field} placeholder="e.g. Urgent, Hot Lead" className="h-9" /></FormControl>
                     </FormItem>
                   )}
                 />
@@ -480,7 +414,7 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
             name="notes"
             render={({ field }) => (
                 <FormItem>
-                <FormLabel className="font-bold uppercase tracking-wider text-[10px] text-muted-foreground">Other Requirements / Notes</FormLabel>
+                <FormLabel className="text-xs font-bold uppercase text-muted-foreground">Other Requirements / Notes</FormLabel>
                 <FormControl><Textarea {...field} value={field.value ?? ''} placeholder="Any specific requirements or notes..." rows={3} /></FormControl>
                 </FormItem>
             )}
