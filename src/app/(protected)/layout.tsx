@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState } from 'react';
@@ -87,8 +86,8 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   }
 
   // Define restricted paths for each role
-  const agentForbiddenPaths = ['/team', '/documents', '/analytics', '/reports'];
-  const recorderForbiddenPaths = ['/team', '/upgrade', '/buyers', '/analytics', '/reports', '/tools', '/follow-ups', '/appointments', '/activities', '/trash', '/settings', '/support', '/properties', '/documents'];
+  const agentForbiddenPaths = ['/team', '/documents', '/analytics', '/reports', '/finance', '/inbox'];
+  const recorderForbiddenPaths = ['/team', '/upgrade', '/buyers', '/analytics', '/reports', '/tools', '/follow-ups', '/appointments', '/activities', '/trash', '/settings', '/support', '/properties', '/documents', '/finance', '/inbox'];
 
   let isAllowed = true;
   let message = "This page is not accessible with your current role.";

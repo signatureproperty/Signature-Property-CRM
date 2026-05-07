@@ -12,7 +12,6 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   useSidebar,
-  SidebarTrigger,
 } from '@/components/ui/sidebar';
 import {
   LayoutDashboard,
@@ -22,36 +21,25 @@ import {
   Calendar,
   Settings,
   Rocket,
-  Home,
-  ChevronDown,
-  LineChart,
   History,
   Trash2,
   MessageSquare,
   ClipboardList,
-  Badge,
   MoreHorizontal,
   X,
-  Menu,
   Gem,
-  ShieldCheck,
-  PieChart,
   FileArchive,
   Video,
   Edit,
   Mail,
   Plus,
-  ArrowUpCircle,
-  Workflow,
-  LogOut,
+  DollarSign,
   Building
 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
@@ -62,9 +50,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '../ui/tooltip';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../ui/sheet';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
-import { buyerStatuses } from '@/lib/data';
 import { useProfile } from '@/context/profile-context';
 import { useUI } from '@/app/(protected)/layout';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -74,33 +59,23 @@ import { AddPropertyDialog } from '../add-property-dialog';
 import { AddBuyerDialog } from '../add-buyer-dialog';
 import { collection } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/hooks';
-import type { Property, Buyer, ListingType, UserRole } from '@/lib/types';
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { Button } from '../ui/button';
-import { signOut } from 'firebase/auth';
+import type { Property, Buyer, ListingType } from '@/lib/types';
 import { useRouter } from 'next/navigation';
-import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { Separator } from '../ui/separator';
+import { signOut } from 'firebase/auth';
 
-const mainMenuItems = [
+const allMenuItems = [
   { href: '/overview', label: 'Dashboard', icon: <LayoutDashboard />, roles: ['Admin', 'Agent', 'Video Recorder'] },
+  { href: '/properties', label: 'Properties', icon: <Building2 />, roles: ['Admin', 'Agent'] },
+  { href: '/buyers', label: 'Buyers', icon: <Users />, roles: ['Admin', 'Agent'] },
+  { href: '/finance', label: 'Finance', icon: <DollarSign />, roles: ['Admin'] },
   { href: '/team', label: 'Team', icon: <UserCog />, roles: ['Admin'] },
-];
-
-const productivityMenuItems = [
   { href: '/appointments', label: 'Appointments', icon: <Calendar />, roles: ['Admin', 'Agent']},
-  { href: '/activities', label: 'Activities', icon: <History />, roles: ['Admin', 'Agent'] },
   { href: '/inbox', label: 'Inbox', icon: <Mail />, roles: ['Admin']},
-];
-
-const growthMenuItems = [
-    { href: '/reports', label: 'Reports', icon: <ClipboardList />, roles: ['Admin'] },
-    { href: '/tools', label: 'Tools', icon: <Rocket />, roles: ['Admin', 'Agent'] },
-];
-
-const managementMenuItems = [
-    { href: '/documents', label: 'Documents', icon: <FileArchive />, roles: ['Admin'] },
-    { href: '/trash', label: 'Trash', icon: <Trash2 />, roles: ['Admin', 'Agent'] },
+  { href: '/tools', label: 'Tools', icon: <Rocket />, roles: ['Admin', 'Agent'] },
+  { href: '/reports', label: 'Reports', icon: <ClipboardList />, roles: ['Admin'] },
+  { href: '/activities', label: 'Activities', icon: <History />, roles: ['Admin', 'Agent'] },
+  { href: '/documents', label: 'Documents', icon: <FileArchive />, roles: ['Admin'] },
+  { href: '/trash', label: 'Trash', icon: <Trash2 />, roles: ['Admin', 'Agent'] },
 ];
 
 const videoMenuItems = [
@@ -114,12 +89,7 @@ const bottomMenuItems = [
 ];
 
 const allMobileMenuItems = [
-    ...mainMenuItems,
-    { href: '/properties', label: 'Properties', icon: <Building2 />, roles: ['Admin', 'Agent'] },
-    { href: '/buyers', label: 'Buyers', icon: <Users />, roles: ['Admin', 'Agent'] },
-    ...productivityMenuItems,
-    ...growthMenuItems,
-    ...managementMenuItems,
+    ...allMenuItems,
     ...videoMenuItems,
     ...bottomMenuItems,
     { href: '/upgrade', label: 'Upgrade Plan', icon: <Gem />, roles: ['Admin'] },
@@ -146,25 +116,7 @@ export function AppSidebar() {
   const agencyBuyersQuery = useMemoFirebase(() => profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'buyers') : null, [profile.agency_id, firestore]);
   const { data: allBuyers } = useCollection<Buyer>(agencyBuyersQuery);
 
-  const handleLogout = async () => {
-    if (auth) {
-        await signOut(auth);
-    }
-    localStorage.removeItem('app-profile');
-    router.push('/');
-  };
-
-  const handleOpenAddDialog = (type: 'Property' | 'Buyer', listingType: ListingType) => {
-    if (type === 'Property') {
-        setPropertyListingType(listingType);
-        setIsAddPropertyOpen(true);
-    } else {
-        setIsAddBuyerOpen(true);
-    }
-  }
-
   const renderMenuItem = (item: any) => {
-    
     // Role check
     if (!item.roles.includes(profile.role)) {
       return null;
@@ -193,7 +145,7 @@ export function AppSidebar() {
   };
 
   if (isMobile === null) {
-      return null; // Don't render anything until we know the screen size
+      return null;
   }
 
   if (isMobile) {
@@ -241,11 +193,10 @@ export function AppSidebar() {
         </div>
       )
     }
-    // New Mobile Nav for Admin/Agent
     const mobileNavItems = [
         { href: '/tools', label: 'Tools', icon: <Rocket />, roles: ['Admin', 'Agent'] },
         { href: '/properties', label: 'Properties', icon: <Building2 />, roles: ['Admin', 'Agent'] },
-        { href: '/overview', label: 'Dashboard', icon: <LayoutDashboard />, isCenter: true, roles: ['Admin', 'Agent'] },
+        { href: '/overview', label: 'Dashboard', icon: <LayoutDashboard />, isCenter: true, roles: ['Admin', 'Agent', 'Video Recorder'] },
         { href: '/buyers', label: 'Buyers', icon: <Users />, roles: ['Admin', 'Agent'] },
         { href: '#', label: 'More', icon: <MoreHorizontal />, isSheet: true, roles: ['Admin', 'Agent'] },
     ];
@@ -254,7 +205,7 @@ export function AppSidebar() {
             <div className="fixed bottom-0 left-0 z-50 w-full h-20 border-t bg-transparent backdrop-blur-md">
                 <div className="grid h-full grid-cols-5 relative">
                     {mobileNavItems.map(item => {
-                        if (!item.roles.includes(profile.role)) return null;
+                        if (item.roles.length > 0 && !item.roles.includes(profile.role)) return null;
 
                         const isActive = !item.isSheet && pathname.startsWith(item.href);
                         
@@ -347,65 +298,6 @@ export function AppSidebar() {
     )
   }
 
-  const CollapsibleMenuItem = ({
-    label,
-    icon,
-    children,
-    parentPath,
-    roles
-  }: {
-    label: string;
-    icon: React.ReactNode;
-    children: React.ReactNode;
-    parentPath: string;
-    roles: UserRole[];
-  }) => {
-    if (!roles.includes(profile.role)) return null;
-    const isActive = pathname.startsWith(parentPath);
-    const [isOpen, setIsOpen] = useState(isActive);
-     useEffect(() => {
-        if(isActive){
-            setIsOpen(true);
-        }
-    }, [isActive]);
-
-    return (
-      <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full">
-        <CollapsibleTrigger asChild>
-          <SidebarMenuButton isActive={isActive} className="justify-between">
-            <div className="flex items-center gap-3">
-              {icon}
-              <span className="flex-1 truncate">{label}</span>
-            </div>
-            <ChevronDown className="size-4 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
-          </SidebarMenuButton>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <SidebarMenu className="pl-6 pt-2">
-            {children}
-          </SidebarMenu>
-        </CollapsibleContent>
-      </Collapsible>
-    );
-  };
-
-  const CollapsibleSubItem = ({ href, label }: { href: string; label: string }) => {
-    const searchParams = useSearchParams();
-    const currentParams = new URLSearchParams(Array.from(searchParams.entries()));
-    const isActive = pathname === href.split('?')[0] && currentParams.toString() === (href.split('?')[1] || '');
-    
-    return (
-      <SidebarMenuItem>
-        <Link href={href}>
-          <SidebarMenuButton size="sm" isActive={isActive}>
-            {label}
-          </SidebarMenuButton>
-        </Link>
-      </SidebarMenuItem>
-    );
-  };
-
-
   return (
     <>
     <TooltipProvider>
@@ -423,29 +315,8 @@ export function AppSidebar() {
 
         <SidebarContent className="flex-1 p-3">
           <SidebarMenu>
-            {mainMenuItems.map(renderMenuItem)}
-             {profile.role === 'Video Recorder' && videoMenuItems.map(renderMenuItem)}
-          </SidebarMenu>
-          
-           <SidebarMenu className="mt-4">
-            <h3 className="text-xs text-muted-foreground font-semibold pl-4 mb-1 group-data-[state=collapsed]:pl-0 group-data-[state=collapsed]:text-center">Leads</h3>
-            {renderMenuItem({ href: '/properties', label: 'Properties', icon: <Building2 />, roles: ['Admin', 'Agent'] })}
-            {renderMenuItem({ href: '/buyers', label: 'Buyers', icon: <Users />, roles: ['Admin', 'Agent'] })}
-          </SidebarMenu>
-
-          <SidebarMenu className="mt-4">
-             <h3 className="text-xs text-muted-foreground font-semibold font-semibold pl-4 mb-1 group-data-[state=collapsed]:pl-0 group-data-[state=collapsed]:text-center">Productivity</h3>
-             {productivityMenuItems.map(renderMenuItem)}
-          </SidebarMenu>
-          
-          <SidebarMenu className="mt-4">
-            <h3 className="text-xs text-muted-foreground font-semibold font-semibold pl-4 mb-1 group-data-[state=collapsed]:pl-0 group-data-[state=collapsed]:text-center">Growth</h3>
-            {growthMenuItems.map(renderMenuItem)}
-          </SidebarMenu>
-
-          <SidebarMenu className="mt-4">
-             <h3 className="text-xs text-muted-foreground font-semibold font-semibold pl-4 mb-1 group-data-[state=collapsed]:pl-0 group-data-[state=collapsed]:text-center">Management</h3>
-            {managementMenuItems.map(renderMenuItem)}
+            {allMenuItems.map(renderMenuItem)}
+            {profile.role === 'Video Recorder' && videoMenuItems.map(renderMenuItem)}
           </SidebarMenu>
         </SidebarContent>
 
