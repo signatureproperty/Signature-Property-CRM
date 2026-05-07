@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, Suspense } from 'react';
@@ -205,9 +206,11 @@ function TeamPageContent() {
                         Invite agents or create video recorder accounts for your agency.
                     </p>
                 </div>
-                <Button className="rounded-full glowing-btn" onClick={() => { setMemberToEdit(null); setIsAddMemberOpen(true); }}>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Add Team Member
-                </Button>
+                <div className="flex justify-end ml-auto">
+                    <Button className="rounded-full glowing-btn" onClick={() => { setMemberToEdit(null); setIsAddMemberOpen(true); }}>
+                        <PlusCircle className="mr-2 h-4 w-4" /> Add Team Member
+                    </Button>
+                </div>
             </div>
 
             <Card className="bg-primary/5 border-primary/20">

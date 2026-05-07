@@ -1,3 +1,4 @@
+
 'use client';
 
 import { AddBuyerDialog } from '@/components/add-buyer-dialog';
@@ -386,7 +387,7 @@ function BuyersPageContent() {
                     <h1 className="text-3xl font-bold font-headline tracking-tight">Buyers</h1>
                     <p className="text-muted-foreground">Manage and track your agency leads.</p>
                 </div>
-                <div className="flex w-full md:w-auto items-center gap-2 flex-wrap">
+                <div className="flex w-full md:w-auto items-center gap-2 flex-wrap justify-end ml-auto">
                     {selectedBuyers.length > 0 && profile.role === 'Admin' && (
                         <div className="flex items-center gap-2">
                         <DropdownMenu>

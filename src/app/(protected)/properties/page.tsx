@@ -466,7 +466,7 @@ function PropertiesPageContent() {
               <h1 className="text-3xl font-bold tracking-tight font-headline">Properties</h1>
               <p className="text-muted-foreground">{profile.role === 'Agent' ? 'View your assigned properties.' : 'Manage your agency and personal properties.'}</p>
             </div>
-            <div className="flex w-full md:w-auto items-center gap-2 flex-wrap">
+            <div className="flex w-full md:w-auto items-center gap-2 flex-wrap justify-end ml-auto">
               {selectedProperties.length > 0 && profile.role !== 'Agent' && (
                 <div className="flex items-center gap-2">
                   <DropdownMenu>

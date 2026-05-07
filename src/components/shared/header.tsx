@@ -143,7 +143,8 @@ export function AppHeader({
   return (
     <>
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-transparent backdrop-blur-md px-4 sm:px-6">
-      
+      <SidebarTrigger className="md:hidden" />
+
       {isMobile === false && (
         <div className="flex-1">
             <h1 className="text-xl font-bold text-foreground font-headline">Hello, {firstName}</h1>
