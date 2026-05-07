@@ -433,19 +433,7 @@ export function AppSidebar() {
            <SidebarMenu className="mt-4">
             <h3 className="text-xs text-muted-foreground font-semibold pl-4 mb-1 group-data-[state=collapsed]:pl-0 group-data-[state=collapsed]:text-center">Leads</h3>
             {renderMenuItem({ href: '/properties', label: 'Properties', icon: <Building2 />, roles: ['Admin', 'Agent'] })}
-            <CollapsibleMenuItem
-              label="Buyers"
-              icon={<Users />}
-              parentPath="/buyers"
-              roles={['Admin', 'Agent']}
-            >
-              <CollapsibleSubItem key="all" href="/buyers?status=All" label="All" />
-              <Separator className="my-2" />
-              <p className="text-xs font-semibold text-muted-foreground px-4 py-2">Filter by Status</p>
-              {buyerStatuses.map(status => (
-                  <CollapsibleSubItem key={status} href={`/buyers?status=${encodeURIComponent(status)}`} label={status} />
-              ))}
-            </CollapsibleMenuItem>
+            {renderMenuItem({ href: '/buyers', label: 'Buyers', icon: <Users />, roles: ['Admin', 'Agent'] })}
           </SidebarMenu>
 
           <SidebarMenu className="mt-4">
