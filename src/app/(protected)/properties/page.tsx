@@ -120,7 +120,6 @@ function PropertiesPageContent() {
         if(!profile.agency_id) return null;
         const ref = collection(firestore, 'agencies', profile.agency_id, 'properties');
         if(profile.role === 'Agent' && user?.uid) {
-            // Agent sees their own leads AND those assigned to them
             return query(ref, or(where('created_by', '==', user.uid), where('assignedTo', '==', user.uid)));
         }
         return ref;
@@ -173,7 +172,6 @@ function PropertiesPageContent() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   const activeTeamMembers = useMemo(() => {
-    // Only show active members with the role 'Agent' for assignment
     return teamMembers?.filter(m => m.status === 'Active' && m.role === 'Agent') || [];
   }, [teamMembers]);
 
@@ -315,12 +313,13 @@ function PropertiesPageContent() {
     setPropertyToEdit(null);
   };
 
-  const handleBulkAssign = async (agentId: string) => {
-    if (selectedProperties.length === 0 || !agentId || !profile.agency_id) return;
+  const handleBulkAssign = async (agentDocId: string) => {
+    if (selectedProperties.length === 0 || !agentDocId || !profile.agency_id) return;
     
-    const agent = activeTeamMembers.find(a => a.id === agentId);
+    const agent = activeTeamMembers.find(a => a.id === agentDocId);
     if(!agent) return;
 
+    const actualAgentUid = agent.user_id || agent.id; // Use UID for invited agents
     const batch = writeBatch(firestore);
     const propertySerials: string[] = [];
     
@@ -329,10 +328,9 @@ function PropertiesPageContent() {
       if(prop) propertySerials.push(prop.serial_no);
       
       const docRef = doc(firestore, 'agencies', profile.agency_id, 'properties', propId);
-      batch.update(docRef, { assignedTo: agentId });
+      batch.update(docRef, { assignedTo: actualAgentUid });
     });
     
-    // Log activity for assignment notification
     const activityLogRef = doc(collection(firestore, 'agencies', profile.agency_id, 'activityLogs'));
     batch.set(activityLogRef, {
         userName: profile.name,
@@ -341,7 +339,7 @@ function PropertiesPageContent() {
         targetType: 'Property',
         timestamp: new Date().toISOString(),
         agency_id: profile.agency_id,
-        assignedToId: agentId,
+        assignedToId: actualAgentUid,
         assignedToName: agent.name
     });
 

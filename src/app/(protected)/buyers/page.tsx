@@ -134,7 +134,6 @@ function BuyersPageContent() {
     const [areaSearch, setAreaSearch] = useState('');
 
     const activeAgents = useMemo(() => {
-        // Only show active members with the role 'Agent' for assignment
         return teamMembers?.filter(m => m.status === 'Active' && m.role === 'Agent') || [];
     }, [teamMembers]);
 
@@ -204,12 +203,13 @@ function BuyersPageContent() {
         toast({ title: "Buyer Moved to Trash" });
     };
 
-    const handleBulkAssign = async (agentId: string) => {
-        if (selectedBuyers.length === 0 || !agentId || !profile.agency_id) return;
+    const handleBulkAssign = async (agentDocId: string) => {
+        if (selectedBuyers.length === 0 || !agentDocId || !profile.agency_id) return;
         
-        const agent = activeAgents.find(a => a.id === agentId);
+        const agent = activeAgents.find(a => a.id === agentDocId);
         if(!agent) return;
 
+        const actualAgentUid = agent.user_id || agent.id; // Use UID for invited agents
         const batch = writeBatch(firestore);
         const buyerNames: string[] = [];
         
@@ -218,10 +218,9 @@ function BuyersPageContent() {
             if(buyer) buyerNames.push(buyer.name);
             
             const docRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', buyerId);
-            batch.update(docRef, { assignedTo: agentId });
+            batch.update(docRef, { assignedTo: actualAgentUid });
         });
         
-        // Add activity log with assignment info so the agent gets a notification
         const activityLogRef = doc(collection(firestore, 'agencies', profile.agency_id, 'activityLogs'));
         batch.set(activityLogRef, {
             userName: profile.name,
@@ -230,7 +229,7 @@ function BuyersPageContent() {
             targetType: 'Buyer',
             timestamp: new Date().toISOString(),
             agency_id: profile.agency_id,
-            assignedToId: agentId,
+            assignedToId: actualAgentUid,
             assignedToName: agent.name
         });
 
@@ -276,7 +275,6 @@ function BuyersPageContent() {
             buyers = buyers.filter(b => b.name.toLowerCase().includes(lq) || b.serial_no.toLowerCase().includes(lq) || b.phone.includes(lq));
         }
 
-        // Advanced Filters
         if (filters.area.length > 0) buyers = buyers.filter(b => filters.area.some(a => b.area_preference?.includes(a)));
         if (filters.propertyType !== 'All') buyers = buyers.filter(b => b.property_type_preference === filters.propertyType);
         if (filters.minSize) buyers = buyers.filter(b => (b.size_min_value || 0) >= Number(filters.minSize));
@@ -494,7 +492,6 @@ function BuyersPageContent() {
                 </div>
             </div>
 
-            {/* Smart Horizontal Filter Bar */}
             <Card className="border-none shadow-none bg-transparent">
                 <ScrollArea className="w-full whitespace-nowrap pb-4">
                     <div className="flex items-center gap-3">
