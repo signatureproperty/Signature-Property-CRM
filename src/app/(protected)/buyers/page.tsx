@@ -1,4 +1,3 @@
-
 'use client';
 
 import { AddBuyerDialog } from '@/components/add-buyer-dialog';
@@ -216,44 +215,54 @@ function BuyersPageContent() {
                             <Checkbox checked={paginatedBuyers.length > 0 && selectedBuyers.length === paginatedBuyers.length} onCheckedChange={(c) => setSelectedBuyers(c ? paginatedBuyers.map(b => b.id) : [])} />
                         </TableHead>
                         <TableHead><Button variant="ghost" onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}>Name <ArrowUpDown className="ml-2 h-4 w-4" /></Button></TableHead>
-                        <TableHead>Requirements</TableHead>
-                        <TableHead>Budget & Size</TableHead>
+                        <TableHead>Requirement</TableHead>
+                        <TableHead>Budget</TableHead>
+                        <TableHead>Size</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {buyers.map(buyer => (
-                        <TableRow key={buyer.id} className="cursor-pointer hover:bg-accent/50" onClick={() => handleDetailsClick(buyer)}>
-                            <TableCell onClick={e => e.stopPropagation()}><Checkbox checked={selectedBuyers.includes(buyer.id)} onCheckedChange={(c) => setSelectedBuyers(p => c ? [...p, buyer.id] : p.filter(id => id !== buyer.id))} /></TableCell>
-                            <TableCell>
-                                <div className="font-bold text-base font-headline">{buyer.name}</div>
-                                <div className="flex gap-1 mt-1">
-                                    <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/20">{buyer.serial_no}</Badge>
-                                    <span className="text-[10px] text-muted-foreground">{buyer.phone}</span>
-                                </div>
-                            </TableCell>
-                            <TableCell>
-                                <div className="text-sm font-medium">{buyer.area_preference || 'N/A'}</div>
-                                <div className="text-xs text-muted-foreground">{buyer.property_type_preference}</div>
-                            </TableCell>
-                            <TableCell>
-                                <div className="text-sm font-bold text-primary">{formatCurrency(formatUnit(buyer.budget_min_amount || 0, buyer.budget_min_unit || 'Lacs'), currency)}</div>
-                                <div className="text-xs text-muted-foreground">{formatSize(buyer.size_min_value, buyer.size_min_unit, buyer.size_max_value, buyer.size_max_unit)}</div>
-                            </TableCell>
-                            <TableCell><Badge className={cn("text-[10px] uppercase font-bold", statusVariant[buyer.status as keyof typeof statusVariant] || 'bg-primary')}>{buyer.status}</Badge></TableCell>
-                            <TableCell className="text-right" onClick={e => e.stopPropagation()}>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild><Button size="icon" variant="ghost"><MoreHorizontal /></Button></DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onSelect={() => handleDetailsClick(buyer)}><Eye /> View</DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={() => handleEdit(buyer)}><Edit /> Edit</DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={() => handleDelete(buyer)} className="text-destructive"><Trash2 /> Delete</DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </TableCell>
-                        </TableRow>
-                    ))}
+                    {buyers.map(buyer => {
+                        const areas = buyer.area_preference?.split(',').map(a => a.trim()).filter(Boolean) || [];
+                        const displayedAreas = areas.length > 2 
+                            ? areas.slice(0, 2).join(', ') + '...' 
+                            : areas.join(', ') || 'N/A';
+                            
+                        return (
+                            <TableRow key={buyer.id} className="cursor-pointer hover:bg-accent/50" onClick={() => handleDetailsClick(buyer)}>
+                                <TableCell onClick={e => e.stopPropagation()}><Checkbox checked={selectedBuyers.includes(buyer.id)} onCheckedChange={(c) => setSelectedBuyers(p => c ? [...p, buyer.id] : p.filter(id => id !== buyer.id))} /></TableCell>
+                                <TableCell>
+                                    <div className="font-bold text-base font-headline">{buyer.name}</div>
+                                    <div className="flex gap-1 mt-1">
+                                        <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/20">{buyer.serial_no}</Badge>
+                                        <span className="text-[10px] text-muted-foreground">{buyer.phone}</span>
+                                    </div>
+                                </TableCell>
+                                <TableCell>
+                                    <div className="text-sm font-medium">{displayedAreas}</div>
+                                    <div className="text-xs text-muted-foreground">{buyer.property_type_preference}</div>
+                                </TableCell>
+                                <TableCell>
+                                    <div className="text-sm font-bold text-primary">{formatCurrency(formatUnit(buyer.budget_min_amount || 0, buyer.budget_min_unit || 'Lacs'), currency)}</div>
+                                </TableCell>
+                                <TableCell>
+                                    <div className="text-xs text-muted-foreground">{formatSize(buyer.size_min_value, buyer.size_min_unit, buyer.size_max_value, buyer.size_max_unit)}</div>
+                                </TableCell>
+                                <TableCell><Badge className={cn("text-[10px] uppercase font-bold", statusVariant[buyer.status as keyof typeof statusVariant] || 'bg-primary')}>{buyer.status}</Badge></TableCell>
+                                <TableCell className="text-right" onClick={e => e.stopPropagation()}>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild><Button size="icon" variant="ghost"><MoreHorizontal /></Button></DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onSelect={() => handleDetailsClick(buyer)}><Eye /> View</DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={() => handleEdit(buyer)}><Edit /> Edit</DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={() => handleDelete(buyer)} className="text-destructive"><Trash2 /> Delete</DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </TableCell>
+                            </TableRow>
+                        );
+                    })}
                 </TableBody>
             </Table>
         );
