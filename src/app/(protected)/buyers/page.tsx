@@ -5,18 +5,18 @@ import { AddBuyerDialog } from '@/components/add-buyer-dialog';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { buyerStatuses, punjabCities } from '@/lib/data';
+import { buyerStatuses } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
-import { Edit, MoreHorizontal, PlusCircle, Trash2, Phone, Home, Filter, Wallet, Ruler, Eye, CalendarPlus, Check, X, MessageSquare, ChevronLeft, ChevronRight, ArrowUpDown, Tag as TagIcon, Search, MapPin, Building, ChevronDown, UserPlus } from 'lucide-react';
+import { Edit, MoreHorizontal, PlusCircle, Trash2, Phone, Home, Filter, Wallet, Ruler, Eye, MessageSquare, ChevronLeft, ChevronRight, ArrowUpDown, Tag as TagIcon, Search, MapPin, Building, ChevronDown, UserPlus } from 'lucide-react';
 import { useState, useMemo, useEffect, Suspense } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useIsMobile } from '@/hooks/use-is-mobile';
-import { Buyer, BuyerStatus, PriceUnit, SizeUnit, PropertyType, AppointmentContactType, Appointment, FollowUp, User, Activity, ListingType, Tag } from '@/lib/types';
+import { Buyer, BuyerStatus, PriceUnit, SizeUnit, PropertyType, User, Activity, ListingType, Tag } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useSearch, useUI } from '../layout';
+import { useSearch } from '../layout';
 import { BuyerDetailsDialog } from '@/components/buyer-details-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency, formatUnit, formatPhoneNumberForWhatsApp } from '@/lib/formatters';
@@ -26,15 +26,13 @@ import { useFirestore } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, addDoc, setDoc, doc, updateDoc, writeBatch, query, where, or } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/hooks';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { cn, formatPhoneNumber } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import React from 'react';
 import { useUser } from '@/firebase/auth/use-user';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { ManageTagsDialog } from '@/components/manage-tags-dialog';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 const ITEMS_PER_PAGE = 50;
 
@@ -136,7 +134,8 @@ function BuyersPageContent() {
     const [areaSearch, setAreaSearch] = useState('');
 
     const activeAgents = useMemo(() => {
-        return teamMembers?.filter(m => m.status === 'Active') || [];
+        // Only show active members with the role 'Agent' for assignment
+        return teamMembers?.filter(m => m.status === 'Active' && m.role === 'Agent') || [];
     }, [teamMembers]);
 
     const handleFilterChange = (key: keyof Filters, value: any) => {
@@ -207,13 +206,36 @@ function BuyersPageContent() {
 
     const handleBulkAssign = async (agentId: string) => {
         if (selectedBuyers.length === 0 || !agentId || !profile.agency_id) return;
+        
+        const agent = activeAgents.find(a => a.id === agentId);
+        if(!agent) return;
+
         const batch = writeBatch(firestore);
+        const buyerNames: string[] = [];
+        
         selectedBuyers.forEach(buyerId => {
+            const buyer = allBuyers?.find(b => b.id === buyerId);
+            if(buyer) buyerNames.push(buyer.name);
+            
             const docRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', buyerId);
             batch.update(docRef, { assignedTo: agentId });
         });
+        
+        // Add activity log with assignment info so the agent gets a notification
+        const activityLogRef = doc(collection(firestore, 'agencies', profile.agency_id, 'activityLogs'));
+        batch.set(activityLogRef, {
+            userName: profile.name,
+            action: `assigned ${buyerNames.length} leads to ${agent.name}`,
+            target: buyerNames.join(', '),
+            targetType: 'Buyer',
+            timestamp: new Date().toISOString(),
+            agency_id: profile.agency_id,
+            assignedToId: agentId,
+            assignedToName: agent.name
+        });
+
         await batch.commit();
-        toast({ title: 'Buyers Assigned' });
+        toast({ title: 'Leads Assigned Successfully' });
         setSelectedBuyers([]);
     };
 

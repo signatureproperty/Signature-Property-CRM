@@ -16,57 +16,33 @@ import {
   Trash2,
   Edit,
   Video,
-  CheckCircle,
   Eye,
   Filter,
-  Upload,
-  Download,
   Search,
-  MapPin,
   Tag as TagIcon,
-  Wallet,
-  VideoOff,
   PlusCircle,
-  CalendarPlus,
-  Briefcase,
-  Home,
-  Building,
-  ArchiveRestore,
-  PackagePlus,
-  PackageCheck,
-  RotateCcw,
-  ChevronDown,
   MessageSquare,
   ChevronRight,
   ChevronLeft,
   ArrowUpDown,
-  Link as LinkIcon,
-  FileArchive,
   UserPlus,
-  Circle,
-  Clock,
-  Settings,
+  ChevronDown,
 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuPortal,
-  DropdownMenuSubContent,
-  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { AddPropertyDialog } from '@/components/add-property-dialog';
 import { Input } from '@/components/ui/input';
-import type { Property, PropertyType, SizeUnit, PriceUnit, AppointmentContactType, Appointment, ListingType, PlanName, PropertyStatus, User, Activity, RecordingPaymentStatus, Tag } from '@/lib/types';
-import { useState, useMemo, useEffect, useRef, Suspense } from 'react';
+import type { Property, PropertyType, SizeUnit, PriceUnit, ListingType, User, Activity, Tag } from '@/lib/types';
+import { useState, useMemo, useEffect, Suspense } from 'react';
 import { PropertyDetailsDialog } from '@/components/property-details-dialog';
 import { MarkAsSoldDialog } from '@/components/mark-as-sold-dialog';
 import { MarkAsRentOutDialog } from '@/components/mark-as-rent-out-dialog';
 import { RecordVideoDialog } from '@/components/record-video-dialog';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import {
   Popover,
   PopoverContent,
@@ -80,25 +56,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { useIsMobile } from '@/hooks/use-is-mobile';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useSearch, useUI } from '../layout';
-import { SetAppointmentDialog } from '@/components/set-appointment-dialog';
+import { useSearch } from '../layout';
 import { useToast } from '@/hooks/use-toast';
 import { useCurrency } from '@/context/currency-context';
 import { formatCurrency, formatUnit, formatPhoneNumberForWhatsApp } from '@/lib/formatters';
 import { useProfile } from '@/context/profile-context';
 import { useFirestore } from '@/firebase/provider';
-import { collection, addDoc, setDoc, doc, writeBatch, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, setDoc, doc, writeBatch, updateDoc, query, where, or } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/hooks';
-import { cn, formatPhoneNumber } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { useUser } from '@/firebase/auth/use-user';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Separator } from '@/components/ui/separator';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Progress } from '@/components/ui/progress';
 import { motion } from 'framer-motion';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { ManageTagsDialog } from '@/components/manage-tags-dialog';
@@ -136,19 +108,24 @@ const propertyTypesForFilter: (PropertyType | 'All' | 'Other')[] = [
 function PropertiesPageContent() {
   const isMobile = useIsMobile();
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   const { user } = useUser();
   const { profile } = useProfile();
   const { searchQuery } = useSearch();
-  const { isMoreMenuOpen } = useUI();
   const { toast } = useToast();
   const { currency } = useCurrency();
   const firestore = useFirestore();
 
   const agencyPropertiesQuery = useMemoFirebase(
-    () => (profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'properties') : null),
-    [profile.agency_id, firestore]
+    () => {
+        if(!profile.agency_id) return null;
+        const ref = collection(firestore, 'agencies', profile.agency_id, 'properties');
+        if(profile.role === 'Agent' && user?.uid) {
+            // Agent sees their own leads AND those assigned to them
+            return query(ref, or(where('created_by', '==', user.uid), where('assignedTo', '==', user.uid)));
+        }
+        return ref;
+    },
+    [profile.agency_id, firestore, profile.role, user?.uid]
   );
   const { data: allProperties, isLoading: isAgencyLoading } = useCollection<Property>(agencyPropertiesQuery);
 
@@ -196,7 +173,8 @@ function PropertiesPageContent() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   const activeTeamMembers = useMemo(() => {
-    return teamMembers?.filter(m => m.status === 'Active') || [];
+    // Only show active members with the role 'Agent' for assignment
+    return teamMembers?.filter(m => m.status === 'Active' && m.role === 'Agent') || [];
   }, [teamMembers]);
 
   const handleFilterChange = (key: keyof Filters, value: any) => {
@@ -237,10 +215,6 @@ function PropertiesPageContent() {
     if (!allProperties) return [];
     let baseProperties = allProperties.filter(p => !p.is_deleted);
     
-    if (profile.role === 'Agent' && user?.uid) {
-        baseProperties = baseProperties.filter(p => p.assignedTo === user.uid || p.created_by === user.uid);
-    }
-
     if (activeListingType !== 'All') {
         baseProperties = baseProperties.filter(p => p.listing_type === activeListingType);
     }
@@ -304,7 +278,7 @@ function PropertiesPageContent() {
       const bNum = parseInt(b.serial_no.split('-')[1] || '0', 10);
       return sortOrder === 'asc' ? aNum - bNum : bNum - aNum;
     });
-  }, [searchQuery, filters, allProperties, activeListingType, activeStatus, activeCustomTags, profile.role, user?.uid, sortOrder]);
+  }, [searchQuery, filters, allProperties, activeListingType, activeStatus, activeCustomTags, sortOrder]);
 
   const totalPages = Math.ceil(filteredProperties.length / ITEMS_PER_PAGE);
   const paginatedProperties = useMemo(() => {
@@ -343,13 +317,36 @@ function PropertiesPageContent() {
 
   const handleBulkAssign = async (agentId: string) => {
     if (selectedProperties.length === 0 || !agentId || !profile.agency_id) return;
+    
+    const agent = activeTeamMembers.find(a => a.id === agentId);
+    if(!agent) return;
+
     const batch = writeBatch(firestore);
+    const propertySerials: string[] = [];
+    
     selectedProperties.forEach(propId => {
+      const prop = allProperties?.find(p => p.id === propId);
+      if(prop) propertySerials.push(prop.serial_no);
+      
       const docRef = doc(firestore, 'agencies', profile.agency_id, 'properties', propId);
       batch.update(docRef, { assignedTo: agentId });
     });
+    
+    // Log activity for assignment notification
+    const activityLogRef = doc(collection(firestore, 'agencies', profile.agency_id, 'activityLogs'));
+    batch.set(activityLogRef, {
+        userName: profile.name,
+        action: `assigned ${propertySerials.length} properties to ${agent.name}`,
+        target: propertySerials.join(', '),
+        targetType: 'Property',
+        timestamp: new Date().toISOString(),
+        agency_id: profile.agency_id,
+        assignedToId: agentId,
+        assignedToName: agent.name
+    });
+
     await batch.commit();
-    toast({ title: 'Properties Assigned' });
+    toast({ title: 'Properties Assigned Successfully' });
     setSelectedProperties([]);
   };
 
