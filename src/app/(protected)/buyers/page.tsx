@@ -6,7 +6,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { buyerStatuses, punjabCities } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
-import { Edit, MoreHorizontal, PlusCircle, Trash2, Phone, Home, Filter, Wallet, Ruler, Eye, CalendarPlus, Check, X, MessageSquare, ChevronLeft, ChevronRight, ArrowUpDown, Tag as TagIcon, Search, MapPin, Building, ChevronDown } from 'lucide-react';
+import { Edit, MoreHorizontal, PlusCircle, Trash2, Phone, Home, Filter, Wallet, Ruler, Eye, CalendarPlus, Check, X, MessageSquare, ChevronLeft, ChevronRight, ArrowUpDown, Tag as TagIcon, Search, MapPin, Building, ChevronDown, UserPlus } from 'lucide-react';
 import { useState, useMemo, useEffect, Suspense } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useIsMobile } from '@/hooks/use-is-mobile';
@@ -97,6 +97,9 @@ function BuyersPageContent() {
     }, [profile.agency_id, firestore, profile.role, user?.uid]);
     const { data: allBuyers, isLoading: isAgencyLoading } = useCollection<Buyer>(allAgencyBuyersQuery);
 
+    const teamMembersQuery = useMemoFirebase(() => profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'teamMembers') : null, [profile.agency_id, firestore]);
+    const { data: teamMembers } = useCollection<User>(teamMembersQuery);
+
     const tagsQuery = useMemoFirebase(() => 
         profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'tags') : null,
         [profile.agency_id, firestore]
@@ -130,6 +133,10 @@ function BuyersPageContent() {
         serialNoPrefix: 'All'
     });
     const [areaSearch, setAreaSearch] = useState('');
+
+    const activeAgents = useMemo(() => {
+        return teamMembers?.filter(m => m.status === 'Active') || [];
+    }, [teamMembers]);
 
     const handleFilterChange = (key: keyof Filters, value: any) => {
         setFilters((prev) => ({ ...prev, [key]: value }));
@@ -195,6 +202,30 @@ function BuyersPageContent() {
         const docRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', buyer.id);
         await updateDoc(docRef, { is_deleted: true });
         toast({ title: "Buyer Moved to Trash" });
+    };
+
+    const handleBulkAssign = async (agentId: string) => {
+        if (selectedBuyers.length === 0 || !agentId || !profile.agency_id) return;
+        const batch = writeBatch(firestore);
+        selectedBuyers.forEach(buyerId => {
+            const docRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', buyerId);
+            batch.update(docRef, { assignedTo: agentId });
+        });
+        await batch.commit();
+        toast({ title: 'Buyers Assigned' });
+        setSelectedBuyers([]);
+    };
+
+    const handleBulkDelete = async () => {
+        if (selectedBuyers.length === 0 || !profile.agency_id) return;
+        const batch = writeBatch(firestore);
+        selectedBuyers.forEach(buyerId => {
+            const docRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', buyerId);
+            batch.update(docRef, { is_deleted: true });
+        });
+        await batch.commit();
+        toast({ title: 'Buyers Moved to Trash' });
+        setSelectedBuyers([]);
     };
 
     const handleToggleCustomTag = (tagName: string) => {
@@ -356,6 +387,27 @@ function BuyersPageContent() {
                     <p className="text-muted-foreground">Manage and track your agency leads.</p>
                 </div>
                 <div className="flex w-full md:w-auto items-center gap-2 flex-wrap">
+                    {selectedBuyers.length > 0 && profile.role === 'Admin' && (
+                        <div className="flex items-center gap-2">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="rounded-full">
+                                <UserPlus className="mr-2 h-4 w-4" /> Assign
+                            </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                            {activeAgents.map((member) => (
+                                <DropdownMenuItem key={member.id} onSelect={() => handleBulkAssign(member.id)}>
+                                {member.name}
+                                </DropdownMenuItem>
+                            ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        <Button variant="destructive" className="rounded-full" onClick={handleBulkDelete}>
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete ({selectedBuyers.length})
+                        </Button>
+                        </div>
+                    )}
                     <AlertDialog open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
                         <AlertDialogTrigger asChild>
                             <Button variant="outline" className="rounded-full"><Filter className="mr-2 h-4 w-4" /> Filters {filters.area.length > 0 && `(${filters.area.length})`}</Button>
