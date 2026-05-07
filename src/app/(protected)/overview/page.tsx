@@ -1,21 +1,19 @@
 'use client';
 import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Building2, Users, UserPlus, DollarSign, Home, UserCheck, ArrowRight, ArrowUpRight, TrendingUp, Star, CalendarDays, CheckCheck, XCircle, CheckCircle, Briefcase, Gem, Info, CalendarClock, CalendarPlus as AddToCalendarIcon, Video, VideoOff, Edit, PlayCircle, Loader2, Circle, Clock, ChevronsUpDown, Check } from 'lucide-react';
+import { Building2, Users, DollarSign, Home, TrendingUp, Star, CalendarDays, CheckCircle, Briefcase, Info, Video, Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useProfile } from '@/context/profile-context';
 import { useFirestore } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useMemoFirebase } from '@/firebase/hooks';
 import { collection, query, where, Timestamp, addDoc, doc, setDoc, deleteDoc } from 'firebase/firestore';
-import type { Property, Buyer, Appointment, User, PriceUnit, AppointmentContactType, AppointmentStatus, Activity, EditingStatus, ListingType } from '@/lib/types';
+import type { Property, Buyer, Appointment, User, PriceUnit, AppointmentContactType, AppointmentStatus, Activity, ListingType } from '@/lib/types';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { subDays, isWithinInterval, parseISO, format } from 'date-fns';
 import { useCurrency } from '@/context/currency-context';
 import { formatCurrency, formatUnit, formatPhoneNumberForWhatsApp } from '@/lib/formatters';
-import { PerformanceChart } from '@/components/performance-chart';
-import { LeadsChart } from '@/components/leads-chart';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { UpcomingEvents } from '@/components/upcoming-events';
@@ -24,13 +22,6 @@ import { useToast } from '@/hooks/use-toast';
 import { AddEventDialog, type EventDetails } from '@/components/add-event-dialog';
 import { UpdateAppointmentStatusDialog } from '@/components/update-appointment-status-dialog';
 import { AllEventsDialog } from '@/components/all-events-dialog';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useUser } from '@/firebase/auth/use-user';
-import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
-import { countryCodes } from '@/lib/data';
-
 
 interface StatCardProps {
     title: string;
@@ -283,16 +274,11 @@ export default function OverviewPage() {
         const rentOutInLast30Days = finalProperties?.filter(p => p.status === 'Rent Out' && p.rent_out_date && filterLast30Days(p)) || [];
         const rentRevenue30d = rentOutInLast30Days.reduce((sum, prop) => sum + (prop.rent_total_commission || 0), 0);
 
-        const paidVideos30d = finalProperties?.filter(p => p.recording_payment_status === 'Paid Online' && p.recording_payment_date && filterLast30Days(p)) || [];
-        const recordingRevenue30d = paidVideos30d.reduce((sum, prop) => sum + (prop.recording_payment_amount || 0), 0);
-
         const propertiesForRent = finalProperties?.filter(p => p.status === 'Available' && p.is_for_rent).length || 0;
 
         const interestedBuyers = finalBuyers?.filter(b => b.status === 'Interested' && !b.is_deleted).length || 0;
 
         const appointments30d = finalAppointments?.filter(filterLast30Days).length || 0;
-        const completedAppointments30d = finalAppointments?.filter(a => a.status === 'Completed' && filterLast30Days(a)).length || 0;
-        const cancelledAppointments30d = finalAppointments?.filter(a => a.status === 'Cancelled' && filterLast30Days(a)).length || 0;
         const upcomingAppointments = finalAppointments?.filter(a => a.status === 'Scheduled' && new Date(a.date) >= now).length || 0;
         
         const newProperties30d = finalProperties?.filter(p => !p.is_for_rent && filterLast30Days(p)).length || 0;
@@ -305,13 +291,9 @@ export default function OverviewPage() {
             totalRentBuyers,
             revenue30d,
             rentRevenue30d,
-            paidVideos30dCount: paidVideos30d.length,
-            recordingRevenue30d,
             propertiesForRent,
             interestedBuyers,
             appointments30d,
-            completedAppointments30d,
-            cancelledAppointments30d,
             upcomingAppointments,
             soldInLast30DaysCount: soldInLast30Days.length,
             rentOutInLast30DaysCount: rentOutInLast30Days.length,
@@ -395,22 +377,6 @@ export default function OverviewPage() {
             isLoading
         },
         {
-            title: "Paid Videos (30d)",
-            value: stats.paidVideos30dCount,
-            change: "Completed video payments",
-            icon: <Video className="h-4 w-4" />,
-            color: "bg-rose-100 dark:bg-neutral-800 text-rose-600 dark:text-rose-300",
-            isLoading
-        },
-        {
-            title: "Recording Revenue (30d)",
-            value: formatCurrency(stats.recordingRevenue30d, currency, { notation: 'compact' }),
-            change: "From video services",
-            icon: <DollarSign className="h-4 w-4" />,
-            color: "bg-fuchsia-100 dark:bg-neutral-800 text-fuchsia-600 dark:text-fuchsia-300",
-            isLoading
-        },
-        {
             title: "Interested Buyers",
             value: stats.interestedBuyers,
             change: `+${finalBuyers?.filter(b => b.status === 'Interested' && filterLast30Days(b)).length || 0} new leads this month`,
@@ -426,24 +392,6 @@ export default function OverviewPage() {
             icon: <CalendarDays className="h-4 w-4" />,
             color: 'bg-cyan-100 dark:bg-neutral-800 text-cyan-600 dark:text-cyan-300',
             href: '/appointments',
-            isLoading
-        },
-         {
-            title: "Completed (30d)",
-            value: stats.completedAppointments30d,
-            change: "Completed appointments",
-            icon: <CheckCheck className="h-4 w-4" />,
-            color: "bg-green-100 dark:bg-neutral-800 text-green-600 dark:text-green-300",
-            href: "/appointments",
-            isLoading
-        },
-        {
-            title: "Cancelled (30d)",
-            value: stats.cancelledAppointments30d,
-            change: "Cancelled appointments",
-            icon: <XCircle className="h-4 w-4" />,
-            color: "bg-red-100 dark:bg-neutral-800 text-red-600 dark:text-red-300",
-            href: "/appointments",
             isLoading
         },
     ];
@@ -462,7 +410,7 @@ export default function OverviewPage() {
             {
                 title: "Pending Recordings",
                 value: pendingCount,
-                icon: <VideoOff className="h-4 w-4" />,
+                icon: <Video Off className="h-4 w-4" />,
                 color: "bg-red-100 dark:bg-neutral-800 text-red-600 dark:text-red-300",
                 isLoading,
                 href: "/recording",
@@ -478,7 +426,7 @@ export default function OverviewPage() {
             {
                 title: "Editing Complete",
                 value: completedCount,
-                icon: <CheckCheck className="h-4 w-4" />,
+                icon: <CheckCircle className="h-4 w-4" />,
                 color: "bg-green-100 dark:bg-neutral-800 text-green-600 dark:text-green-300",
                 isLoading,
                 href: "/editing",
