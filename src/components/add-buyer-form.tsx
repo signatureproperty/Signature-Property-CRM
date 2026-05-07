@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm, useWatch } from 'react-hook-form';
@@ -35,7 +34,7 @@ import { formatPhoneNumber } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command';
 import { cn } from '@/lib/utils';
-import { Check, ChevronsUpDown } from 'lucide-react';
+import { Check, ChevronsUpDown, Hash, Calendar, User, Phone, MapPin, Building, Ruler, Wallet, Tag } from 'lucide-react';
 
 const propertyTypes: (PropertyType | 'Other')[] = [
     'House', 'Flat', 'Farm House', 'Penthouse', 'Plot', 'Residential Plot', 'Commercial Plot', 'Agricultural Land', 'Industrial Land', 'Office', 'Shop', 'Warehouse', 'Factory', 'Building', 'Residential Property', 'Commercial Property', 'Semi Commercial', 'Other'
@@ -80,6 +79,7 @@ interface AddBuyerFormProps {
   totalRentBuyers: number;
   buyerToEdit?: Buyer | null;
   onSave: (buyer: Omit<Buyer, 'id'> & { id?: string }) => void;
+  listingType: ListingType;
 }
 
 const getInitialFormValues = (
@@ -150,7 +150,7 @@ const getInitialFormValues = (
 };
 
 
-export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, buyerToEdit, onSave }: AddBuyerFormProps) {
+export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, buyerToEdit, onSave, listingType }: AddBuyerFormProps) {
   const { toast } = useToast();
   const { user } = useUser();
   const { profile } = useProfile();
@@ -158,25 +158,26 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
   
   const form = useForm<AddBuyerFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: getInitialFormValues('For Sale', totalSaleBuyers, totalRentBuyers, buyerToEdit, user?.uid)
+    defaultValues: getInitialFormValues(listingType, totalSaleBuyers, totalRentBuyers, buyerToEdit, user?.uid)
   });
 
   const { reset, setValue, watch, control } = form;
-  const watchedListingType = watch('listing_type');
   const watchedPropertyType = watch('property_type_preference');
 
   useEffect(() => {
-    // Only update serial number for new buyers when listing type changes
     if (!buyerToEdit) {
-        const serialPrefix = watchedListingType === 'For Rent' ? 'RB' : 'B';
-        const nextSerialNum = watchedListingType === 'For Rent' ? totalRentBuyers + 1 : totalSaleBuyers + 1;
+        setValue('listing_type', listingType);
+        const serialPrefix = listingType === 'For Rent' ? 'RB' : 'B';
+        const nextSerialNum = listingType === 'For Rent' ? totalRentBuyers + 1 : totalSaleBuyers + 1;
         setValue('serial_no', `${serialPrefix}-${nextSerialNum}`);
     }
-  }, [watchedListingType, totalSaleBuyers, totalRentBuyers, setValue, buyerToEdit]);
+  }, [listingType, totalSaleBuyers, totalRentBuyers, setValue, buyerToEdit]);
 
   useEffect(() => {
-    reset(getInitialFormValues(watchedListingType, totalSaleBuyers, totalRentBuyers, buyerToEdit, user?.uid));
-  }, [buyerToEdit, totalSaleBuyers, totalRentBuyers, user, profile.agency_id, reset, watchedListingType]);
+    if (buyerToEdit) {
+        reset(getInitialFormValues(listingType, totalSaleBuyers, totalRentBuyers, buyerToEdit, user?.uid));
+    }
+  }, [buyerToEdit, reset, listingType, totalSaleBuyers, totalRentBuyers, user]);
 
   function onSubmit(values: AddBuyerFormValues) {
      const finalPropertyType = values.property_type_preference === 'Other' && values.property_type_other
@@ -184,11 +185,11 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
         : values.property_type_preference;
 
      const buyerData = {
-        ...buyerToEdit, // Keep original data like ID, created_at, etc.
-        ...values, // Overwrite with new form values
+        ...buyerToEdit,
+        ...values,
         property_type_preference: finalPropertyType,
         phone: formatPhoneNumber(values.phone, values.country_code),
-        serial_no: form.getValues('serial_no'), // Use the dynamically set serial number
+        serial_no: values.serial_no || '',
         created_at: buyerToEdit?.created_at || new Date().toISOString(),
         is_deleted: buyerToEdit?.is_deleted || false,
         created_by: buyerToEdit?.created_by || user?.uid || '',
@@ -201,70 +202,44 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <ScrollArea className="h-[60vh] pr-6 -mr-6">
-            <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                    control={form.control}
-                    name="serial_no"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Serial No</FormLabel>
-                        <FormControl>
-                            <Input {...field} value={field.value ?? ''} readOnly className="bg-muted/50" />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pb-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <FormField
+                control={form.control}
+                name="serial_no"
+                render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Date</FormLabel>
-                        <Input value={new Date(form.getValues('created_at') || new Date()).toLocaleDateString()} readOnly className="bg-muted/50" />
+                    <FormLabel className="flex items-center gap-2"><Hash className="h-3.5 w-3.5" /> Serial No</FormLabel>
+                    <FormControl>
+                        <Input {...field} value={field.value ?? ''} readOnly className="bg-muted/50 h-9" />
+                    </FormControl>
                     </FormItem>
-                </div>
-                
-                <Separator />
-                <h4 className="text-sm font-medium text-muted-foreground">Contact Information</h4>
-
+                )}
+                />
+                <FormItem>
+                    <FormLabel className="flex items-center gap-2"><Calendar className="h-3.5 w-3.5" /> Date Added</FormLabel>
+                    <Input value={new Date(form.getValues('created_at') || new Date()).toLocaleDateString()} readOnly className="bg-muted/50 h-9" />
+                </FormItem>
+            </div>
+            
+            <Separator />
+            
+            <div className="space-y-4">
+                <h4 className="text-sm font-bold flex items-center gap-2 uppercase tracking-wider"><User className="h-4 w-4" /> Contact Information</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                     <FormField
-                        control={form.control}
-                        name="listing_type"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Buyer Type</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select buyer type" />
-                                </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                <SelectItem value="For Sale">For Sale</SelectItem>
-                                <SelectItem value="For Rent">For Rent</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
                     <FormField
                     control={form.control}
                     name="name"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Name</FormLabel>
+                        <FormLabel>Buyer Name</FormLabel>
                         <FormControl>
-                            <Input {...field} placeholder="e.g. Ali Khan" />
+                            <Input {...field} placeholder="e.g. Ali Khan" className="h-9" />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
                     )}
                     />
-                   
-                </div>
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                      <FormItem>
                         <FormLabel>Phone Number</FormLabel>
                         <div className="flex gap-2">
@@ -272,25 +247,19 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
                             control={form.control}
                             name="country_code"
                             render={({ field }) => (
-                                <FormItem className="w-1/3">
+                                <FormItem className="w-24">
                                 <Popover open={countryCodePopoverOpen} onOpenChange={setCountryCodePopoverOpen}>
                                     <PopoverTrigger asChild>
                                     <FormControl>
-                                        <Button
-                                        variant="outline"
-                                        role="combobox"
-                                        className={cn("w-full justify-between", !field.value && "text-muted-foreground")}
-                                        >
+                                        <Button variant="outline" role="combobox" className="w-full justify-between h-9">
                                         {field.value || "Code"}
-                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
                                     </FormControl>
                                     </PopoverTrigger>
-                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                    <PopoverContent className="w-64 p-0">
                                     <Command>
                                         <CommandInput placeholder="Search code..." />
                                         <CommandList>
-                                        <CommandEmpty>No country found.</CommandEmpty>
                                         <CommandGroup>
                                             {countryCodes.map((country) => (
                                             <CommandItem
@@ -310,7 +279,6 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
                                     </Command>
                                     </PopoverContent>
                                 </Popover>
-                                <FormMessage />
                                 </FormItem>
                             )}
                             />
@@ -320,32 +288,33 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
                             render={({ field }) => (
                                 <FormItem className="flex-1">
                                     <FormControl>
-                                        <Input {...field} placeholder="3001234567" />
+                                        <Input {...field} placeholder="3001234567" className="h-9" />
                                     </FormControl>
                                 </FormItem>
                             )}
                             />
                         </div>
-                        <FormMessage>{form.formState.errors.phone?.message}</FormMessage>
                     </FormItem>
-                    <FormField
+                </div>
+                <FormField
                     control={form.control}
                     name="email"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Email (Optional)</FormLabel>
+                        <FormLabel>Email Address (Optional)</FormLabel>
                         <FormControl>
-                            <Input type="email" {...field} value={field.value ?? ''} placeholder="buyer@example.com" />
+                            <Input type="email" {...field} value={field.value ?? ''} placeholder="buyer@example.com" className="h-9" />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
                     )}
-                    />
-                </div>
-                
-                <Separator />
-                <h4 className="text-sm font-medium text-muted-foreground">Buyer Requirements</h4>
-                
+                />
+            </div>
+
+            <Separator />
+            
+            <div className="space-y-4">
+                <h4 className="text-sm font-bold flex items-center gap-2 uppercase tracking-wider"><MapPin className="h-4 w-4" /> Preference Details</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                         control={form.control}
@@ -356,19 +325,8 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
                             <Popover>
                                 <PopoverTrigger asChild>
                                     <FormControl>
-                                        <Button
-                                            variant="outline"
-                                            role="combobox"
-                                            className={cn(
-                                                "w-full justify-between",
-                                                !field.value && "text-muted-foreground"
-                                            )}
-                                        >
-                                            {field.value
-                                                ? punjabCities.find(
-                                                    (city) => city === field.value
-                                                )
-                                                : "Select city"}
+                                        <Button variant="outline" role="combobox" className={cn("w-full justify-between h-9", !field.value && "text-muted-foreground")}>
+                                            {field.value || "Select city"}
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
                                     </FormControl>
@@ -377,24 +335,10 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
                                     <Command>
                                         <CommandInput placeholder="Search city..." />
                                         <CommandList>
-                                            <CommandEmpty>No city found.</CommandEmpty>
                                             <CommandGroup>
                                                 {punjabCities.map((city) => (
-                                                    <CommandItem
-                                                        value={city}
-                                                        key={city}
-                                                        onSelect={() => {
-                                                            form.setValue("city", city)
-                                                        }}
-                                                    >
-                                                        <Check
-                                                            className={cn(
-                                                                "mr-2 h-4 w-4",
-                                                                city === field.value
-                                                                    ? "opacity-100"
-                                                                    : "opacity-0"
-                                                            )}
-                                                        />
+                                                    <CommandItem value={city} key={city} onSelect={() => form.setValue("city", city)}>
+                                                        <Check className={cn("mr-2 h-4 w-4", city === field.value ? "opacity-100" : "opacity-0")} />
                                                         {city}
                                                     </CommandItem>
                                                 ))}
@@ -403,7 +347,6 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
                                     </Command>
                                 </PopoverContent>
                             </Popover>
-                            <FormMessage />
                         </FormItem>
                         )}
                     />
@@ -412,11 +355,11 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
                     name="area_preference"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Area Preference</FormLabel>
+                        <FormLabel>Preferred Areas</FormLabel>
                         <FormControl>
-                            <Input {...field} value={field.value ?? ''} placeholder="e.g. DHA, Bahria, Gulberg" />
+                            <Input {...field} value={field.value ?? ''} placeholder="e.g. DHA, Bahria, Gulberg" className="h-9" />
                         </FormControl>
-                        <FormMessage />
+                        </FormMessage />
                         </FormItem>
                     )}
                     />
@@ -427,18 +370,11 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
                         name="property_type_preference"
                         render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Property Type</FormLabel>
+                            <FormLabel>Preferred Property Type</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value || ''}>
-                            <FormControl>
-                                <SelectTrigger><SelectValue placeholder="Select type..." /></SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                                {propertyTypes.map(type => (
-                                    <SelectItem key={type} value={type}>{type}</SelectItem>
-                                ))}
-                            </SelectContent>
+                            <FormControl><SelectTrigger className="h-9"><SelectValue placeholder="Select type..." /></SelectTrigger></FormControl>
+                            <SelectContent>{propertyTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent>
                             </Select>
-                            <FormMessage />
                         </FormItem>
                         )}
                     />
@@ -449,83 +385,70 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
                             render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Custom Property Type</FormLabel>
-                                <FormControl>
-                                <Input placeholder="e.g. Penthouse" {...field} />
-                                </FormControl>
-                                <FormMessage />
+                                <FormControl><Input placeholder="e.g. Penthouse" {...field} className="h-9" /></FormControl>
                             </FormItem>
                             )}
                         />
                     )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <FormLabel>Size Preference</FormLabel>
-                        <div className="grid grid-cols-2 gap-2 mt-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                        <FormLabel className="flex items-center gap-2"><Ruler className="h-3.5 w-3.5" /> Size Range</FormLabel>
+                        <div className="grid grid-cols-2 gap-2">
                             <FormField control={form.control} name="size_min_value" render={({field}) => (
-                                <FormItem><FormControl><Input type="number" {...field} value={field.value ?? 0} placeholder="Min" /></FormControl></FormItem>
-                            )} />
-                            <FormField control={form.control} name="size_min_unit" render={({field}) => (
-                                <FormItem><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent>
-                                    {sizeUnits.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
-                                </SelectContent></Select></FormItem>
+                                <FormItem><FormControl><Input type="number" {...field} value={field.value ?? 0} placeholder="Min" className="h-9" /></FormControl></FormItem>
                             )} />
                             <FormField control={form.control} name="size_max_value" render={({field}) => (
-                                <FormItem><FormControl><Input type="number" {...field} value={field.value ?? 0} placeholder="Max" /></FormControl></FormItem>
+                                <FormItem><FormControl><Input type="number" {...field} value={field.value ?? 0} placeholder="Max" className="h-9" /></FormControl></FormItem>
                             )} />
-                            <FormField control={form.control} name="size_max_unit" render={({field}) => (
-                                <FormItem><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent>
-                                    {sizeUnits.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
-                                </SelectContent></Select></FormItem>
+                            <FormField control={form.control} name="size_min_unit" render={({field}) => (
+                                <FormItem className="col-span-2">
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                        <FormControl><SelectTrigger className="h-9"><SelectValue/></SelectTrigger></FormControl>
+                                        <SelectContent>{sizeUnits.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                </FormItem>
                             )} />
                         </div>
                     </div>
-                    <div>
-                        <FormLabel>Budget Range</FormLabel>
-                        <div className="grid grid-cols-2 gap-2 mt-2">
+                    <div className="space-y-2">
+                        <FormLabel className="flex items-center gap-2"><Wallet className="h-3.5 w-3.5" /> Budget Range</FormLabel>
+                        <div className="grid grid-cols-2 gap-2">
                             <FormField control={form.control} name="budget_min_amount" render={({field}) => (
-                                <FormItem><FormControl><Input type="number" {...field} value={field.value ?? 0} placeholder="Min" /></FormControl></FormItem>
-                            )} />
-                            <FormField control={form.control} name="budget_min_unit" render={({field}) => (
-                                <FormItem><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent>
-                                    {priceUnits.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
-                                </SelectContent></Select></FormItem>
-
+                                <FormItem><FormControl><Input type="number" {...field} value={field.value ?? 0} placeholder="Min" className="h-9" /></FormControl></FormItem>
                             )} />
                             <FormField control={form.control} name="budget_max_amount" render={({field}) => (
-                                <FormItem><FormControl><Input type="number" {...field} value={field.value ?? 0} placeholder="Max" /></FormControl></FormItem>
+                                <FormItem><FormControl><Input type="number" {...field} value={field.value ?? 0} placeholder="Max" className="h-9" /></FormControl></FormItem>
                             )} />
-                            <FormField control={form.control} name="budget_max_unit" render={({field}) => (
-                                <FormItem><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent>
-                                    {priceUnits.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
-                                </SelectContent></Select></FormItem>
+                            <FormField control={form.control} name="budget_min_unit" render={({field}) => (
+                                <FormItem className="col-span-2">
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                        <FormControl><SelectTrigger className="h-9"><SelectValue/></SelectTrigger></FormControl>
+                                        <SelectContent>{priceUnits.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                </FormItem>
                             )} />
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <Separator />
-                <h4 className="text-sm font-medium text-muted-foreground">Status & Notes</h4>
+            <Separator />
 
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+            <div className="space-y-4">
+                <h4 className="text-sm font-bold flex items-center gap-2 uppercase tracking-wider"><Tag className="h-4 w-4" /> Status & Tags</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
                     <FormField
                     control={form.control}
                     name="status"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Status</FormLabel>
+                        <FormLabel>Lead Status</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                            <SelectTrigger><SelectValue /></SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                            {buyerStatuses.map(status => (
-                                <SelectItem key={status} value={status}>{status}</SelectItem>
-                            ))}
-                            </SelectContent>
+                            <FormControl><SelectTrigger className="h-9"><SelectValue /></SelectTrigger></FormControl>
+                            <SelectContent>{buyerStatuses.map(status => <SelectItem key={status} value={status}>{status}</SelectItem>)}</SelectContent>
                         </Select>
-                        <FormMessage />
                         </FormItem>
                     )}
                     />
@@ -534,17 +457,8 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
                         name="is_investor"
                         render={({ field }) => (
                             <FormItem className="flex flex-row items-center justify-start space-x-3 space-y-0 rounded-md border p-3 shadow-sm h-10 mt-8 bg-background">
-                            <FormControl>
-                                <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                                />
-                            </FormControl>
-                            <div className="space-y-1 leading-none">
-                                <FormLabel>
-                                Mark as Investor
-                                </FormLabel>
-                            </div>
+                            <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                            <div className="space-y-1 leading-none"><FormLabel className="cursor-pointer">Mark as Investor</FormLabel></div>
                             </FormItem>
                         )}
                     />
@@ -554,34 +468,27 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
                   name="tags"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Tags</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="e.g. Urgent, VIP, Hot Lead" />
-                      </FormControl>
-                      <FormMessage />
+                      <FormLabel>Custom Tags (comma separated)</FormLabel>
+                      <FormControl><Input {...field} placeholder="e.g. Urgent, VIP, Hot Lead" className="h-9" /></FormControl>
                     </FormItem>
                   )}
                 />
-                <FormField
-                control={form.control}
-                name="notes"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Other Requirements / Notes</FormLabel>
-                    <FormControl>
-                        <Textarea {...field} value={field.value ?? ''} placeholder="Any specific requirements or notes..." />
-                    </FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
             </div>
-        </ScrollArea>
-        <div className="flex justify-end gap-2 pt-4">
-          <Button type="button" variant="ghost" onClick={() => setDialogOpen(false)}>
-            Cancel
-          </Button>
-          <Button type="submit" className="glowing-btn">{buyerToEdit ? 'Save Changes' : 'Save Buyer'}</Button>
+
+            <FormField
+            control={form.control}
+            name="notes"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel className="font-bold uppercase tracking-wider text-[10px] text-muted-foreground">Other Requirements / Notes</FormLabel>
+                <FormControl><Textarea {...field} value={field.value ?? ''} placeholder="Any specific requirements or notes..." rows={3} /></FormControl>
+                </FormItem>
+            )}
+            />
+
+        <div className="flex justify-end gap-2 pt-6 border-t sticky bottom-0 bg-background pb-2">
+          <Button type="button" variant="ghost" onClick={() => setDialogOpen(false)}>Cancel</Button>
+          <Button type="submit" className="glowing-btn px-8">{buyerToEdit ? 'Save Changes' : 'Save Buyer'}</Button>
         </div>
       </form>
     </Form>

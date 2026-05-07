@@ -4,9 +4,9 @@ import { AddBuyerDialog } from '@/components/add-buyer-dialog';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { buyerStatuses } from '@/lib/data';
+import { buyerStatuses, punjabCities } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
-import { Edit, MoreHorizontal, PlusCircle, Trash2, Phone, Home, Filter, Wallet, Ruler, Eye, CalendarPlus, Check, X, MessageSquare, ChevronLeft, ChevronRight, ArrowUpDown, Tag as TagIcon } from 'lucide-react';
+import { Edit, MoreHorizontal, PlusCircle, Trash2, Phone, Home, Filter, Wallet, Ruler, Eye, CalendarPlus, Check, X, MessageSquare, ChevronLeft, ChevronRight, ArrowUpDown, Tag as TagIcon, Search, MapPin, Building, ChevronDown } from 'lucide-react';
 import { useState, useMemo, useEffect, Suspense } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useIsMobile } from '@/hooks/use-is-mobile';
@@ -17,7 +17,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useSearch, useUI } from '../layout';
 import { BuyerDetailsDialog } from '@/components/buyer-details-dialog';
-import { SetAppointmentDialog } from '@/components/set-appointment-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency, formatUnit, formatPhoneNumberForWhatsApp } from '@/lib/formatters';
 import { useCurrency } from '@/context/currency-context';
@@ -26,7 +25,6 @@ import { useFirestore } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, addDoc, setDoc, doc, updateDoc, writeBatch, query, where, or } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/hooks';
-import { AddFollowUpDialog } from '@/components/add-follow-up-dialog';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { cn, formatPhoneNumber } from '@/lib/utils';
@@ -35,6 +33,7 @@ import { useUser } from '@/firebase/auth/use-user';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { ManageTagsDialog } from '@/components/manage-tags-dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 const ITEMS_PER_PAGE = 50;
 
@@ -49,13 +48,12 @@ const statusVariant = {
     'Pending': 'bg-amber-100 text-amber-700 border-amber-200'
 } as const;
 
-function formatSize(minAmount?: number, minUnit?: SizeUnit, maxAmount?: number, maxUnit?: SizeUnit) {
-    if (!minAmount || !minUnit) return 'N/A';
-    if (!maxAmount || !maxUnit || (minAmount === maxAmount && minUnit === maxUnit)) return `${minAmount} ${minUnit}`;
-    return `${minAmount} - ${maxAmount} ${minUnit}`;
-}
+const propertyTypesForFilter: (PropertyType | 'All')[] = [
+  'All', 'House', 'Flat', 'Farm House', 'Penthouse', 'Plot', 'Residential Plot', 'Commercial Plot', 'Agricultural Land', 'Industrial Land', 'Office', 'Shop', 'Warehouse', 'Factory', 'Building', 'Residential Property', 'Commercial Property', 'Semi Commercial'
+];
 
 interface Filters {
+    area: string[];
     propertyType: PropertyType | 'All';
     minBudget: string;
     maxBudget: string;
@@ -63,21 +61,25 @@ interface Filters {
     minSize: string;
     maxSize: string;
     sizeUnit: SizeUnit | 'All';
+    serialNo: string;
+    serialNoPrefix: 'All' | 'B' | 'RB';
+}
+
+function formatSize(minAmount?: number, minUnit?: SizeUnit, maxAmount?: number, maxUnit?: SizeUnit) {
+    if (!minAmount || !minUnit) return 'N/A';
+    if (!maxAmount || !maxUnit || (minAmount === maxAmount && minUnit === maxUnit)) return `${minAmount} ${minUnit}`;
+    return `${minAmount} - ${maxAmount} ${minUnit}`;
 }
 
 function BuyersPageContent() {
     const isMobile = useIsMobile();
     const router = useRouter();
-    const pathname = usePathname();
     const { user } = useUser();
     const { profile } = useProfile();
-    const searchParams = useSearchParams();
     const { searchQuery } = useSearch();
     const { toast } = useToast();
     const { currency } = useCurrency();
     
-    const typeFilterFromURL = searchParams.get('type') as ListingType | null;
-
     const firestore = useFirestore();
     
     const allAgencyBuyersQuery = useMemoFirebase(() => {
@@ -101,7 +103,7 @@ function BuyersPageContent() {
     );
     const { data: agencyTags } = useCollection<Tag>(tagsQuery);
 
-    const [activeListingType, setActiveListingType] = useState<ListingType | 'All'>(typeFilterFromURL || 'For Sale');
+    const [activeListingType, setActiveListingType] = useState<ListingType | 'All'>('All');
     const [activeStatus, setActiveStatus] = useState<string>('All');
     const [activeCustomTags, setActiveCustomTags] = useState<string[]>([]);
 
@@ -109,16 +111,45 @@ function BuyersPageContent() {
     const [isManageTagsOpen, setIsManageTagsOpen] = useState(false);
     const [buyerToEdit, setBuyerToEdit] = useState<Buyer | null>(null);
     const [selectedBuyers, setSelectedBuyers] = useState<string[]>([]);
-    const [buyerForFollowUp, setBuyerForFollowUp] = useState<Buyer | null>(null);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [selectedBuyerForDetails, setSelectedBuyerForDetails] = useState<Buyer | null>(null);
-    const [isAppointmentOpen, setIsAppointmentOpen] = useState(false);
-    const [isFollowUpOpen, setIsFollowUpOpen] = useState(false);
-    const [appointmentDetails, setAppointmentDetails] = useState<{ contactType: AppointmentContactType; contactName: string; contactSerialNo?: string; message: string; } | null>(null);
-    const [filters, setFilters] = useState<Filters>({ propertyType: 'All', minBudget: '', maxBudget: '', budgetUnit: 'All', minSize: '', maxSize: '', sizeUnit: 'All' });
     const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+    const [filters, setFilters] = useState<Filters>({
+        area: [],
+        propertyType: 'All',
+        minBudget: '',
+        maxBudget: '',
+        budgetUnit: 'All',
+        minSize: '',
+        maxSize: '',
+        sizeUnit: 'All',
+        serialNo: '',
+        serialNoPrefix: 'All'
+    });
+    const [areaSearch, setAreaSearch] = useState('');
+
+    const handleFilterChange = (key: keyof Filters, value: any) => {
+        setFilters((prev) => ({ ...prev, [key]: value }));
+    };
+
+    const clearFilters = () => {
+        setFilters({
+            area: [],
+            propertyType: 'All',
+            minBudget: '',
+            maxBudget: '',
+            budgetUnit: 'All',
+            minSize: '',
+            maxSize: '',
+            sizeUnit: 'All',
+            serialNo: '',
+            serialNoPrefix: 'All'
+        });
+        setAreaSearch('');
+    };
 
     const logActivity = async (action: string, target: string, targetType: Activity['targetType'], details: any = null) => {
         if (!profile.agency_id) return;
@@ -191,12 +222,38 @@ function BuyersPageContent() {
             buyers = buyers.filter(b => b.name.toLowerCase().includes(lq) || b.serial_no.toLowerCase().includes(lq) || b.phone.includes(lq));
         }
 
+        // Advanced Filters
+        if (filters.area.length > 0) buyers = buyers.filter(b => filters.area.some(a => b.area_preference?.includes(a)));
+        if (filters.propertyType !== 'All') buyers = buyers.filter(b => b.property_type_preference === filters.propertyType);
+        if (filters.minSize) buyers = buyers.filter(b => (b.size_min_value || 0) >= Number(filters.minSize));
+        if (filters.maxSize) buyers = buyers.filter(b => (b.size_max_value || 0) <= Number(filters.maxSize));
+        if (filters.sizeUnit !== 'All') buyers = buyers.filter(b => b.size_min_unit === filters.sizeUnit);
+        
+        if (filters.minBudget) {
+            buyers = buyers.filter(b => {
+                const val = formatUnit(b.budget_min_amount || 0, b.budget_min_unit || 'Lacs');
+                const filterVal = formatUnit(Number(filters.minBudget), filters.budgetUnit as PriceUnit || 'Lacs');
+                return val >= filterVal;
+            });
+        }
+        if (filters.maxBudget) {
+            buyers = buyers.filter(b => {
+                const val = formatUnit(b.budget_max_amount || 0, b.budget_max_unit || 'Lacs');
+                const filterVal = formatUnit(Number(filters.maxBudget), filters.budgetUnit as PriceUnit || 'Lacs');
+                return val <= filterVal;
+            });
+        }
+        if (filters.serialNo && filters.serialNoPrefix !== 'All') {
+            const fullSerialNo = `${filters.serialNoPrefix}-${filters.serialNo}`;
+            buyers = buyers.filter(b => b.serial_no === fullSerialNo);
+        }
+
         return buyers.sort((a, b) => {
             const aNum = parseInt(a.serial_no.split('-')[1] || '0', 10);
             const bNum = parseInt(b.serial_no.split('-')[1] || '0', 10);
             return sortOrder === 'asc' ? aNum - bNum : bNum - aNum;
         });
-    }, [allBuyers, activeListingType, activeStatus, activeCustomTags, searchQuery, sortOrder]);
+    }, [allBuyers, activeListingType, activeStatus, activeCustomTags, searchQuery, sortOrder, filters]);
 
     const totalPages = Math.ceil(filteredBuyers.length / ITEMS_PER_PAGE);
     const paginatedBuyers = useMemo(() => {
@@ -235,7 +292,7 @@ function BuyersPageContent() {
                                 <TableCell>
                                     <div className="font-bold text-base font-headline">{buyer.name}</div>
                                     <div className="flex gap-1 mt-1">
-                                        <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/20">{buyer.serial_no}</Badge>
+                                        <Badge variant="outline" className={cn("text-[10px] border-primary/20", buyer.serial_no.startsWith('RB') ? "bg-emerald-100 text-emerald-700" : "bg-primary/10 text-primary")}>{buyer.serial_no}</Badge>
                                         <span className="text-[10px] text-muted-foreground">{buyer.phone}</span>
                                     </div>
                                 </TableCell>
@@ -293,9 +350,73 @@ function BuyersPageContent() {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-bold font-headline tracking-tight">Buyers</h1>
-                <Button className="rounded-full glowing-btn" onClick={() => { setBuyerToEdit(null); setIsAddBuyerOpen(true); }}><PlusCircle className="mr-2 h-4 w-4" /> Add Buyer</Button>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold font-headline tracking-tight">Buyers</h1>
+                    <p className="text-muted-foreground">Manage and track your agency leads.</p>
+                </div>
+                <div className="flex w-full md:w-auto items-center gap-2 flex-wrap">
+                    <AlertDialog open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="outline" className="rounded-full"><Filter className="mr-2 h-4 w-4" /> Filters {filters.area.length > 0 && `(${filters.area.length})`}</Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="max-w-md glass-card">
+                            <AlertDialogHeader><AlertDialogTitle>Refine Buyer Search</AlertDialogTitle></AlertDialogHeader>
+                            <div className="grid gap-4 py-4">
+                                <div className="grid grid-cols-3 items-center gap-4">
+                                    <Label>Serial No</Label>
+                                    <div className="col-span-2 grid grid-cols-2 gap-2">
+                                        <Select value={filters.serialNoPrefix} onValueChange={(v: any) => handleFilterChange('serialNoPrefix', v)}>
+                                            <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                                            <SelectContent><SelectItem value="All">All</SelectItem><SelectItem value="B">B</SelectItem><SelectItem value="RB">RB</SelectItem></SelectContent>
+                                        </Select>
+                                        <Input placeholder="e.g. 1" type="number" value={filters.serialNo} onChange={e => handleFilterChange('serialNo', e.target.value)} className="h-8" />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-3 items-center gap-4">
+                                    <Label htmlFor="propertyType">Type</Label>
+                                    <Select value={filters.propertyType} onValueChange={(value: any) => handleFilterChange('propertyType', value)}>
+                                        <SelectTrigger className="col-span-2 h-8">
+                                            <SelectValue placeholder="Property Type" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {propertyTypesForFilter.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="grid grid-cols-3 items-center gap-4">
+                                    <Label>Budget</Label>
+                                    <div className="col-span-2 grid grid-cols-2 gap-2">
+                                        <Input placeholder="Min" type="number" value={filters.minBudget} onChange={e => handleFilterChange('minBudget', e.target.value)} className="h-8" />
+                                        <Input placeholder="Max" type="number" value={filters.maxBudget} onChange={e => handleFilterChange('maxBudget', e.target.value)} className="h-8" />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-3 items-center gap-4">
+                                    <Label></Label>
+                                    <div className="col-span-2">
+                                        <Select value={filters.budgetUnit} onValueChange={(value: any) => handleFilterChange('budgetUnit', value)}>
+                                            <SelectTrigger className="h-8">
+                                                <SelectValue placeholder="Unit" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="All">All Units</SelectItem>
+                                                <SelectItem value="Thousand">Thousand</SelectItem>
+                                                <SelectItem value="Lacs">Lacs</SelectItem>
+                                                <SelectItem value="Crore">Crore</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                            </div>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <Button variant="ghost" onClick={clearFilters}>Clear All</Button>
+                                <AlertDialogAction onClick={() => setIsFilterPopoverOpen(false)}>Apply</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                    <Button className="rounded-full glowing-btn" onClick={() => { setBuyerToEdit(null); setIsAddBuyerOpen(true); }}><PlusCircle className="mr-2 h-4 w-4" /> Add Buyer</Button>
+                </div>
             </div>
 
             {/* Smart Horizontal Filter Bar */}
