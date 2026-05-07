@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -7,7 +6,7 @@ import { collection, query, where, onSnapshot, doc, writeBatch, deleteDoc, Docum
 import { useUser } from '@/firebase/auth/use-user';
 import { useProfile } from '@/context/profile-context';
 import { useMemoFirebase } from '@/firebase/hooks';
-import type { Notification, InvitationNotification, AppointmentNotification, FollowUpNotification, Activity, ActivityNotification, Appointment, FollowUp, UserRole } from '@/lib/types';
+import type { Notification, InvitationNotification, AppointmentNotification, Activity, ActivityNotification, Appointment, UserRole } from '@/lib/types';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { isBefore, sub, differenceInHours } from 'date-fns';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -39,18 +38,6 @@ export const useNotifications = () => {
     const appointmentsQuery = useMemoFirebase(() => canFetchAgencyData ? query(collection(firestore, 'agencies', profile.agency_id, 'appointments'), where('agentName', '==', profile.name)) : null, [canFetchAgencyData, firestore, profile.agency_id, profile.name, refreshKey]);
     const { data: appointmentsData, isLoading: isAppointmentsLoading } = useCollection<Appointment>(appointmentsQuery);
 
-    const followUpsQuery = useMemoFirebase(() => {
-        if (!canFetchAgencyData) return null;
-        const now = new Date();
-        const futureDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days in future
-        return query(
-            collection(firestore, 'agencies', profile.agency_id, 'followUps'),
-            where('nextReminderDate', '>=', now.toISOString().split('T')[0]),
-            where('nextReminderDate', '<=', futureDate.toISOString().split('T')[0])
-        );
-    }, [canFetchAgencyData, firestore, profile.agency_id, refreshKey]);
-    const { data: followUpsData, isLoading: isFollowUpsLoading } = useCollection<FollowUp>(followUpsQuery);
-    
     const activitiesQuery = useMemoFirebase(() => {
         if(!canFetchAgencyData) return null;
         const oneDayAgo = sub(new Date(), { days: 1 });
@@ -71,7 +58,7 @@ export const useNotifications = () => {
     const setStoredIds = (key: string, ids: string[]) => localStorage.setItem(key, JSON.stringify(ids));
 
     useEffect(() => {
-        if (isInvitesLoading || isAppointmentsLoading || isFollowUpsLoading || isActivitiesLoading) {
+        if (isInvitesLoading || isAppointmentsLoading || isActivitiesLoading) {
             setIsLoading(true);
             return;
         }
@@ -116,25 +103,7 @@ export const useNotifications = () => {
             allNotifications.push(...upcomingAppointments);
         }
         
-        // 3. Process Follow-ups
-        if (followUpsData) {
-            const now = new Date();
-            const upcomingFollowUps = followUpsData
-                .filter(fu => isBefore(now, new Date(`${fu.nextReminderDate}T${fu.nextReminderTime}`)))
-                .map(fu => ({
-                    id: `fu_${fu.id}`,
-                    type: 'followup',
-                    title: `Follow-up Reminder: ${fu.buyerName}`,
-                    description: `Notes: ${fu.notes}`,
-                    timestamp: new Date(`${fu.nextReminderDate}T${fu.nextReminderTime}`),
-                    isRead: readIds.includes(`fu_${fu.id}`),
-                    followUp: { ...fu, nextReminder: new Date(`${fu.nextReminderDate}T${fu.nextReminderTime}`).toISOString() },
-                    reminderType: 'day'
-                } as FollowUpNotification));
-            allNotifications.push(...upcomingFollowUps);
-        }
-        
-        // 4. Process Activities
+        // 3. Process Activities
         if (activitiesData) {
             const activityNotifications: ActivityNotification[] = activitiesData
                  .filter(act => 
@@ -187,8 +156,8 @@ export const useNotifications = () => {
         setIsLoading(false);
 
     }, [
-        invitationsData, appointmentsData, followUpsData, activitiesData,
-        isInvitesLoading, isAppointmentsLoading, isFollowUpsLoading, isActivitiesLoading,
+        invitationsData, appointmentsData, activitiesData,
+        isInvitesLoading, isAppointmentsLoading, isActivitiesLoading,
         profile.name, profile.role, user?.uid, refreshKey
     ]);
 

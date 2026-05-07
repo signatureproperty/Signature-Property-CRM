@@ -1,15 +1,14 @@
-
 'use client';
 import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Building2, Users, UserPlus, DollarSign, Home, UserCheck, ArrowRight, ArrowUpRight, TrendingUp, Star, PhoneForwarded, CalendarDays, CheckCheck, XCircle, CheckCircle, Briefcase, Gem, Info, CalendarClock, CalendarPlus as AddToCalendarIcon, Video, VideoOff, Edit, PlayCircle, Loader2, Circle, Clock, ChevronsUpDown, Check } from 'lucide-react';
+import { Building2, Users, UserPlus, DollarSign, Home, UserCheck, ArrowRight, ArrowUpRight, TrendingUp, Star, CalendarDays, CheckCheck, XCircle, CheckCircle, Briefcase, Gem, Info, CalendarClock, CalendarPlus as AddToCalendarIcon, Video, VideoOff, Edit, PlayCircle, Loader2, Circle, Clock, ChevronsUpDown, Check } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useProfile } from '@/context/profile-context';
 import { useFirestore } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useMemoFirebase } from '@/firebase/hooks';
 import { collection, query, where, Timestamp, addDoc, doc, setDoc, deleteDoc } from 'firebase/firestore';
-import type { Property, Buyer, Appointment, FollowUp, User, PriceUnit, AppointmentContactType, AppointmentStatus, Activity, EditingStatus, ListingType } from '@/lib/types';
+import type { Property, Buyer, Appointment, User, PriceUnit, AppointmentContactType, AppointmentStatus, Activity, EditingStatus, ListingType } from '@/lib/types';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { subDays, isWithinInterval, parseISO, format } from 'date-fns';
@@ -145,9 +144,6 @@ export default function OverviewPage() {
     }, [canFetch, firestore, profile.agency_id, isAgent, profile.user_id]);
     const { data: assignedBuyers } = useCollection<Buyer>(assignedBuyersQuery);
     
-    const followUpsQuery = useMemoFirebase(() => (canFetch && profile.role !== 'Video Recorder') ? collection(firestore, 'agencies', profile.agency_id, 'followUps') : null, [canFetch, firestore, profile.agency_id, profile.role]);
-    const { data: followUpsData, isLoading: isFollowUpsLoading } = useCollection<FollowUp>(followUpsQuery);
-    
     const appointmentsQuery = useMemoFirebase(() => canFetch ? collection(firestore, 'agencies', profile.agency_id, 'appointments') : null, [canFetch, firestore, profile.agency_id]);
     const { data: allAppointments, isLoading: isAppointmentsLoading } = useCollection<Appointment>(appointmentsQuery);
     
@@ -164,7 +160,7 @@ export default function OverviewPage() {
     const finalBuyers = isAgent ? agentAllBuyers : buyers;
     const finalAppointments = isAgent ? agentAppointments : allAppointments;
 
-    const isLoading = isProfileLoading || isPropertiesLoading || isBuyersLoading || isFollowUpsLoading || isAppointmentsLoading || (isAgent ? false : isTeamMembersLoading);
+    const isLoading = isProfileLoading || isPropertiesLoading || isBuyersLoading || isAppointmentsLoading || (isAgent ? false : isTeamMembersLoading);
 
     const filterLast30Days = (item: { created_at?: string; sale_date?: string; rent_out_date?: string, invitedAt?: any; date?: string; status?: string; recording_payment_date?: string }) => {
         const dateString = item.rent_out_date || item.sale_date || item.created_at || item.date || item.recording_payment_date || (item.invitedAt instanceof Timestamp ? item.invitedAt.toDate().toISOString() : item.invitedAt);
@@ -293,7 +289,6 @@ export default function OverviewPage() {
         const propertiesForRent = finalProperties?.filter(p => p.status === 'Available' && p.is_for_rent).length || 0;
 
         const interestedBuyers = finalBuyers?.filter(b => b.status === 'Interested' && !b.is_deleted).length || 0;
-        const followUpLeads = followUpsData?.length || 0;
 
         const appointments30d = finalAppointments?.filter(filterLast30Days).length || 0;
         const completedAppointments30d = finalAppointments?.filter(a => a.status === 'Completed' && filterLast30Days(a)).length || 0;
@@ -314,7 +309,6 @@ export default function OverviewPage() {
             recordingRevenue30d,
             propertiesForRent,
             interestedBuyers,
-            followUpLeads,
             appointments30d,
             completedAppointments30d,
             cancelledAppointments30d,
@@ -325,7 +319,7 @@ export default function OverviewPage() {
             newBuyers30d,
             newRentBuyers30d
         };
-    }, [finalProperties, finalBuyers, followUpsData, finalAppointments, last30DaysStart, now]);
+    }, [finalProperties, finalBuyers, finalAppointments, last30DaysStart, now]);
 
     const statCardsData: StatCardProps[] = [
         {
@@ -423,15 +417,6 @@ export default function OverviewPage() {
             icon: <Star className="h-4 w-4" />,
             color: "bg-amber-100 dark:bg-neutral-800 text-amber-600 dark:text-amber-300",
             href: "/buyers?status=Interested",
-            isLoading
-        },
-        {
-            title: "Follow-up Leads",
-            value: stats.followUpLeads,
-            change: "Leads requiring action",
-            icon: <PhoneForwarded className="h-4 w-4" />,
-            color: "bg-purple-100 dark:bg-neutral-800 text-purple-600 dark:text-purple-300",
-            href: "/follow-ups",
             isLoading
         },
         {
@@ -621,4 +606,3 @@ export default function OverviewPage() {
         </div>
     );
 }
-

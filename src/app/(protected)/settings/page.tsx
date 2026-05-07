@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -92,7 +91,6 @@ export default function SettingsPage() {
 
 
   const [appointmentNotifications, setAppointmentNotifications] = useState(true);
-  const [followUpNotifications, setFollowUpNotifications] = useState(true);
 
   const signInProvider = user?.providerData[0]?.providerId;
   const isPasswordSignIn = signInProvider === 'password';
@@ -111,9 +109,6 @@ export default function SettingsPage() {
 
   const agencyAppointmentsQuery = useMemoFirebase(() => profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'appointments') : null, [profile.agency_id, firestore]);
   const { data: agencyAppointments } = useGetCollection(agencyAppointmentsQuery);
-
-  const agencyFollowUpsQuery = useMemoFirebase(() => profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'followUps') : null, [profile.agency_id, firestore]);
-  const { data: agencyFollowUps } = useGetCollection(agencyFollowUpsQuery);
 
   const agencyTeamMembersQuery = useMemoFirebase(() => profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'teamMembers') : null, [profile.agency_id, firestore]);
   const { data: agencyTeamMembers } = useGetCollection(agencyTeamMembersQuery);
@@ -139,19 +134,13 @@ export default function SettingsPage() {
     }
 
     const savedAppointmentSetting = localStorage.getItem('notifications_appointments_enabled');
-    const savedFollowUpSetting = localStorage.getItem('notifications_followups_enabled');
     setAppointmentNotifications(savedAppointmentSetting !== 'false');
-    setFollowUpNotifications(savedFollowUpSetting !== 'false');
   }, [profile]);
 
 
   useEffect(() => {
     localStorage.setItem('notifications_appointments_enabled', String(appointmentNotifications));
   }, [appointmentNotifications]);
-
-  useEffect(() => {
-    localStorage.setItem('notifications_followups_enabled', String(followUpNotifications));
-  }, [followUpNotifications]);
 
   const handleAvatarUpdate = async (dataUrl: string) => {
     if (!user) return;
@@ -308,7 +297,6 @@ export default function SettingsPage() {
             agencyProperties: agencyProperties || [],
             agencyBuyers: agencyBuyers || [],
             agencyAppointments: agencyAppointments || [],
-            agencyFollowUps: agencyFollowUps || [],
             agencyTeamMembers: agencyTeamMembers || [],
             profile: profile || {},
         } : {
@@ -423,7 +411,7 @@ export default function SettingsPage() {
         const batch = writeBatch(firestore);
         const agencyId = profile.agency_id;
         
-        const subCollections = ['properties', 'buyers', 'teamMembers', 'appointments', 'followUps', 'activityLogs'];
+        const subCollections = ['properties', 'buyers', 'teamMembers', 'appointments', 'activityLogs'];
         for (const subCol of subCollections) {
             const querySnapshot = await getDocs(collection(firestore, 'agencies', agencyId, subCol));
             querySnapshot.forEach(doc => batch.delete(doc.ref));
@@ -930,13 +918,6 @@ export default function SettingsPage() {
                 </div>
                 <Switch checked={appointmentNotifications} onCheckedChange={setAppointmentNotifications} />
             </div>
-             <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
-                <div className="space-y-0.5">
-                    <Label>Follow-up Reminders</Label>
-                    <p className="text-xs text-muted-foreground">Receive in-app reminders for scheduled follow-ups.</p>
-                </div>
-                <Switch checked={followUpNotifications} onCheckedChange={setFollowUpNotifications} />
-            </div>
             <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
                 <div className="space-y-0.5">
                     <Label>Email for new leads</Label>
@@ -980,7 +961,7 @@ export default function SettingsPage() {
             <div>
                 <h3 className="font-semibold mb-2">Download Backup</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                    Download all your properties, buyers, appointments and follow-ups into a single JSON file. Keep it safe!
+                    Download all your properties, buyers, and appointments into a single JSON file. Keep it safe!
                 </p>
                 <Button onClick={handleBackup}>
                     <Download className="mr-2 h-4 w-4" />

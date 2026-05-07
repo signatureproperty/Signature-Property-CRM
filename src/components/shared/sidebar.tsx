@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -20,7 +19,6 @@ import {
   Building2,
   Users,
   UserCog,
-  PhoneForwarded,
   Calendar,
   Settings,
   Rocket,
@@ -91,7 +89,6 @@ const mainMenuItems = [
 
 const productivityMenuItems = [
   { href: '/appointments', label: 'Appointments', icon: <Calendar />, roles: ['Admin', 'Agent']},
-  { href: '/follow-ups', label: 'Follow-ups', icon: <PhoneForwarded />, roles: ['Admin', 'Agent']},
   { href: '/activities', label: 'Activities', icon: <History />, roles: ['Admin', 'Agent'] },
   { href: '/inbox', label: 'Inbox', icon: <Mail />, roles: ['Admin']},
 ];
