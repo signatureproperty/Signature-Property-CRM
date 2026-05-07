@@ -1,12 +1,10 @@
-
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo, Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { MoreVertical, PlusCircle, Trash2, Edit, User, Shield, Clock, MoreHorizontal, Camera } from 'lucide-react';
+import { MoreVertical, PlusCircle, Trash2, Edit, User, Shield, Camera, MoreHorizontal, UserCog } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AddTeamMemberDialog } from '@/components/add-team-member-dialog';
 import type { User as TeamMember, UserRole, Property, Buyer, PlanName } from '@/lib/types';
@@ -16,11 +14,9 @@ import { useFirestore } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useMemoFirebase } from '@/firebase/hooks';
 import { collection, doc, deleteDoc, updateDoc } from 'firebase/firestore';
-import { cn } from '@/lib/utils';
 import { TeamMemberDetailsDialog } from '@/components/team-member-details-dialog';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useUI } from '../layout';
 import { Progress } from '@/components/ui/progress';
 
 const roleConfig: Record<UserRole, { icon: React.ReactNode, color: string }> = {
@@ -35,10 +31,8 @@ const planLimits = {
     Premium: { properties: Infinity, buyers: Infinity, team: Infinity },
 };
 
-
-export default function TeamPage() {
+function TeamPageContent() {
     const isMobile = useIsMobile();
-    const { isMoreMenuOpen } = useUI();
     const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
     const [memberToEdit, setMemberToEdit] = useState<TeamMember | null>(null);
     const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
@@ -51,10 +45,10 @@ export default function TeamPage() {
     const { data: teamMembers, isLoading: isMembersLoading } = useCollection<TeamMember>(teamMembersQuery);
 
     const propertiesQuery = useMemoFirebase(() => profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'properties') : null, [profile.agency_id, firestore]);
-    const { data: properties, isLoading: isPropertiesLoading } = useCollection<Property>(propertiesQuery);
+    const { data: properties } = useCollection<Property>(propertiesQuery);
     
     const buyersQuery = useMemoFirebase(() => profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'buyers') : null, [profile.agency_id, firestore]);
-    const { data: buyers, isLoading: isBuyersLoading } = useCollection<Buyer>(buyersQuery);
+    const { data: buyers } = useCollection<Buyer>(buyersQuery);
 
     const currentPlan = (profile?.planName as PlanName) || 'Basic';
     const limit = planLimits[currentPlan]?.team || 0;
@@ -74,7 +68,7 @@ export default function TeamPage() {
         
         toast({
             title: 'Member Removed',
-            description: `${member.name} has been removed from the team.`,
+            description: `${member.name || member.email} has been removed from the team.`,
             variant: 'destructive',
         });
     };
@@ -92,25 +86,10 @@ export default function TeamPage() {
         });
     }, [teamMembers]);
 
-    const memberStats = useMemo(() => {
-        const stats: Record<string, { assignedBuyers: number; soldProperties: number }> = {};
-        if (!teamMembers || !properties || !buyers) return stats;
-
-        for (const member of teamMembers) {
-            if (member.status === 'Active') {
-                const assignedBuyers = buyers.filter(b => b.assignedTo === member.id).length;
-                const soldProperties = properties.filter(p => p.status === 'Sold' && p.soldByAgentId === member.id).length;
-                stats[member.id] = { assignedBuyers, soldProperties };
-            }
-        }
-        return stats;
-    }, [teamMembers, properties, buyers]);
-    
-    const isLoading = isMembersLoading || isPropertiesLoading || isBuyersLoading;
+    const isLoading = isMembersLoading;
 
     const renderTable = () => (
-        <Card>
-        <CardContent className="p-0">
+        <Card className="p-0 overflow-hidden">
         <Table>
             <TableHeader>
                 <TableRow>
@@ -127,33 +106,31 @@ export default function TeamPage() {
                     const status = (member.role === 'Admin' || member.status === 'Active') ? 'Active' : 'Pending';
                     
                     return (
-                        <TableRow key={member.id || member.email} onClick={() => handleCardClick(member)} className='cursor-pointer'>
+                        <TableRow key={member.id || member.email} onClick={() => handleCardClick(member)} className='cursor-pointer hover:bg-accent/50'>
                             <TableCell className="font-medium">
-                                <div className="flex items-center gap-3">
-                                    <div>
-                                        <p className="font-bold">{member.name || 'Invitation Sent'}</p>
-                                        <p className="text-xs text-muted-foreground">{member.email}</p>
-                                    </div>
+                                <div className="flex flex-col">
+                                    <p className="font-bold">{member.name || 'Invitation Sent'}</p>
+                                    <p className="text-xs text-muted-foreground">{member.email}</p>
                                 </div>
                             </TableCell>
-                            <TableCell><Badge variant="outline" className={config.color}>{config.icon} {member.role}</Badge></TableCell>
+                            <TableCell><Badge variant="outline" className={config.color}>{config.icon} <span className="ml-1.5">{member.role}</span></Badge></TableCell>
                             <TableCell>
-                                <Badge variant={'default'} className={status === 'Pending' ? 'bg-amber-500/80' : 'bg-green-600/80'}>{status}</Badge>
+                                <Badge variant={status === 'Active' ? 'success' : 'secondary'} className="capitalize">{status}</Badge>
                             </TableCell>
                             <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
+                                        <Button variant="ghost" size="icon" className="rounded-full">
                                             <MoreHorizontal className="h-4 w-4" />
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
                                         {!isOwner && (
                                             <>
-                                                <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleEdit(member); }}>
+                                                <DropdownMenuItem onSelect={() => handleEdit(member)}>
                                                     <Edit className="mr-2 h-4 w-4" /> Edit Role
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleDelete(member); }} className="text-destructive">
+                                                <DropdownMenuItem onSelect={() => handleDelete(member)} className="text-destructive">
                                                     <Trash2 className="mr-2 h-4 w-4" /> Remove Member
                                                 </DropdownMenuItem>
                                             </>
@@ -166,7 +143,6 @@ export default function TeamPage() {
                 })}
             </TableBody>
         </Table>
-        </CardContent>
         </Card>
     );
 
@@ -184,20 +160,20 @@ export default function TeamPage() {
                     onClick={() => handleCardClick(member)}
                 >
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <Badge variant="outline" className={config.color}>{config.icon} {member.role}</Badge>
+                        <Badge variant="outline" className={config.color}>{config.icon} <span className="ml-1.5">{member.role}</span></Badge>
                          <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2" onClick={(e) => e.stopPropagation()}>
                                     <MoreVertical className="h-4 w-4" />
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                            <DropdownMenuContent align="end">
                                  {!isOwner && (
                                     <>
-                                        <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleEdit(member); }}>
+                                        <DropdownMenuItem onSelect={() => handleEdit(member)}>
                                             <Edit className="mr-2 h-4 w-4" /> Edit Role
                                         </DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleDelete(member); }} className="text-destructive">
+                                        <DropdownMenuItem onSelect={() => handleDelete(member)} className="text-destructive">
                                             <Trash2 className="mr-2 h-4 w-4" /> Remove Member
                                         </DropdownMenuItem>
                                     </>
@@ -205,66 +181,57 @@ export default function TeamPage() {
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </CardHeader>
-                    <CardContent className="text-center flex-1 flex flex-col items-center justify-center">
-                        <CardTitle className="text-lg font-headline">{member.name || 'Invitation Sent'}</CardTitle>
+                    <CardContent className="flex flex-col gap-1">
+                        <CardTitle className="text-lg font-bold font-headline">{member.name || 'Invitation Sent'}</CardTitle>
                         <CardDescription>{member.email}</CardDescription>
-                    </CardContent>
-                    <CardFooter className="border-t p-2">
-                        <div className="text-center w-full">
-                           <Badge variant={'default'} className={status === 'Pending' ? 'bg-amber-500/80' : 'bg-green-600/80'}>{status}</Badge>
+                        <div className="mt-2">
+                           <Badge variant={status === 'Active' ? 'success' : 'secondary'} className="text-[10px] uppercase font-bold">{status}</Badge>
                         </div>
-                    </CardFooter>
+                    </CardContent>
                 </Card>
             )
         })}
         </div>
     );
 
-
     return (
-        <>
-            <div className="space-y-6">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight font-headline">
-                            Team Management
-                        </h1>
-                        <p className="text-muted-foreground">
-                            Invite and manage your agency's team members.
-                        </p>
-                    </div>
+        <div className="space-y-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight font-headline flex items-center gap-2">
+                        <UserCog /> Team Management
+                    </h1>
+                    <p className="text-muted-foreground">
+                        Invite agents or create video recorder accounts for your agency.
+                    </p>
                 </div>
-
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm font-medium text-muted-foreground">Team Member Usage</span>
-                            <span className="text-sm font-bold">{currentCount} / {limit === Infinity ? 'Unlimited' : limit}</span>
-                        </div>
-                        <Progress value={progress} />
-                    </CardContent>
-                </Card>
-
-                {isLoading && <p>Loading team members...</p>}
-
-                {!isLoading && (!sortedTeamMembers || sortedTeamMembers.length === 0) ? (
-                     <Card className="flex items-center justify-center h-64 border-dashed">
-                        <div className="text-center">
-                            <p className="text-lg font-medium">No team members yet</p>
-                            <p className="text-muted-foreground">Click the '+' button to invite your first member.</p>
-                        </div>
-                    </Card>
-                ) : (
-                    isMobile ? renderCards() : renderTable()
-                )}
-            </div>
-
-            <div className={cn("fixed bottom-20 right-4 md:bottom-8 md:right-8 z-50 transition-opacity", isMoreMenuOpen && "opacity-0 pointer-events-none")}>
-               <Button onClick={() => { setMemberToEdit(null); setIsAddMemberOpen(true); }} className="rounded-full w-14 h-14 shadow-lg glowing-btn" size="icon">
-                    <PlusCircle className="h-6 w-6" />
-                    <span className="sr-only">Add Member</span>
+                <Button className="rounded-full glowing-btn" onClick={() => { setMemberToEdit(null); setIsAddMemberOpen(true); }}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Add Team Member
                 </Button>
             </div>
+
+            <Card className="bg-primary/5 border-primary/20">
+                <CardContent className="p-4">
+                    <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Plan Usage (Agent Seats)</span>
+                        <span className="text-sm font-bold">{currentCount} / {limit === Infinity ? 'Unlimited' : limit}</span>
+                    </div>
+                    <Progress value={progress} className="h-2" />
+                </CardContent>
+            </Card>
+
+            {isLoading ? (
+                <div className="text-center py-20 text-muted-foreground">Loading team members...</div>
+            ) : !sortedTeamMembers || sortedTeamMembers.length === 0 ? (
+                 <Card className="flex items-center justify-center h-64 border-dashed bg-muted/20">
+                    <div className="text-center">
+                        <p className="text-lg font-medium">Your team is empty</p>
+                        <p className="text-muted-foreground">Click "Add Team Member" to invite your first agent.</p>
+                    </div>
+                </Card>
+            ) : (
+                isMobile ? renderCards() : renderTable()
+            )}
 
             <AddTeamMemberDialog 
                 isOpen={isAddMemberOpen} 
@@ -280,6 +247,14 @@ export default function TeamPage() {
                     properties={properties || []}
                 />
             )}
-        </>
+        </div>
+    );
+}
+
+export default function TeamPage() {
+    return (
+        <Suspense fallback={<div className="text-center py-20 text-muted-foreground">Loading team...</div>}>
+            <TeamPageContent />
+        </Suspense>
     );
 }

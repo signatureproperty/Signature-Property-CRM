@@ -2,13 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useFirestore } from '@/firebase/provider';
-import { collection, query, where, onSnapshot, doc, writeBatch, deleteDoc, DocumentData, QuerySnapshot, FirestoreError, orderBy, limit, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, doc, writeBatch, orderBy, limit } from 'firebase/firestore';
 import { useUser } from '@/firebase/auth/use-user';
 import { useProfile } from '@/context/profile-context';
 import { useMemoFirebase } from '@/firebase/hooks';
 import type { Notification, InvitationNotification, AppointmentNotification, Activity, ActivityNotification, Appointment, UserRole } from '@/lib/types';
-import { FirestorePermissionError } from '@/firebase/errors';
-import { isBefore, sub, differenceInHours } from 'date-fns';
+import { isBefore, sub } from 'date-fns';
 import { useCollection } from '@/firebase/firestore/use-collection';
 
 const NOTIFICATION_READ_STATUS_KEY = 'signaturecrm_read_notifications';
@@ -29,15 +28,17 @@ export const useNotifications = () => {
     const canFetch = !!firestore && !!user;
     const canFetchAgencyData = canFetch && !!profile.agency_id;
     
-    // --- START: Data Fetching Hooks ---
+    // 1. Invitations (App-wide lookup by email)
     const invitationsQuery = useMemoFirebase(() => {
         return (firestore && user?.email) ? query(collection(firestore, 'invitations'), where('toEmail', '==', user.email), where('status', 'in', ['pending', 'Pending'])) : null;
     }, [firestore, user?.email, refreshKey]);
     const { data: invitationsData, isLoading: isInvitesLoading } = useCollection<any>(invitationsQuery);
     
+    // 2. Appointments (Specific to current user)
     const appointmentsQuery = useMemoFirebase(() => canFetchAgencyData ? query(collection(firestore, 'agencies', profile.agency_id, 'appointments'), where('agentName', '==', profile.name)) : null, [canFetchAgencyData, firestore, profile.agency_id, profile.name, refreshKey]);
     const { data: appointmentsData, isLoading: isAppointmentsLoading } = useCollection<Appointment>(appointmentsQuery);
 
+    // 3. Activities (Recent logs)
     const activitiesQuery = useMemoFirebase(() => {
         if(!canFetchAgencyData) return null;
         const oneDayAgo = sub(new Date(), { days: 1 });
@@ -49,7 +50,6 @@ export const useNotifications = () => {
         );
     }, [canFetchAgencyData, firestore, profile.agency_id, refreshKey]);
     const { data: activitiesData, isLoading: isActivitiesLoading } = useCollection<Activity>(activitiesQuery);
-    // --- END: Data Fetching Hooks ---
 
 
     const getStoredIds = (key: string): string[] => {
@@ -67,7 +67,7 @@ export const useNotifications = () => {
         const deletedIds = getStoredIds(DELETED_NOTIFICATIONS_KEY);
         let allNotifications: Notification[] = [];
 
-        // 1. Process Invitations
+        // Invitations
         if(invitationsData) {
              const invites: InvitationNotification[] = invitationsData.map(doc => ({
                 id: doc.id,
@@ -85,7 +85,7 @@ export const useNotifications = () => {
             allNotifications.push(...invites);
         }
 
-        // 2. Process Appointments
+        // Appointments
         if(appointmentsData) {
             const now = new Date();
             const upcomingAppointments = appointmentsData
@@ -93,7 +93,7 @@ export const useNotifications = () => {
                 .map(appt => ({
                     id: `appt_${appt.id}`,
                     type: 'appointment',
-                    title: `Appointment Reminder: ${appt.contactName}`,
+                    title: `Upcoming: ${appt.contactName}`,
                     description: `At ${appt.time} on ${appt.date}.`,
                     timestamp: new Date(`${appt.date}T${appt.time}`),
                     isRead: readIds.includes(`appt_${appt.id}`),
@@ -103,51 +103,26 @@ export const useNotifications = () => {
             allNotifications.push(...upcomingAppointments);
         }
         
-        // 3. Process Activities
+        // Activities
         if (activitiesData) {
             const activityNotifications: ActivityNotification[] = activitiesData
                  .filter(act => 
-                    // Status updates for other users
-                    (act.action.includes('updated') && act.details && act.userName !== profile.name) ||
-                    // Invitation responses for admins
+                    (act.action.includes('updated') && act.userName !== profile.name) ||
                     (act.targetType === 'Invitation' && profile.role === 'Admin') ||
-                    // Assignment notifications for the specific user
-                    (act.action.includes('assigned') && act.assignedToId === user?.uid) ||
-                    // Payment reversal notification
-                    (act.action.includes('reverted payment to Unpaid') && act.assignedToId === user?.uid)
+                    (act.action.includes('assigned') && act.assignedToId === user?.uid)
                 )
-                .map(act => {
-                    let title = `Activity by ${act.userName}`;
-                    let description = `${act.target} status changed.`;
-                    if (act.action.includes('assigned')) {
-                        title = `New Lead Assigned`;
-                        description = `${act.userName} assigned ${act.target} to you.`;
-                    } else if (act.targetType === 'Invitation') {
-                         title = `Invitation Response`;
-                         description = act.action;
-                    } else if (act.action.includes('reverted payment')) {
-                        title = 'Payment Reverted';
-                        description = `${act.userName} marked ${act.target} as Unpaid.`;
-                    } else if(act.details) {
-                        title = `Status Update by ${act.userName}`;
-                        description = `${act.target} status changed from ${act.details.from} to ${act.details.to}`;
-                    }
-
-                    return {
-                        id: `act_${act.id}`,
-                        type: 'activity',
-                        title: title,
-                        description: description,
-                        timestamp: new Date(act.timestamp),
-                        isRead: readIds.includes(`act_${act.id}`),
-                        activity: act
-                    };
-                });
+                .map(act => ({
+                    id: `act_${act.id}`,
+                    type: 'activity',
+                    title: act.action.includes('assigned') ? 'New Lead Assigned' : 'Status Update',
+                    description: `${act.userName}: ${act.action} ${act.target}`,
+                    timestamp: new Date(act.timestamp),
+                    isRead: readIds.includes(`act_${act.id}`),
+                    activity: act
+                } as ActivityNotification));
             allNotifications.push(...activityNotifications);
         }
 
-
-        // Filter out deleted notifications and sort
         allNotifications = allNotifications
             .filter(n => !deletedIds.includes(n.id))
             .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
@@ -155,11 +130,7 @@ export const useNotifications = () => {
         setNotifications(allNotifications);
         setIsLoading(false);
 
-    }, [
-        invitationsData, appointmentsData, activitiesData,
-        isInvitesLoading, isAppointmentsLoading, isActivitiesLoading,
-        profile.name, profile.role, user?.uid, refreshKey
-    ]);
+    }, [invitationsData, appointmentsData, activitiesData, isInvitesLoading, isAppointmentsLoading, isActivitiesLoading, profile.name, profile.role, user?.uid, refreshKey]);
 
     const markAsRead = (id: string) => {
         const readIds = getStoredIds(NOTIFICATION_READ_STATUS_KEY);
@@ -189,8 +160,8 @@ export const useNotifications = () => {
         
         const invitationData = notifications.find(n => n.id === invitationId) as InvitationNotification;
         if (!invitationData) throw new Error("Invitation not found");
-        if (!invitationData.memberDocId) throw new Error("Invitation is corrupted or old. Please ask the admin to resend it.");
         
+        // 1. Update agency's member record
         const memberRef = doc(firestore, 'agencies', agencyId, 'teamMembers', invitationData.memberDocId);
         batch.update(memberRef, {
              status: 'Active',
@@ -198,6 +169,7 @@ export const useNotifications = () => {
              joinedAt: new Date().toISOString()
         });
         
+        // 2. Update user's profile
         const userRef = doc(firestore, 'users', userId);
         batch.set(userRef, { 
             agency_id: agencyId,
@@ -205,18 +177,17 @@ export const useNotifications = () => {
             agencyName: invitationData.fromAgencyName
         }, { merge: true });
 
+        // 3. Delete invitation
         const invRef = doc(firestore, 'invitations', invitationId);
         batch.delete(invRef);
         
-        // Log activity for agency
+        // 4. Log activity
         const activityLogRef = doc(collection(firestore, 'agencies', agencyId, 'activityLogs'));
         batch.set(activityLogRef, {
             userName: profile.name,
-            userAvatar: profile.avatar || '',
-            action: `${profile.name} accepted the invitation to join ${invitationData.fromAgencyName}.`,
+            action: `joined the agency by accepting invitation.`,
             target: invitationData.fromAgencyName,
             targetType: 'Invitation',
-            details: null,
             timestamp: new Date().toISOString(),
             agency_id: agencyId
         });
@@ -231,28 +202,12 @@ export const useNotifications = () => {
         if (!invitationData) return;
 
         const batch = writeBatch(firestore);
-
-        const invRef = doc(firestore, 'invitations', invitationId);
-        batch.delete(invRef);
+        batch.delete(doc(firestore, 'invitations', invitationId));
 
         if (invitationData.memberDocId) {
-            const memberRef = doc(firestore, 'agencies', agencyId, 'teamMembers', invitationData.memberDocId);
-            batch.delete(memberRef);
+            batch.delete(doc(firestore, 'agencies', agencyId, 'teamMembers', invitationData.memberDocId));
         }
         
-        // Log activity for agency
-        const activityLogRef = doc(collection(firestore, 'agencies', agencyId, 'activityLogs'));
-        batch.set(activityLogRef, {
-            userName: profile.name,
-            userAvatar: profile.avatar || '',
-            action: `${profile.name} rejected the invitation.`,
-            target: invitationData.fromAgencyName,
-            targetType: 'Invitation',
-            details: null,
-            timestamp: new Date().toISOString(),
-            agency_id: agencyId
-        });
-
         await batch.commit();
         deleteNotification(invitationId);
     };
