@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import {
@@ -11,16 +9,28 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Buyer, PriceUnit, SizeUnit, User } from '@/lib/types';
+import { Buyer, PriceUnit, SizeUnit } from '@/lib/types';
 import { ScrollArea } from './ui/scroll-area';
 import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
-import { Home, Tag, Wallet, Ruler, Phone, Mail, FileText, CalendarDays, UserCheck, Check, UserPlus, Clock, History, Trash2 } from 'lucide-react';
+import { 
+  Home, 
+  Tag, 
+  Wallet, 
+  Ruler, 
+  Phone, 
+  Mail, 
+  FileText, 
+  CalendarDays, 
+  History, 
+  Trash2,
+  Briefcase,
+  MapPin,
+  Clock
+} from 'lucide-react';
 import { useCurrency } from '@/context/currency-context';
 import { formatCurrency, formatUnit } from '@/lib/formatters';
-import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import {
   AlertDialog,
@@ -36,6 +46,7 @@ import {
 import { useFirestore } from '@/firebase/provider';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 interface BuyerDetailsDialogProps {
   buyer: Buyer;
@@ -43,35 +54,28 @@ interface BuyerDetailsDialogProps {
   setIsOpen: (open: boolean) => void;
 }
 
-const DetailItem = ({ icon, label, value }: { icon: React.ReactNode, label: string, value: React.ReactNode }) => (
-    <div className="flex items-start gap-4">
-        <div className="flex-shrink-0 text-primary">{icon}</div>
-        <div>
-            <div className="text-sm text-muted-foreground">{label}</div>
-            <div className="font-semibold">{value || 'N/A'}</div>
+const DetailBox = ({ icon, label, value, className }: { icon: React.ReactNode, label: string, value: React.ReactNode, className?: string }) => (
+    <div className={cn("flex flex-col gap-1 p-3 rounded-xl bg-accent/20 border border-border/40", className)}>
+        <div className="flex items-center gap-2 text-muted-foreground">
+            <span className="text-primary/60">{icon}</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider">{label}</span>
+        </div>
+        <div className="text-sm font-semibold truncate">
+            {value || 'N/A'}
         </div>
     </div>
 );
 
 const statusVariant = {
-    'New': 'default',
-    'Interested': 'default',
-    'Not Interested': 'destructive',
-    'Follow Up': 'default',
-    'Visited Property': 'secondary',
-    'Deal Closed': 'default',
+    'New': 'bg-blue-600',
+    'Interested': 'bg-emerald-600',
+    'Not Interested': 'bg-red-600',
+    'Follow Up': 'bg-purple-600',
+    'Visited Property': 'bg-orange-600',
+    'Deal Closed': 'bg-slate-800',
+    'Deal Lost': 'bg-gray-500',
+    'Pending': 'bg-amber-600'
 } as const;
-
-function formatSize(minAmount?: number, minUnit?: SizeUnit, maxAmount?: number, maxUnit?: SizeUnit) {
-    if (!minAmount || !minUnit) {
-        return 'N/A';
-    }
-     if (!maxAmount || !maxUnit || (minAmount === maxAmount && minUnit === maxUnit)) {
-        return `${minAmount} ${minUnit}`;
-    }
-    return `${minAmount} - ${maxAmount} ${maxUnit}`;
-}
-
 
 export function BuyerDetailsDialog({
   buyer,
@@ -82,13 +86,9 @@ export function BuyerDetailsDialog({
   const firestore = useFirestore();
   const { toast } = useToast();
 
-
   const formatBudget = (minAmount?: number, minUnit?: PriceUnit, maxAmount?: number, maxUnit?: PriceUnit) => {
-    if (!minAmount || !minUnit) {
-      return 'N/A';
-    }
+    if (!minAmount || !minUnit) return 'N/A';
     const minVal = formatUnit(minAmount, minUnit);
-
     if (!maxAmount || !maxUnit || (minAmount === maxAmount && minUnit === maxUnit)) {
       return formatCurrency(minVal, currency);
     }
@@ -96,146 +96,161 @@ export function BuyerDetailsDialog({
     return `${formatCurrency(minVal, currency)} - ${formatCurrency(maxVal, currency)}`;
   };
 
+  const formatSize = (minAmount?: number, minUnit?: SizeUnit, maxAmount?: number, maxUnit?: SizeUnit) => {
+    if (!minAmount || !minUnit) return 'N/A';
+    if (!maxAmount || !maxUnit || (minAmount === maxAmount && minUnit === maxUnit)) {
+        return `${minAmount} ${minUnit}`;
+    }
+    return `${minAmount} - ${maxAmount} ${maxUnit}`;
+  };
+
   const handleClearHistory = async () => {
     if (!buyer.agency_id) return;
     try {
         const buyerRef = doc(firestore, 'agencies', buyer.agency_id, 'buyers', buyer.id);
-        await updateDoc(buyerRef, {
-            sharedProperties: []
-        });
-        toast({ title: "History Cleared", description: "The shared properties history has been cleared." });
+        await updateDoc(buyerRef, { sharedProperties: [] });
+        toast({ title: "History Cleared" });
     } catch (error) {
-        console.error("Failed to clear history:", error);
-        toast({ title: "Error", description: "Could not clear history.", variant: "destructive" });
+        toast({ title: "Error", variant: "destructive" });
     }
   };
-
 
   if (!buyer) return null;
 
   return (
-    <>
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="sm:max-w-2xl">
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogContent className="sm:max-w-3xl p-0 overflow-hidden rounded-2xl">
+        <div className="p-6 pb-0">
           <DialogHeader>
-            <div className="flex items-start justify-between">
-              <div>
-                <DialogTitle className="font-headline text-2xl">{buyer.name}</DialogTitle>
-                <DialogDescription asChild>
-                    <div className="flex items-center gap-2 text-xs">
-                        <Badge variant="default" className="font-mono bg-primary/20 text-primary hover:bg-primary/30">{buyer.serial_no}</Badge>
-                        <span className="flex items-center gap-1.5"><CalendarDays className="h-3 w-3" /> {new Date(buyer.created_at).toLocaleDateString()}</span>
+            <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <Badge variant="outline" className="font-mono text-[10px] bg-background">
+                    {buyer.serial_no}
+                  </Badge>
+                  <Badge className={cn("text-[10px] uppercase font-bold px-2 py-0.5 text-white border-0", statusVariant[buyer.status as keyof typeof statusVariant] || 'bg-primary')}>
+                    {buyer.status}
+                  </Badge>
+                  {buyer.is_investor && (
+                    <Badge className="bg-indigo-600 text-white border-0 text-[10px] uppercase font-bold px-2 py-0.5">Investor</Badge>
+                  )}
+                </div>
+                
+                <div className="space-y-1">
+                  <DialogTitle className="font-headline text-2xl font-extrabold tracking-tight">
+                    {buyer.name}
+                  </DialogTitle>
+                  <DialogDescription className="flex items-center gap-3 text-sm font-medium">
+                    <span className="flex items-center gap-1"><CalendarDays className="h-3.5 w-3.5 text-primary" /> {new Date(buyer.created_at).toLocaleDateString()}</span>
+                    <span className="flex items-center gap-1"><Briefcase className="h-3.5 w-3.5 text-primary" /> {buyer.listing_type || 'For Sale'}</span>
+                  </DialogDescription>
+                </div>
+
+                <div className="flex items-center gap-4 py-2 px-4 bg-primary/5 rounded-xl border border-primary/10 w-fit">
+                    <div className="flex flex-col">
+                        <span className="text-[10px] font-bold uppercase text-primary/60 tracking-wider">Budget Range</span>
+                        <span className="text-xl font-black text-primary">
+                            {formatBudget(buyer.budget_min_amount, buyer.budget_min_unit, buyer.budget_max_amount, buyer.budget_max_unit)}
+                        </span>
                     </div>
-                </DialogDescription>
-              </div>
-               <div className="flex items-center gap-2">
-                {buyer.is_investor && (
-                    <Badge className="bg-blue-600 hover:bg-blue-700 text-white">Investor</Badge>
-                )}
-                <Badge 
-                        variant={buyer.status === 'Follow Up' ? 'default' : statusVariant[buyer.status as keyof typeof statusVariant]} 
-                        className={
-                            `capitalize ${buyer.status === 'Interested' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 
-                            buyer.status === 'New' ? 'bg-green-600 hover:bg-green-700 text-white' :
-                            buyer.status === 'Not Interested' ? 'bg-red-600 hover:bg-red-700 text-white' :
-                            buyer.status === 'Deal Closed' ? 'bg-slate-800 hover:bg-slate-900 text-white' : ''}`
-                        }
-                    >
-                        {buyer.status}
-                    </Badge>
-               </div>
+                </div>
             </div>
           </DialogHeader>
-          <ScrollArea className="max-h-[65vh] pr-6">
-            <div className="space-y-6 py-4">
+        </div>
 
-              <div className="p-4 rounded-lg bg-muted/50">
-                  <h3 className="font-bold text-lg mb-4">Contact Information</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <DetailItem icon={<Phone />} label="Phone Number" value={buyer.phone} />
-                      <DetailItem icon={<Mail />} label="Email Address" value={buyer.email} />
-                  </div>
-              </div>
-              
-              <Separator />
+        <Separator className="my-4 opacity-50" />
 
-              <div>
-                  <h3 className="font-bold text-lg mb-4">Buyer Requirements</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <DetailItem icon={<Home />} label="Area Preference" value={buyer.area_preference} />
-                    <DetailItem icon={<Tag />} label="Property Type" value={buyer.property_type_preference} />
-                    <DetailItem icon={<Wallet />} label="Budget" value={formatBudget(buyer.budget_min_amount, buyer.budget_min_unit, buyer.budget_max_amount, buyer.budget_max_unit)} />
-                    <DetailItem icon={<Ruler />} label="Size" value={formatSize(buyer.size_min_value, buyer.size_min_unit, buyer.size_max_value, buyer.size_max_unit)} />
-                  </div>
-              </div>
-               
-              <Separator />
-
-              <div>
-                <h3 className="font-bold text-lg mb-4">Additional Notes</h3>
-                 <div className="grid grid-cols-1 gap-6">
-                    <DetailItem icon={<FileText />} label="Notes / Other Requirements" value={<p className="whitespace-pre-wrap">{buyer.notes || 'No notes provided.'}</p>} />
-                 </div>
-              </div>
-
-               {buyer.sharedProperties && buyer.sharedProperties.length > 0 && (
-                <>
-                    <Separator />
-                    <div>
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="font-bold text-lg flex items-center gap-2"><History/> Shared Properties History</h3>
-                             <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button variant="destructive" size="sm">
-                                        <Trash2 className="mr-2 h-4 w-4" />
-                                        Clear History
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        This will permanently clear the shared property history for this buyer. This action cannot be undone.
-                                    </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleClearHistory}>Confirm & Clear</AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        </div>
-                        <div className="border rounded-md">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Property</TableHead>
-                                        <TableHead>Serial No</TableHead>
-                                        <TableHead className="text-right">Shared On</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {buyer.sharedProperties.sort((a,b) => new Date(b.sharedAt).getTime() - new Date(a.sharedAt).getTime()).map((prop, index) => (
-                                        <TableRow key={index}>
-                                            <TableCell className="font-medium">{prop.propertyTitle}</TableCell>
-                                            <TableCell><Badge variant="outline">{prop.propertySerialNo}</Badge></TableCell>
-                                            <TableCell className="text-right">{new Date(prop.sharedAt).toLocaleDateString()}</TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    </div>
-                </>
-               )}
-
+        <ScrollArea className="max-h-[60vh] px-6">
+          <div className="space-y-8 pb-8">
+            
+            <div className="space-y-3">
+                <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                  <User className="h-3.5 w-3.5" /> Contact Details
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <DetailBox icon={<Phone className="h-3.5 w-3.5" />} label="Phone Number" value={buyer.phone} />
+                  <DetailBox icon={<Mail className="h-3.5 w-3.5" />} label="Email Address" value={buyer.email || 'Not provided'} />
+                </div>
             </div>
-          </ScrollArea>
-          <DialogFooter className="border-t pt-4">
-             <Button variant="secondary" onClick={() => setIsOpen(false)}>Close</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+
+            <div className="space-y-3">
+                <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                  <MapPin className="h-3.5 w-3.5" /> Requirements
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <DetailBox icon={<MapPin className="h-3.5 w-3.5" />} label="Area Preference" value={buyer.area_preference || 'Any'} />
+                  <DetailBox icon={<Tag className="h-3.5 w-3.5" />} label="Property Type" value={buyer.property_type_preference} />
+                  <DetailBox icon={<Ruler className="h-3.5 w-3.5" />} label="Size Preference" value={formatSize(buyer.size_min_value, buyer.size_min_unit, buyer.size_max_value, buyer.size_max_unit)} />
+                  <DetailBox icon={<Home className="h-3.5 w-3.5" />} label="City" value={buyer.city} />
+                </div>
+            </div>
+
+            <div className="space-y-3">
+                <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                  <FileText className="h-3.5 w-3.5" /> Additional Notes
+                </h3>
+                <div className="p-4 rounded-xl bg-accent/10 border border-border/40 text-sm">
+                  {buyer.notes || 'No extra requirements specified.'}
+                </div>
+            </div>
+
+            {buyer.sharedProperties && buyer.sharedProperties.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                    <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                      <History className="h-3.5 w-3.5" /> Shared Properties History
+                    </h3>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-7 text-[10px] font-bold text-destructive hover:bg-destructive/10">
+                            <Trash2 className="mr-1 h-3 w-3" /> Clear History
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Clear History?</AlertDialogTitle>
+                          <AlertDialogDescription>This will clear the list of properties you've shared with this buyer.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleClearHistory} className="bg-destructive text-destructive-foreground">Confirm</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                </div>
+                <div className="border border-border/40 rounded-xl overflow-hidden bg-accent/5">
+                  <Table>
+                    <TableHeader className="bg-accent/10">
+                      <TableRow className="hover:bg-transparent">
+                        <TableHead className="text-[10px] uppercase font-bold h-9">Property</TableHead>
+                        <TableHead className="text-[10px] uppercase font-bold h-9 text-right">Shared On</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {buyer.sharedProperties.sort((a,b) => new Date(b.sharedAt).getTime() - new Date(a.sharedAt).getTime()).map((prop, index) => (
+                        <TableRow key={index} className="border-border/40">
+                          <TableCell className="py-2">
+                            <div className="text-sm font-medium">{prop.propertyTitle}</div>
+                            <div className="text-[10px] font-mono text-muted-foreground">{prop.propertySerialNo}</div>
+                          </TableCell>
+                          <TableCell className="text-right py-2 text-xs text-muted-foreground">
+                            {new Date(prop.sharedAt).toLocaleDateString()}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+
+        <DialogFooter className="p-6 border-t bg-muted/5">
+           <Button variant="secondary" className="rounded-full h-9 px-6" onClick={() => setIsOpen(false)}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

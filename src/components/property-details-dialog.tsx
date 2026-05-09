@@ -32,11 +32,13 @@ import {
   MapPin, 
   UtilityPole,
   FileText,
-  Clock
+  Clock,
+  MessageSquare
 } from 'lucide-react';
 import { VideoLinksDialog } from './video-links-dialog';
 import { useCurrency } from '@/context/currency-context';
 import { formatCurrency, formatUnit } from '@/lib/formatters';
+import { cn } from '@/lib/utils';
 
 interface PropertyDetailsDialogProps {
   property: Property;
@@ -45,9 +47,9 @@ interface PropertyDetailsDialogProps {
 }
 
 const DetailBox = ({ icon, label, value, className }: { icon: React.ReactNode, label: string, value: React.ReactNode, className?: string }) => (
-    <div className={cn("flex flex-col gap-1 p-3 rounded-xl bg-accent/30 border border-border/50", className)}>
+    <div className={cn("flex flex-col gap-1 p-3 rounded-xl bg-accent/20 border border-border/40", className)}>
         <div className="flex items-center gap-2 text-muted-foreground">
-            <span className="text-primary/70">{icon}</span>
+            <span className="text-primary/60">{icon}</span>
             <span className="text-[10px] font-bold uppercase tracking-wider">{label}</span>
         </div>
         <div className="text-sm font-semibold truncate">
@@ -55,8 +57,6 @@ const DetailBox = ({ icon, label, value, className }: { icon: React.ReactNode, l
         </div>
     </div>
 );
-
-import { cn } from '@/lib/utils';
 
 export function PropertyDetailsDialog({
   property,
@@ -96,16 +96,17 @@ export function PropertyDetailsDialog({
         <DialogContent className="sm:max-w-3xl p-0 overflow-hidden rounded-2xl">
           <div className="p-6 pb-0">
             <DialogHeader>
-              <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <Badge variant="outline" className="font-mono text-[10px] bg-background">
+                    {property.serial_no}
+                  </Badge>
+                  <Badge className={cn("text-[10px] uppercase font-bold px-2 py-0.5", getStatusBadgeClass(property.status))}>
+                    {property.status}
+                  </Badge>
+                </div>
+                
                 <div className="space-y-1">
-                  <div className="flex items-center gap-3">
-                    <Badge variant="outline" className="font-mono text-[10px] bg-background">
-                      {property.serial_no}
-                    </Badge>
-                    <Badge className={cn("text-[10px] uppercase font-bold px-2 py-0.5", getStatusBadgeClass(property.status))}>
-                      {property.status}
-                    </Badge>
-                  </div>
                   <DialogTitle className="font-headline text-2xl font-extrabold tracking-tight">
                     {property.auto_title || `${property.size_value} ${property.size_unit} ${property.property_type}`}
                   </DialogTitle>
@@ -114,11 +115,25 @@ export function PropertyDetailsDialog({
                     {property.address}, {property.area}, {property.city}
                   </DialogDescription>
                 </div>
-                <div className="hidden md:block text-right">
-                   <div className="text-xs text-muted-foreground font-medium mb-1">Asking Price</div>
-                   <div className="text-2xl font-black text-primary">
-                     {formatPrice(property.demand_amount, property.demand_unit)}
-                   </div>
+
+                <div className="flex items-center gap-4 py-2 px-4 bg-primary/5 rounded-xl border border-primary/10 w-fit">
+                    <div className="flex flex-col">
+                        <span className="text-[10px] font-bold uppercase text-primary/60 tracking-wider">Demand</span>
+                        <span className="text-xl font-black text-primary">
+                            {formatPrice(property.demand_amount, property.demand_unit)}
+                        </span>
+                    </div>
+                    {property.potential_rent_amount ? (
+                        <>
+                            <Separator orientation="vertical" className="h-8" />
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Potential Rent</span>
+                                <span className="text-lg font-bold text-muted-foreground">
+                                    {formatPrice(property.potential_rent_amount, property.potential_rent_unit || 'Thousand')}
+                                </span>
+                            </div>
+                        </>
+                    ) : null}
                 </div>
               </div>
             </DialogHeader>
@@ -129,18 +144,21 @@ export function PropertyDetailsDialog({
           <ScrollArea className="max-h-[60vh] px-6">
             <div className="space-y-8 pb-8">
               
-              {/* Basic Overview Section */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <DetailBox icon={<Building className="h-3.5 w-3.5" />} label="Type" value={property.property_type} />
-                <DetailBox icon={<Ruler className="h-3.5 w-3.5" />} label="Size" value={`${property.size_value} ${property.size_unit}`} />
-                <DetailBox icon={<CalendarDays className="h-3.5 w-3.5" />} label="Added On" value={new Date(property.created_at).toLocaleDateString()} />
-                <DetailBox icon={<Phone className="h-3.5 w-3.5" />} label="Owner" value={property.owner_number} />
+              <div className="space-y-3">
+                  <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                    <Building className="h-3.5 w-3.5" /> Property Overview
+                  </h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <DetailBox icon={<Tag className="h-3.5 w-3.5" />} label="Type" value={property.property_type} />
+                    <DetailBox icon={<Ruler className="h-3.5 w-3.5" />} label="Size" value={`${property.size_value} ${property.size_unit}`} />
+                    <DetailBox icon={<CalendarDays className="h-3.5 w-3.5" />} label="Added On" value={new Date(property.created_at).toLocaleDateString()} />
+                    <DetailBox icon={<Phone className="h-3.5 w-3.5" />} label="Owner" value={property.owner_number} />
+                  </div>
               </div>
 
-              {/* Specs & Dimensions Section */}
               <div className="space-y-3">
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                    <Building className="h-3.5 w-3.5" /> Property Specification
+                  <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                    <LandPlot className="h-3.5 w-3.5" /> Specification & Dimensions
                   </h3>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {!property.is_for_rent && <DetailBox icon={<LandPlot className="h-3.5 w-3.5" />} label="Front" value={property.front_ft ? `${property.front_ft} ft` : 'N/A'} />}
@@ -150,43 +168,42 @@ export function PropertyDetailsDialog({
                   </div>
               </div>
 
-              {/* Financials Section */}
-              <div className="space-y-3">
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                    <Wallet className="h-3.5 w-3.5" /> Financial Details
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                    <UtilityPole className="h-3.5 w-3.5" /> Meters & Utilities
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <DetailBox 
-                      icon={<Wallet className="h-3.5 w-3.5" />} 
-                      label={property.is_for_rent ? "Monthly Rent" : "Asking Price"} 
-                      value={formatPrice(property.demand_amount, property.demand_unit)} 
-                      className="bg-primary/5 border-primary/20"
-                    />
-                    {!property.is_for_rent && (
-                      <DetailBox icon={<Briefcase className="h-3.5 w-3.5" />} label="Potential Rent" value={formatPrice(property.potential_rent_amount, property.potential_rent_unit)} />
-                    )}
-                    {property.is_for_rent && (
-                       <DetailBox icon={<Clock className="h-3.5 w-3.5" />} label="Rental Frequency" value="Monthly" />
-                    )}
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant={property.meters?.electricity ? 'default' : 'outline'} className={cn(property.meters?.electricity ? "bg-amber-500 hover:bg-amber-600 text-white" : "opacity-40")}>Electricity</Badge>
+                    <Badge variant={property.meters?.gas ? 'default' : 'outline'} className={cn(property.meters?.gas ? "bg-blue-500 hover:bg-blue-600 text-white" : "opacity-40")}>Gas</Badge>
+                    <Badge variant={property.meters?.water ? 'default' : 'outline'} className={cn(property.meters?.water ? "bg-cyan-500 hover:bg-cyan-600 text-white" : "opacity-40")}>Water</Badge>
                   </div>
+                </div>
+                <div className="space-y-3">
+                  <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                    <FileText className="h-3.5 w-3.5" /> {property.is_for_rent ? 'Rental Policy' : 'Property Documents'}
+                  </h3>
+                  <div className="p-3 rounded-xl bg-accent/10 border border-border/40 text-sm italic text-muted-foreground">
+                    {property.is_for_rent ? (property.message || 'No policy notes.') : (property.documents || 'No document notes.')}
+                  </div>
+                </div>
               </div>
 
-              {/* Transaction details (Only if Sold or Rented) */}
               {(property.status === 'Sold' || property.status === 'Rent Out') && (
                 <div className="space-y-3">
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                  <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                     <CircleDollarSign className="h-3.5 w-3.5" /> {property.status === 'Sold' ? 'Sale Record' : 'Rental Record'}
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     {property.status === 'Sold' ? (
                         <>
-                          <DetailBox icon={<Wallet className="h-3.5 w-3.5" />} label="Sold Price" value={formatCurrency(property.sold_price || 0, currency)} className="bg-green-500/5 border-green-500/20" />
+                          <DetailBox icon={<Wallet className="h-3.5 w-3.5" />} label="Sold Price" value={formatCurrency(property.sold_price || 0, currency)} className="bg-green-500/5 border-green-500/10" />
                           <DetailBox icon={<Percent className="h-3.5 w-3.5" />} label="Total Commission" value={formatCurrency(property.total_commission || 0, currency)} />
                           <DetailBox icon={<User className="h-3.5 w-3.5" />} label="Sold By" value={property.sold_by_agent_id} />
                         </>
                     ) : (
                         <>
-                          <DetailBox icon={<Wallet className="h-3.5 w-3.5" />} label="Final Rent" value={formatPrice(property.final_rent_amount, property.final_rent_unit)} className="bg-blue-500/5 border-blue-500/20" />
+                          <DetailBox icon={<Wallet className="h-3.5 w-3.5" />} label="Final Rent" value={formatPrice(property.final_rent_amount, property.final_rent_unit)} className="bg-blue-500/5 border-blue-500/10" />
                           <DetailBox icon={<User className="h-3.5 w-3.5" />} label="Tenant" value={property.tenant_name} />
                           <DetailBox icon={<Phone className="h-3.5 w-3.5" />} label="Tenant Phone" value={property.tenant_phone} />
                         </>
@@ -194,36 +211,13 @@ export function PropertyDetailsDialog({
                   </div>
                 </div>
               )}
-
-              {/* Utilities & Notes Section */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-3">
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                    <UtilityPole className="h-3.5 w-3.5" /> Meters & Utilities
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    <Badge variant={property.meters?.electricity ? 'default' : 'outline'} className={cn(property.meters?.electricity ? "bg-amber-500 hover:bg-amber-600 text-white" : "opacity-50")}>Electricity</Badge>
-                    <Badge variant={property.meters?.gas ? 'default' : 'outline'} className={cn(property.meters?.gas ? "bg-blue-500 hover:bg-blue-600 text-white" : "opacity-50")}>Gas</Badge>
-                    <Badge variant={property.meters?.water ? 'default' : 'outline'} className={cn(property.meters?.water ? "bg-cyan-500 hover:bg-cyan-600 text-white" : "opacity-50")}>Water</Badge>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                    <FileText className="h-3.5 w-3.5" /> {property.is_for_rent ? 'Rental Policy' : 'Property Documents'}
-                  </h3>
-                  <div className="p-3 rounded-xl bg-muted/30 border text-sm italic">
-                    {property.is_for_rent ? (property.message || 'No policy notes.') : (property.documents || 'No document notes.')}
-                  </div>
-                </div>
-              </div>
               
-              {/* Message / General Notes Section */}
               {property.message && !property.is_for_rent && (
                 <div className="space-y-3">
-                   <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                   <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                     <MessageSquare className="h-3.5 w-3.5" /> General Notes
                   </h3>
-                  <div className="p-4 rounded-xl bg-muted/20 border border-dashed text-sm">
+                  <div className="p-4 rounded-xl bg-accent/10 border border-dashed border-border/60 text-sm">
                     {property.message}
                   </div>
                 </div>
@@ -232,7 +226,7 @@ export function PropertyDetailsDialog({
             </div>
           </ScrollArea>
 
-          <DialogFooter className="p-6 border-t bg-muted/10 sm:justify-between items-center">
+          <DialogFooter className="p-6 border-t bg-muted/5 sm:justify-between items-center">
             <div className="flex gap-2">
                 {hasVideoLinks && (
                     <Button variant="outline" className="rounded-full h-9 px-4" onClick={() => setIsVideoLinksOpen(true)}>
