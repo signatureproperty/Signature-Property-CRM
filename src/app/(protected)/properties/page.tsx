@@ -30,16 +30,22 @@ import {
   Building,
   Ruler,
   Wallet,
+  CalendarPlus,
+  Share2,
 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuPortal,
 } from '@/components/ui/dropdown-menu';
 import { AddPropertyDialog } from '@/components/add-property-dialog';
 import { Input } from '@/components/ui/input';
-import type { Property, PropertyType, SizeUnit, PriceUnit, ListingType, User, Activity, Tag } from '@/lib/types';
+import type { Property, PropertyType, SizeUnit, PriceUnit, ListingType, User, Activity, Tag, Appointment } from '@/lib/types';
 import { useState, useMemo, useEffect, Suspense } from 'react';
 import { PropertyDetailsDialog } from '@/components/property-details-dialog';
 import { MarkAsSoldDialog } from '@/components/mark-as-sold-dialog';
@@ -64,8 +70,8 @@ import { useIsMobile } from '@/hooks/use-is-mobile';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useSearch } from '../layout';
 import { useToast } from '@/hooks/use-toast';
-import { useCurrency } from '@/context/currency-context';
 import { formatCurrency, formatUnit, formatPhoneNumberForWhatsApp } from '@/lib/formatters';
+import { useCurrency } from '@/context/currency-context';
 import { useProfile } from '@/context/profile-context';
 import { useFirestore } from '@/firebase/provider';
 import { collection, addDoc, setDoc, doc, writeBatch, updateDoc, query, where, or } from 'firebase/firestore';
@@ -79,6 +85,8 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { ManageTagsDialog } from '@/components/manage-tags-dialog';
 import { EditPropertyTagsDialog } from '@/components/edit-property-tags-dialog';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { SetAppointmentDialog } from '@/components/set-appointment-dialog';
+import { SharePropertyDialog } from '@/components/share-property-dialog';
 
 const ITEMS_PER_PAGE = 50;
 
@@ -148,6 +156,8 @@ function PropertiesPageContent() {
   const [isAddPropertyOpen, setIsAddPropertyOpen] = useState(false);
   const [isManageTagsOpen, setIsManageTagsOpen] = useState(false);
   const [isEditTagsOpen, setIsEditTagsOpen] = useState(false);
+  const [isAppointmentOpen, setIsAppointmentOpen] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
 
   const [activeListingType, setActiveListingType] = useState<ListingType | 'All'>('All');
   const [activeStatus, setActiveStatus] = useState<string>('All');
@@ -297,6 +307,25 @@ function PropertiesPageContent() {
     setIsEditTagsOpen(true);
   };
 
+  const handleSetAppointment = (prop: Property) => {
+    setPropertyForDetails(prop);
+    setIsAppointmentOpen(true);
+  };
+
+  const handleShare = (prop: Property) => {
+    setPropertyForDetails(prop);
+    setIsShareOpen(true);
+  };
+
+  const handleMarkAsSoldOrRent = (prop: Property) => {
+    setPropertyForDetails(prop);
+    if (prop.is_for_rent) {
+      setIsRentOutOpen(true);
+    } else {
+      setIsSoldOpen(true);
+    }
+  };
+
   const handleEdit = (prop: Property) => { setPropertyToEdit(prop); setIsAddPropertyOpen(true); };
 
   const handleSaveProperty = async (propertyData: Omit<Property, 'id'> & { id?: string }) => {
@@ -314,6 +343,33 @@ function PropertiesPageContent() {
       }
     } catch (error) { toast({ title: "Save Failed", variant: 'destructive' }); }
     setPropertyToEdit(null);
+  };
+
+  const handleAssignAgent = async (propId: string, agentUid: string, agentName: string) => {
+    if (!profile.agency_id) return;
+    try {
+      const docRef = doc(firestore, 'agencies', profile.agency_id, 'properties', propId);
+      await updateDoc(docRef, { assignedTo: agentUid });
+      
+      const prop = allProperties?.find(p => p.id === propId);
+      if(prop && profile.agency_id) {
+          const activityLogRef = collection(firestore, 'agencies', profile.agency_id, 'activityLogs');
+          await addDoc(activityLogRef, {
+              userName: profile.name,
+              action: `assigned property to ${agentName}`,
+              target: prop.serial_no,
+              targetType: 'Property',
+              timestamp: new Date().toISOString(),
+              agency_id: profile.agency_id,
+              assignedToId: agentUid,
+              assignedToName: agentName
+          });
+      }
+
+      toast({ title: `Assigned to ${agentName}` });
+    } catch (error) {
+      toast({ title: "Assignment Failed", variant: 'destructive' });
+    }
   };
 
   const handleBulkAssign = async (agentDocId: string) => {
@@ -376,6 +432,18 @@ function PropertiesPageContent() {
     toast({ title: 'Property Moved to Trash' });
   };
 
+  const handleSaveAppointment = async (appointment: Appointment) => {
+    if (!profile.agency_id) return;
+    try {
+        const { id, ...newAppointmentData } = appointment;
+        const collectionRef = collection(firestore, 'agencies', profile.agency_id, 'appointments');
+        await addDoc(collectionRef, newAppointmentData);
+        toast({ title: 'Appointment Set', description: `Appointment with ${appointment.contactName} has been scheduled.` });
+    } catch (error) {
+        toast({ title: "Error", description: "Could not set appointment.", variant: 'destructive' });
+    }
+  };
+
   const renderTable = (properties: Property[]) => {
     if (isAgencyLoading) return <p className="p-4 text-center">Loading properties...</p>;
     if (properties.length === 0) return <div className="text-center py-10 text-muted-foreground">No properties found.</div>;
@@ -410,13 +478,32 @@ function PropertiesPageContent() {
               <TableCell onClick={() => handleRowClick(prop)}>{prop.size_value} {prop.size_unit}</TableCell>
               <TableCell onClick={() => handleRowClick(prop)}>{formatCurrency(formatUnit(prop.demand_amount, prop.demand_unit), currency)}</TableCell>
               <TableCell onClick={() => handleRowClick(prop)}><Badge className={cn("text-[10px] uppercase font-bold", statusOptions.find(o => o.value === prop.status)?.color || "bg-primary")}>{prop.status}</Badge></TableCell>
-              <TableCell className="text-right">
+              <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="rounded-full" onClick={(e) => e.stopPropagation()}><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                  <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="rounded-full"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="glass-card">
                     <DropdownMenuItem onSelect={() => handleRowClick(prop)}><Eye />View Details</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleShare(prop)}><Share2 />Share Details</DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => handleManageTags(prop)}><TagIcon />Edit Tags</DropdownMenuItem>
                     <DropdownMenuItem onSelect={(e) => handleWhatsAppChat(e, prop)}><MessageSquare /> WhatsApp</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleSetAppointment(prop)}><CalendarPlus /> Set Appointment</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleMarkAsSoldOrRent(prop)}><Check /> {prop.is_for_rent ? 'Mark as Rent Out' : 'Mark as Sold'}</DropdownMenuItem>
+                    
+                    {profile.role === 'Admin' && (
+                        <DropdownMenuSub>
+                            <DropdownMenuSubTrigger><UserPlus /> Assign Agent</DropdownMenuSubTrigger>
+                            <DropdownMenuPortal>
+                                <DropdownMenuSubContent>
+                                    {activeTeamMembers.map(member => (
+                                        <DropdownMenuItem key={member.id} onSelect={() => handleAssignAgent(prop.id, member.user_id || member.id, member.name)}>
+                                            {member.name}
+                                        </DropdownMenuItem>
+                                    ))}
+                                </DropdownMenuSubContent>
+                            </DropdownMenuPortal>
+                        </DropdownMenuSub>
+                    )}
+
                     {profile.role !== 'Agent' && <DropdownMenuItem onSelect={() => handleEdit(prop)}><Edit />Edit</DropdownMenuItem>}
                     {profile.role !== 'Agent' && <DropdownMenuItem onSelect={() => handleDelete(prop)} className="text-destructive"><Trash2 />Delete</DropdownMenuItem>}
                   </DropdownMenuContent>
@@ -434,7 +521,7 @@ function PropertiesPageContent() {
       <div className="space-y-4">
         {properties.map((prop, index) => (
           <motion.div key={prop.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: index * 0.05 }}>
-            <Card onClick={() => handleRowClick(prop)} className="cursor-pointer overflow-hidden border-l-4 border-l-primary/40">
+            <Card className="overflow-hidden border-l-4 border-l-primary/40">
               <CardHeader className="p-4 pb-2 flex flex-row items-start justify-between space-y-0">
                 <div className="flex gap-3">
                   <Checkbox 
@@ -442,7 +529,7 @@ function PropertiesPageContent() {
                     onCheckedChange={(checked) => setSelectedProperties(prev => checked ? [...prev, prop.id] : prev.filter(id => id !== prop.id))} 
                     onClick={e => e.stopPropagation()} 
                   />
-                  <div>
+                  <div onClick={() => handleRowClick(prop)} className="cursor-pointer">
                     <CardTitle className="text-base font-bold font-headline">{prop.auto_title}</CardTitle>
                     <div className="flex items-center gap-2 mt-1">
                        <Badge variant="outline" className="text-[10px] bg-background font-mono">{prop.serial_no}</Badge>
@@ -454,7 +541,7 @@ function PropertiesPageContent() {
                   {prop.status}
                 </Badge>
               </CardHeader>
-              <CardContent className="p-4 pt-0">
+              <CardContent className="p-4 pt-0 cursor-pointer" onClick={() => handleRowClick(prop)}>
                 <div className="grid grid-cols-2 gap-y-2 gap-x-4 mt-2">
                     <div className="flex items-center gap-1.5 text-xs">
                         <Building className="h-3.5 w-3.5 text-muted-foreground" />
@@ -482,12 +569,41 @@ function PropertiesPageContent() {
                  </div>
               </CardContent>
               <CardFooter className="p-2 bg-muted/20 border-t justify-end">
-                 <Button variant="ghost" size="sm" className="h-7 text-xs font-bold text-primary" onClick={() => handleRowClick(prop)}>
-                    Details <ChevronRight className="ml-1 h-3 w-3" />
-                 </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 rounded-full p-0">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="glass-card w-48">
+                    <DropdownMenuItem onSelect={() => handleRowClick(prop)}><Eye />View Details</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleShare(prop)}><Share2 />Share Details</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleManageTags(prop)}><TagIcon />Edit Tags</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={(e) => handleWhatsAppChat(e as any, prop)}><MessageSquare /> WhatsApp Chat</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleSetAppointment(prop)}><CalendarPlus /> Set Appointment</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleMarkAsSoldOrRent(prop)}><Check /> {prop.is_for_rent ? 'Mark as Rent Out' : 'Mark as Sold'}</DropdownMenuItem>
+                    
+                    {profile.role === 'Admin' && (
+                        <DropdownMenuSub>
+                            <DropdownMenuSubTrigger><UserPlus /> Assign Agent</DropdownMenuSubTrigger>
+                            <DropdownMenuPortal>
+                                <DropdownMenuSubContent>
+                                    {activeTeamMembers.map(member => (
+                                        <DropdownMenuItem key={member.id} onSelect={() => handleAssignAgent(prop.id, member.user_id || member.id, member.name)}>
+                                            {member.name}
+                                        </DropdownMenuItem>
+                                    ))}
+                                </DropdownMenuSubContent>
+                            </DropdownMenuPortal>
+                        </DropdownMenuSub>
+                    )}
+
+                    {profile.role !== 'Agent' && <DropdownMenuItem onSelect={() => handleEdit(prop)}><Edit />Edit Details</DropdownMenuItem>}
+                    {profile.role !== 'Agent' && <DropdownMenuItem onSelect={() => handleDelete(prop)} className="text-destructive"><Trash2 />Delete Property</DropdownMenuItem>}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </CardFooter>
             </Card>
-          </motion.div>
         ))}
       </div>
     );
@@ -682,6 +798,18 @@ function PropertiesPageContent() {
           <MarkAsSoldDialog property={propertyForDetails} isOpen={isSoldOpen} setIsOpen={setIsSoldOpen} onUpdateProperty={() => {}} />
           <MarkAsRentOutDialog property={propertyForDetails} isOpen={isRentOutOpen} setIsOpen={setIsRentOutOpen} onUpdateProperty={() => {}} />
           <RecordVideoDialog property={propertyForDetails} isOpen={isRecordVideoOpen} setIsOpen={setIsRecordVideoOpen} onUpdateProperty={() => {}} />
+          <SharePropertyDialog property={propertyForDetails} isOpen={isShareOpen} setIsOpen={setIsShareOpen} />
+          <SetAppointmentDialog 
+              isOpen={isAppointmentOpen}
+              setIsOpen={setIsAppointmentOpen}
+              onSave={handleSaveAppointment}
+              appointmentDetails={{
+                  contactType: 'Owner',
+                  contactName: `Owner of ${propertyForDetails.serial_no}`,
+                  contactSerialNo: propertyForDetails.serial_no,
+                  message: `Discussing ${propertyForDetails.listing_type} terms for ${propertyForDetails.serial_no}.`
+              }}
+          />
         </>
       )}
     </>

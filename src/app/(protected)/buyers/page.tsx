@@ -3,15 +3,24 @@
 
 import { AddBuyerDialog } from '@/components/add-buyer-dialog';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { 
+    DropdownMenu, 
+    DropdownMenuContent, 
+    DropdownMenuItem, 
+    DropdownMenuTrigger,
+    DropdownMenuSub,
+    DropdownMenuSubTrigger,
+    DropdownMenuSubContent,
+    DropdownMenuPortal,
+} from '@/components/ui/dropdown-menu';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { buyerStatuses } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
-import { Edit, MoreHorizontal, PlusCircle, Trash2, Phone, Home, Filter, Wallet, Ruler, Eye, MessageSquare, ChevronLeft, ChevronRight, ArrowUpDown, Tag as TagIcon, Search, MapPin, Building, ChevronDown, UserPlus } from 'lucide-react';
+import { Edit, MoreHorizontal, PlusCircle, Trash2, Phone, Home, Filter, Wallet, Ruler, Eye, MessageSquare, ChevronLeft, ChevronRight, ArrowUpDown, Tag as TagIcon, Search, MapPin, Building, ChevronDown, UserPlus, CalendarPlus, Sparkles } from 'lucide-react';
 import { useState, useMemo, useEffect, Suspense } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useIsMobile } from '@/hooks/use-is-mobile';
-import { Buyer, BuyerStatus, PriceUnit, SizeUnit, PropertyType, User, Activity, ListingType, Tag } from '@/lib/types';
+import { Buyer, BuyerStatus, PriceUnit, SizeUnit, PropertyType, User, Activity, ListingType, Tag, Appointment, Property } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -33,6 +42,9 @@ import { useUser } from '@/firebase/auth/use-user';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { ManageTagsDialog } from '@/components/manage-tags-dialog';
+import { EditBuyerTagsDialog } from '@/components/edit-buyer-tags-dialog';
+import { SetAppointmentDialog } from '@/components/set-appointment-dialog';
+import { PropertyRecommenderDialog } from '@/components/property-recommender-dialog';
 
 const ITEMS_PER_PAGE = 50;
 
@@ -99,6 +111,9 @@ function BuyersPageContent() {
     const teamMembersQuery = useMemoFirebase(() => profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'teamMembers') : null, [profile.agency_id, firestore]);
     const { data: teamMembers } = useCollection<User>(teamMembersQuery);
 
+    const propertiesQuery = useMemoFirebase(() => profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'properties') : null, [profile.agency_id, firestore]);
+    const { data: properties } = useCollection<Property>(propertiesQuery);
+
     const tagsQuery = useMemoFirebase(() => 
         profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'tags') : null,
         [profile.agency_id, firestore]
@@ -111,6 +126,10 @@ function BuyersPageContent() {
 
     const [isAddBuyerOpen, setIsAddBuyerOpen] = useState(false);
     const [isManageTagsOpen, setIsManageTagsOpen] = useState(false);
+    const [isEditTagsOpen, setIsEditTagsOpen] = useState(false);
+    const [isAppointmentOpen, setIsAppointmentOpen] = useState(false);
+    const [isRecommenderOpen, setIsRecommenderOpen] = useState(false);
+
     const [buyerToEdit, setBuyerToEdit] = useState<Buyer | null>(null);
     const [selectedBuyers, setSelectedBuyers] = useState<string[]>([]);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -181,6 +200,21 @@ function BuyersPageContent() {
         setIsDetailsOpen(true);
     };
 
+    const handleManageTags = (buyer: Buyer) => {
+        setSelectedBuyerForDetails(buyer);
+        setIsEditTagsOpen(true);
+    };
+
+    const handleSetAppointment = (buyer: Buyer) => {
+        setSelectedBuyerForDetails(buyer);
+        setIsAppointmentOpen(true);
+    };
+
+    const handleRecommendProperties = (buyer: Buyer) => {
+        setSelectedBuyerForDetails(buyer);
+        setIsRecommenderOpen(true);
+    };
+
     const handleSaveBuyer = async (buyerData: Omit<Buyer, 'id'> & { id?: string }) => {
         if (!profile.agency_id) return;
         if (buyerToEdit && buyerData.id) {
@@ -193,6 +227,34 @@ function BuyersPageContent() {
             await addDoc(collectionRef, { ...restOfData, agency_id: profile.agency_id, created_by: user?.uid });
             await logActivity('added a new buyer', buyerData.name, 'Buyer');
             toast({ title: 'Buyer Added' });
+        }
+    };
+
+    const handleAssignAgent = async (buyerId: string, agentUid: string, agentName: string) => {
+        if (!profile.agency_id) return;
+        try {
+            const docRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', buyerId);
+            await updateDoc(docRef, { assignedTo: agentUid });
+            
+            const buyer = allBuyers?.find(b => b.id === buyerId);
+            if(buyer) {
+                await logActivity(`assigned buyer to ${agentName}`, buyer.name, 'Buyer', { assignedToId: agentUid, assignedToName: agentName });
+            }
+            toast({ title: `Assigned to ${agentName}` });
+        } catch (error) {
+            toast({ title: "Assignment Failed", variant: 'destructive' });
+        }
+    };
+
+    const handleSaveAppointment = async (appointment: Appointment) => {
+        if (!profile.agency_id) return;
+        try {
+            const { id, ...newAppointmentData } = appointment;
+            const collectionRef = collection(firestore, 'agencies', profile.agency_id, 'appointments');
+            await addDoc(collectionRef, newAppointmentData);
+            toast({ title: 'Appointment Set', description: `Appointment with ${appointment.contactName} has been scheduled.` });
+        } catch (error) {
+            toast({ title: "Error", description: "Could not set appointment.", variant: 'destructive' });
         }
     };
 
@@ -254,6 +316,12 @@ function BuyersPageContent() {
         setActiveCustomTags(prev => 
             prev.includes(tagName) ? prev.filter(t => t !== tagName) : [...prev, tagName]
         );
+    };
+
+    const handleWhatsAppChat = (e: React.MouseEvent | any, buyer: Buyer) => {
+        if (e && e.stopPropagation) e.stopPropagation();
+        const phoneNumber = formatPhoneNumberForWhatsApp(buyer.phone, buyer.country_code);
+        window.open(`https://wa.me/${phoneNumber}`, '_blank');
     };
 
     const formatBuyerBudgetInline = (buyer: Buyer) => {
@@ -372,10 +440,30 @@ function BuyersPageContent() {
                                 <TableCell className="text-right" onClick={e => e.stopPropagation()}>
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild><Button size="icon" variant="ghost"><MoreHorizontal /></Button></DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuItem onSelect={() => handleDetailsClick(buyer)}><Eye /> View</DropdownMenuItem>
-                                            <DropdownMenuItem onSelect={() => handleEdit(buyer)}><Edit /> Edit</DropdownMenuItem>
-                                            <DropdownMenuItem onSelect={() => handleDelete(buyer)} className="text-destructive"><Trash2 /> Delete</DropdownMenuItem>
+                                        <DropdownMenuContent align="end" className="glass-card w-48">
+                                            <DropdownMenuItem onSelect={() => handleDetailsClick(buyer)}><Eye /> View Details</DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={() => handleRecommendProperties(buyer)}><Sparkles /> Recommended Properties</DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={() => handleManageTags(buyer)}><TagIcon /> Edit Tags</DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={(e) => handleWhatsAppChat(e, buyer)}><MessageSquare /> WhatsApp Chat</DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={() => handleSetAppointment(buyer)}><CalendarPlus /> Set Appointment</DropdownMenuItem>
+                                            
+                                            {profile.role === 'Admin' && (
+                                                <DropdownMenuSub>
+                                                    <DropdownMenuSubTrigger><UserPlus /> Assign Agent</DropdownMenuSubTrigger>
+                                                    <DropdownMenuPortal>
+                                                        <DropdownMenuSubContent>
+                                                            {activeAgents.map(member => (
+                                                                <DropdownMenuItem key={member.id} onSelect={() => handleAssignAgent(buyer.id, member.user_id || member.id, member.name)}>
+                                                                    {member.name}
+                                                                </DropdownMenuItem>
+                                                            ))}
+                                                        </DropdownMenuSubContent>
+                                                    </DropdownMenuPortal>
+                                                </DropdownMenuSub>
+                                            )}
+
+                                            <DropdownMenuItem onSelect={() => handleEdit(buyer)}><Edit /> Edit Details</DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={() => handleDelete(buyer)} className="text-destructive"><Trash2 /> Delete Buyer</DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                 </TableCell>
@@ -390,7 +478,7 @@ function BuyersPageContent() {
     const renderCards = (buyers: Buyer[]) => (
         <div className="space-y-4">
             {buyers.map(buyer => (
-                <Card key={buyer.id} onClick={() => handleDetailsClick(buyer)} className="cursor-pointer overflow-hidden border-l-4 border-l-primary/40">
+                <Card key={buyer.id} className="overflow-hidden border-l-4 border-l-primary/40">
                     <CardHeader className="p-4 pb-2 flex flex-row items-start justify-between space-y-0">
                         <div className="flex gap-3">
                             <Checkbox 
@@ -398,7 +486,7 @@ function BuyersPageContent() {
                                 onClick={e => e.stopPropagation()} 
                                 onCheckedChange={(c) => setSelectedBuyers(p => c ? [...p, buyer.id] : p.filter(id => id !== buyer.id))} 
                             />
-                            <div>
+                            <div onClick={() => handleDetailsClick(buyer)} className="cursor-pointer">
                                 <CardTitle className="text-base font-bold font-headline">{buyer.name}</CardTitle>
                                 <div className="flex items-center gap-2 mt-1">
                                     <Badge variant="outline" className="text-[10px] bg-background font-mono">{buyer.serial_no}</Badge>
@@ -410,7 +498,7 @@ function BuyersPageContent() {
                             {buyer.status}
                         </Badge>
                     </CardHeader>
-                    <CardContent className="p-4 pt-0">
+                    <CardContent className="p-4 pt-0 cursor-pointer" onClick={() => handleDetailsClick(buyer)}>
                         <div className="grid grid-cols-2 gap-y-2 gap-x-4 mt-2">
                             <div className="flex items-center gap-1.5 text-xs">
                                 <TagIcon className="h-3.5 w-3.5 text-muted-foreground" />
@@ -431,9 +519,38 @@ function BuyersPageContent() {
                         </div>
                     </CardContent>
                     <CardFooter className="p-2 bg-muted/20 border-t justify-end">
-                        <Button variant="ghost" size="sm" className="h-7 text-xs font-bold text-primary">
-                            Details <ChevronRight className="ml-1 h-3 w-3" />
-                        </Button>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 rounded-full p-0">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="glass-card w-48">
+                                <DropdownMenuItem onSelect={() => handleDetailsClick(buyer)}><Eye /> View Details</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => handleRecommendProperties(buyer)}><Sparkles /> Recommended Properties</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => handleManageTags(buyer)}><TagIcon /> Edit Tags</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={(e) => handleWhatsAppChat(e as any, buyer)}><MessageSquare /> WhatsApp Chat</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => handleSetAppointment(buyer)}><CalendarPlus /> Set Appointment</DropdownMenuItem>
+                                
+                                {profile.role === 'Admin' && (
+                                    <DropdownMenuSub>
+                                        <DropdownMenuSubTrigger><UserPlus /> Assign Agent</DropdownMenuSubTrigger>
+                                        <DropdownMenuPortal>
+                                            <DropdownMenuSubContent>
+                                                {activeAgents.map(member => (
+                                                    <DropdownMenuItem key={member.id} onSelect={() => handleAssignAgent(buyer.id, member.user_id || member.id, member.name)}>
+                                                        {member.name}
+                                                    </DropdownMenuItem>
+                                                ))}
+                                            </DropdownMenuSubContent>
+                                        </DropdownMenuPortal>
+                                    </DropdownMenuSub>
+                                )}
+
+                                <DropdownMenuItem onSelect={() => handleEdit(buyer)}><Edit /> Edit Details</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => handleDelete(buyer)} className="text-destructive"><Trash2 /> Delete Buyer</DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </CardFooter>
                 </Card>
             ))}
@@ -585,8 +702,31 @@ function BuyersPageContent() {
             )}
 
             <AddBuyerDialog isOpen={isAddBuyerOpen} setIsOpen={setIsAddBuyerOpen} totalSaleBuyers={allBuyers?.filter(b => !b.is_deleted && (b.listing_type || 'For Sale') === 'For Sale').length || 0} totalRentBuyers={allBuyers?.filter(b => !b.is_deleted && b.listing_type === 'For Rent').length || 0} buyerToEdit={buyerToEdit} onSave={handleSaveBuyer} limitReached={false} />
-            {selectedBuyerForDetails && <BuyerDetailsDialog buyer={selectedBuyerForDetails} isOpen={isDetailsOpen} setIsOpen={setIsDetailsOpen} />}
             <ManageTagsDialog isOpen={isManageTagsOpen} setIsOpen={setIsManageTagsOpen} />
+            
+            {selectedBuyerForDetails && (
+                <>
+                    <BuyerDetailsDialog buyer={selectedBuyerForDetails} isOpen={isDetailsOpen} setIsOpen={setIsDetailsOpen} />
+                    <EditBuyerTagsDialog buyer={selectedBuyerForDetails} isOpen={isEditTagsOpen} setIsOpen={setIsEditTagsOpen} />
+                    <SetAppointmentDialog 
+                        isOpen={isAppointmentOpen}
+                        setIsOpen={setIsAppointmentOpen}
+                        onSave={handleSaveAppointment}
+                        appointmentDetails={{
+                            contactType: 'Buyer',
+                            contactName: selectedBuyerForDetails.name,
+                            contactSerialNo: selectedBuyerForDetails.serial_no,
+                            message: `Appointment with buyer ${selectedBuyerForDetails.name} for property viewing.`
+                        }}
+                    />
+                    <PropertyRecommenderDialog 
+                        buyer={selectedBuyerForDetails}
+                        properties={properties || []}
+                        isOpen={isRecommenderOpen}
+                        setIsOpen={setIsRecommenderOpen}
+                    />
+                </>
+            )}
         </div>
     );
 }
