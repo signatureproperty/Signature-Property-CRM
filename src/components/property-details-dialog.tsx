@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -48,7 +47,7 @@ interface PropertyDetailsDialogProps {
 }
 
 const DetailBox = ({ icon, label, value, className }: { icon: React.ReactNode, label: string, value: React.ReactNode, className?: string }) => (
-    <div className={cn("flex flex-col gap-1 p-3 rounded-xl bg-muted/10 border border-border/20", className)}>
+    <div className={cn("flex flex-col gap-1 p-3 rounded-xl bg-muted/5 border border-border/20", className)}>
         <div className="flex items-center gap-2 text-muted-foreground">
             <span className="text-primary/60">{icon}</span>
             <span className="text-[10px] font-bold uppercase tracking-wider">{label}</span>
@@ -94,8 +93,8 @@ export function PropertyDetailsDialog({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="sm:max-w-3xl p-0 overflow-hidden rounded-2xl">
-          <div className="p-6 pb-0">
+        <DialogContent className="sm:max-w-3xl p-0 overflow-hidden rounded-2xl max-h-[95vh] flex flex-col">
+          <div className="p-6 pb-2 shrink-0">
             <DialogHeader>
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
@@ -140,9 +139,9 @@ export function PropertyDetailsDialog({
             </DialogHeader>
           </div>
 
-          <Separator className="my-4 opacity-50" />
+          <Separator className="my-2 opacity-50 shrink-0" />
 
-          <ScrollArea className="max-h-[60vh] px-6">
+          <ScrollArea className="flex-1 overflow-y-auto px-6">
             <div className="space-y-8 pb-8">
               
               <div className="space-y-3">
@@ -227,18 +226,21 @@ export function PropertyDetailsDialog({
             </div>
           </ScrollArea>
 
-          <DialogFooter className="p-6 border-t bg-muted/5 sm:justify-between items-center">
+          <DialogFooter className="p-6 border-t bg-muted/5 shrink-0 sm:justify-between items-center flex-row gap-2">
             <div className="flex gap-2">
                 {hasVideoLinks && (
-                    <Button variant="outline" className="rounded-full h-9 px-4" onClick={() => setIsVideoLinksOpen(true)}>
+                    <Button variant="outline" className="rounded-full h-9 px-4 text-xs sm:text-sm" onClick={() => setIsVideoLinksOpen(true)}>
                         <Video className="mr-2 h-4 w-4" />
                         Watch Video
                     </Button>
                 )}
             </div>
-            <div className="flex gap-2 w-full sm:w-auto">
-                <Button className="flex-1 sm:flex-none rounded-full h-9 px-6 glowing-btn" onClick={() => setIsShareOpen(true)}>
+            <div className="flex gap-2 flex-1 sm:flex-none justify-end">
+                <Button className="flex-1 sm:flex-none rounded-full h-9 px-6 glowing-btn text-xs sm:text-sm" onClick={() => setIsShareOpen(true)}>
                     <Share2 className="mr-2 h-4 w-4" /> Share Detail
+                </Button>
+                <Button variant="secondary" className="rounded-full h-9 px-6 sm:hidden text-xs" onClick={() => setIsOpen(false)}>
+                    Close
                 </Button>
             </div>
           </DialogFooter>

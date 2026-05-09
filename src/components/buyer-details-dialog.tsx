@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -57,7 +56,7 @@ interface BuyerDetailsDialogProps {
 }
 
 const DetailBox = ({ icon, label, value, className }: { icon: React.ReactNode, label: string, value: React.ReactNode, className?: string }) => (
-    <div className={cn("flex flex-col gap-1 p-3 rounded-xl bg-muted/10 border border-border/20", className)}>
+    <div className={cn("flex flex-col gap-1 p-3 rounded-xl bg-muted/5 border border-border/20", className)}>
         <div className="flex items-center gap-2 text-muted-foreground">
             <span className="text-primary/60">{icon}</span>
             <span className="text-[10px] font-bold uppercase tracking-wider">{label}</span>
@@ -121,8 +120,8 @@ export function BuyerDetailsDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-3xl p-0 overflow-hidden rounded-2xl">
-        <div className="p-6 pb-0">
+      <DialogContent className="sm:max-w-3xl p-0 overflow-hidden rounded-2xl max-h-[95vh] flex flex-col">
+        <div className="p-6 pb-2 shrink-0">
           <DialogHeader>
             <div className="space-y-4">
                 <div className="flex items-center gap-3">
@@ -159,9 +158,9 @@ export function BuyerDetailsDialog({
           </DialogHeader>
         </div>
 
-        <Separator className="my-4 opacity-50" />
+        <Separator className="my-2 opacity-50 shrink-0" />
 
-        <ScrollArea className="max-h-[60vh] px-6">
+        <ScrollArea className="flex-1 overflow-y-auto px-6">
           <div className="space-y-8 pb-8">
             
             <div className="space-y-3">
@@ -247,8 +246,8 @@ export function BuyerDetailsDialog({
           </div>
         </ScrollArea>
 
-        <DialogFooter className="p-6 border-t bg-muted/5">
-           <Button variant="secondary" className="rounded-full h-9 px-6" onClick={() => setIsOpen(false)}>
+        <DialogFooter className="p-6 border-t bg-muted/5 shrink-0">
+           <Button variant="secondary" className="rounded-full h-9 px-6 w-full sm:w-auto" onClick={() => setIsOpen(false)}>
             Close
           </Button>
         </DialogFooter>
