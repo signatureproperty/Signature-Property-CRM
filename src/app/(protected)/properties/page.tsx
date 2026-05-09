@@ -107,10 +107,10 @@ interface Filters {
 }
 
 const statusOptions = [
-  { value: 'All', label: 'All', color: 'bg-gray-100 text-gray-700', listing: 'All' },
-  { value: 'Available', label: 'Available', color: 'bg-emerald-100 text-emerald-700', listing: 'All' },
-  { value: 'Sold', label: 'Sold', color: 'bg-green-100 text-green-700', listing: 'For Sale' },
-  { value: 'Rent Out', label: 'Rent Out', color: 'bg-blue-100 text-blue-700', listing: 'For Rent' },
+  { value: 'All', label: 'All', color: 'bg-gray-100 text-gray-700 dark:bg-neutral-800 dark:text-neutral-300', listing: 'All' },
+  { value: 'Available', label: 'Available', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', listing: 'All' },
+  { value: 'Sold', label: 'Sold', color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400', listing: 'For Sale' },
+  { value: 'Rent Out', label: 'Rent Out', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400', listing: 'For Rent' },
 ];
 
 const propertyTypesForFilter: (PropertyType | 'All' | 'Other')[] = [
@@ -556,7 +556,7 @@ function PropertiesPageContent() {
                         <Wallet className="h-3.5 w-3.5 text-muted-foreground" />
                         <span className="font-bold text-primary">{formatCurrency(formatUnit(prop.demand_amount, prop.demand_unit), currency)}</span>
                         {prop.potential_rent_amount ? (
-                            <Badge variant="secondary" className="text-[9px] h-4 bg-emerald-50 text-emerald-700 border-emerald-100 ml-2">
+                            <Badge variant="secondary" className="text-[9px] h-4 bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800 ml-2">
                                 Rent: {formatCurrency(formatUnit(prop.potential_rent_amount, prop.potential_rent_unit || 'Thousand'), currency)}
                             </Badge>
                         ) : null}
@@ -743,8 +743,8 @@ function PropertiesPageContent() {
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2 pr-4 border-r border-border/50">
                     <Badge variant={activeListingType === 'All' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full", activeListingType === 'All' ? "bg-primary" : "hover:bg-accent")} onClick={() => setActiveListingType('All')}>All Types</Badge>
-                    <Badge variant={activeListingType === 'For Sale' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-blue-50 text-blue-700 border-blue-100", activeListingType === 'For Sale' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Sale')}>For Sale</Badge>
-                    <Badge variant={activeListingType === 'For Rent' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border-emerald-100", activeListingType === 'For Rent' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Rent')}>For Rent</Badge>
+                    <Badge variant={activeListingType === 'For Sale' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800", activeListingType === 'For Sale' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Sale')}>For Sale</Badge>
+                    <Badge variant={activeListingType === 'For Rent' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800", activeListingType === 'For Rent' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Rent')}>For Rent</Badge>
                 </div>
 
                 <div className="flex items-center gap-2 pr-4 border-r border-border/50">

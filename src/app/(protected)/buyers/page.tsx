@@ -49,14 +49,14 @@ import { PropertyRecommenderDialog } from '@/components/property-recommender-dia
 const ITEMS_PER_PAGE = 50;
 
 const statusVariant = {
-    'New': 'bg-blue-100 text-blue-700 border-blue-200',
-    'Interested': 'bg-emerald-100 text-emerald-700 border-emerald-200',
-    'Not Interested': 'bg-red-100 text-red-700 border-red-200',
-    'Follow Up': 'bg-purple-100 text-purple-700 border-purple-200',
-    'Visited Property': 'bg-orange-100 text-orange-700 border-orange-200',
-    'Deal Closed': 'bg-slate-800 text-white border-slate-700',
-    'Deal Lost': 'bg-gray-400 text-white border-gray-300',
-    'Pending': 'bg-amber-100 text-amber-700 border-amber-200'
+    'New': 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800',
+    'Interested': 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800',
+    'Not Interested': 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800',
+    'Follow Up': 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800',
+    'Visited Property': 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800',
+    'Deal Closed': 'bg-slate-800 text-white border-slate-700 dark:bg-slate-700 dark:border-slate-600',
+    'Deal Lost': 'bg-gray-400 text-white border-gray-300 dark:bg-gray-600 dark:border-gray-500',
+    'Pending': 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800'
 } as const;
 
 const propertyTypesForFilter: (PropertyType | 'All')[] = [
@@ -654,8 +654,8 @@ function BuyersPageContent() {
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2 pr-4 border-r border-border/50">
                             <Badge variant={activeListingType === 'All' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full", activeListingType === 'All' ? "bg-primary" : "hover:bg-accent")} onClick={() => setActiveListingType('All')}>All Types</Badge>
-                            <Badge variant={activeListingType === 'For Sale' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-blue-50 text-blue-700 border-blue-100", activeListingType === 'For Sale' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Sale')}>For Sale</Badge>
-                            <Badge variant={activeListingType === 'For Rent' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border-emerald-100", activeListingType === 'For Rent' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Rent')}>For Rent</Badge>
+                            <Badge variant={activeListingType === 'For Sale' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800", activeListingType === 'For Sale' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Sale')}>For Sale</Badge>
+                            <Badge variant={activeListingType === 'For Rent' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800", activeListingType === 'For Rent' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Rent')}>For Rent</Badge>
                         </div>
                         <div className="flex items-center gap-2 pr-4 border-r border-border/50">
                             <Badge 
@@ -714,7 +714,7 @@ function BuyersPageContent() {
                         onSave={handleSaveAppointment}
                         appointmentDetails={{
                             contactType: 'Buyer',
-                            contactName: selectedBuyerForDetails.name,
+                            contactName: buyerToEdit?.name || selectedBuyerForDetails.name,
                             contactSerialNo: selectedBuyerForDetails.serial_no,
                             message: `Appointment with buyer ${selectedBuyerForDetails.name} for property viewing.`
                         }}
