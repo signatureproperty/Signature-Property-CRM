@@ -7,22 +7,22 @@
   :root {
     --background: 220 40% 97%;
     --foreground: 224 39% 10%;
-    --card: 220 30% 100% / 0.8;
+    --card: 0 0% 100%;
     --card-foreground: 224 39% 10%;
-    --popover: 220 30% 100% / 0.8;
+    --popover: 0 0% 100%;
     --popover-foreground: 224 39% 10%;
-    --primary: 217 91% 60%; /* Brighter Blue for gradient feel */
+    --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
     --secondary: 220 20% 92%;
     --secondary-foreground: 224 39% 16%;
     --muted: 220 20% 94%;
     --muted-foreground: 220 10% 45%;
-    --accent: 220 20% 92%; /* Subtle Grey */
+    --accent: 220 20% 92%;
     --accent-foreground: 221 44% 15%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 220 20% 88% / 0.5;
-    --input: 220 20% 92% / 0.7;
+    --border: 220 20% 90%;
+    --input: 220 20% 92%;
     --ring: 217 91% 70%;
     --radius: 1rem;
 
@@ -38,7 +38,7 @@
     --foreground: 210 40% 98%;
     --card: 0 0% 15%;
     --card-foreground: 210 40% 98%;
-    --popover: 0 0% 15% / 0.8;
+    --popover: 0 0% 15%;
     --popover-foreground: 210 40% 98%;
     --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
@@ -46,12 +46,12 @@
     --secondary-foreground: 210 40% 98%;
     --muted: 220 15% 25%;
     --muted-foreground: 210 20% 65%;
-    --accent: 220 15% 25%; /* Subtle Grey - Dark */
+    --accent: 220 15% 25%;
     --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 220 15% 30% / 0.5;
-    --input: 220 15% 25% / 0.7;
+    --border: 220 15% 25%;
+    --input: 220 15% 25%;
     --ring: 217 91% 70%;
     
     --chart-1: 220 15% 25%;
@@ -94,7 +94,7 @@
 
 @layer components {
   .glass-card {
-    @apply bg-card backdrop-blur-md border rounded-2xl shadow-lg transition-all duration-300;
+    @apply bg-card/80 backdrop-blur-md border rounded-2xl shadow-lg transition-all duration-300;
   }
 
   .glass-modal {

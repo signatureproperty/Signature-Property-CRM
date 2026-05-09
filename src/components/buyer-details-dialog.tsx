@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -56,7 +57,7 @@ interface BuyerDetailsDialogProps {
 }
 
 const DetailBox = ({ icon, label, value, className }: { icon: React.ReactNode, label: string, value: React.ReactNode, className?: string }) => (
-    <div className={cn("flex flex-col gap-1 p-3 rounded-xl bg-muted/5 border border-border/20", className)}>
+    <div className={cn("flex flex-col gap-1 p-3 rounded-xl bg-muted/10 border border-border", className)}>
         <div className="flex items-center gap-2 text-muted-foreground">
             <span className="text-primary/60">{icon}</span>
             <span className="text-[10px] font-bold uppercase tracking-wider">{label}</span>
@@ -189,7 +190,7 @@ export function BuyerDetailsDialog({
                 <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                   <FileText className="h-3.5 w-3.5" /> Additional Notes
                 </h3>
-                <div className="p-4 rounded-xl bg-muted/5 border border-border/20 text-sm">
+                <div className="p-4 rounded-xl bg-muted/5 border border-border text-sm">
                   {buyer.notes || 'No extra requirements specified.'}
                 </div>
             </div>
@@ -218,7 +219,7 @@ export function BuyerDetailsDialog({
                       </AlertDialogContent>
                     </AlertDialog>
                 </div>
-                <div className="border border-border/40 rounded-xl overflow-hidden bg-muted/5">
+                <div className="border border-border rounded-xl overflow-hidden bg-muted/5">
                   <Table>
                     <TableHeader className="bg-muted/10">
                       <TableRow className="hover:bg-transparent">
@@ -228,7 +229,7 @@ export function BuyerDetailsDialog({
                     </TableHeader>
                     <TableBody>
                       {buyer.sharedProperties.sort((a,b) => new Date(b.sharedAt).getTime() - new Date(a.sharedAt).getTime()).map((prop, index) => (
-                        <TableRow key={index} className="border-border/40">
+                        <TableRow key={index} className="border-border">
                           <TableCell className="py-2">
                             <div className="text-sm font-medium">{prop.propertyTitle}</div>
                             <div className="text-[10px] font-mono text-muted-foreground">{prop.propertySerialNo}</div>
