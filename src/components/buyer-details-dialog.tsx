@@ -26,7 +26,8 @@ import {
   Trash2,
   Briefcase,
   MapPin,
-  Clock
+  Clock,
+  User
 } from 'lucide-react';
 import { useCurrency } from '@/context/currency-context';
 import { formatCurrency, formatUnit } from '@/lib/formatters';
