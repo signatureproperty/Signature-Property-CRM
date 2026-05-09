@@ -256,6 +256,16 @@ function BuyersPageContent() {
         );
     };
 
+    const formatBuyerBudgetInline = (buyer: Buyer) => {
+        if (!buyer.budget_min_amount || !buyer.budget_min_unit) return 'N/A';
+        const minVal = formatUnit(buyer.budget_min_amount, buyer.budget_min_unit);
+        if (!buyer.budget_max_amount || !buyer.budget_max_unit || (buyer.budget_min_amount === buyer.budget_max_amount && buyer.budget_min_unit === buyer.budget_max_unit)) {
+            return formatCurrency(minVal, currency);
+        }
+        const maxVal = formatUnit(buyer.budget_max_amount, buyer.budget_max_unit);
+        return `${formatCurrency(minVal, currency)} - ${formatCurrency(maxVal, currency)}`;
+    }
+
     const filteredBuyers = useMemo(() => {
         if (!allBuyers) return [];
         let buyers = allBuyers.filter(b => !b.is_deleted);
@@ -380,20 +390,50 @@ function BuyersPageContent() {
     const renderCards = (buyers: Buyer[]) => (
         <div className="space-y-4">
             {buyers.map(buyer => (
-                <Card key={buyer.id} onClick={() => handleDetailsClick(buyer)} className="cursor-pointer hover:shadow-md transition-shadow">
-                    <CardHeader className="p-4 flex flex-row justify-between items-start">
-                        <div className="flex gap-2">
-                            <Checkbox checked={selectedBuyers.includes(buyer.id)} onClick={e => e.stopPropagation()} onCheckedChange={(c) => setSelectedBuyers(p => c ? [...p, buyer.id] : p.filter(id => id !== buyer.id))} />
+                <Card key={buyer.id} onClick={() => handleDetailsClick(buyer)} className="cursor-pointer overflow-hidden border-l-4 border-l-primary/40">
+                    <CardHeader className="p-4 pb-2 flex flex-row items-start justify-between space-y-0">
+                        <div className="flex gap-3">
+                            <Checkbox 
+                                checked={selectedBuyers.includes(buyer.id)} 
+                                onClick={e => e.stopPropagation()} 
+                                onCheckedChange={(c) => setSelectedBuyers(p => c ? [...p, buyer.id] : p.filter(id => id !== buyer.id))} 
+                            />
                             <div>
                                 <CardTitle className="text-base font-bold font-headline">{buyer.name}</CardTitle>
-                                <div className="text-[10px] text-muted-foreground mt-1">{buyer.serial_no} • {buyer.phone}</div>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <Badge variant="outline" className="text-[10px] bg-background font-mono">{buyer.serial_no}</Badge>
+                                    <span className="text-[10px] text-muted-foreground">{buyer.phone}</span>
+                                </div>
                             </div>
                         </div>
-                        <Badge className={cn("text-[10px]", statusVariant[buyer.status as keyof typeof statusVariant])}>{buyer.status}</Badge>
+                        <Badge className={cn("text-[9px] uppercase font-bold px-2", statusVariant[buyer.status as keyof typeof statusVariant])}>
+                            {buyer.status}
+                        </Badge>
                     </CardHeader>
-                    <CardFooter className="p-4 pt-0 justify-between">
-                        <div className="text-sm font-medium">{buyer.area_preference}</div>
-                        <Button variant="ghost" size="sm">Details <ChevronRight className="ml-1 h-3 w-3" /></Button>
+                    <CardContent className="p-4 pt-0">
+                        <div className="grid grid-cols-2 gap-y-2 gap-x-4 mt-2">
+                            <div className="flex items-center gap-1.5 text-xs">
+                                <TagIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                                <span className="font-medium">{buyer.property_type_preference}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-xs">
+                                <Ruler className="h-3.5 w-3.5 text-muted-foreground" />
+                                <span className="font-medium">{formatSize(buyer.size_min_value, buyer.size_min_unit, buyer.size_max_value, buyer.size_max_unit)}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-xs col-span-2 mt-1">
+                                <Wallet className="h-3.5 w-3.5 text-muted-foreground" />
+                                <span className="font-bold text-primary">Budget: {formatBuyerBudgetInline(buyer)}</span>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs mt-3 text-muted-foreground italic">
+                            <MapPin className="h-3 w-3" />
+                            <span className="truncate">{buyer.area_preference || 'No area specified'}</span>
+                        </div>
+                    </CardContent>
+                    <CardFooter className="p-2 bg-muted/20 border-t justify-end">
+                        <Button variant="ghost" size="sm" className="h-7 text-xs font-bold text-primary">
+                            Details <ChevronRight className="ml-1 h-3 w-3" />
+                        </Button>
                     </CardFooter>
                 </Card>
             ))}
@@ -403,7 +443,7 @@ function BuyersPageContent() {
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
+                <div className="hidden md:block">
                     <h1 className="text-3xl font-bold font-headline tracking-tight">Buyers</h1>
                     <p className="text-muted-foreground">Manage and track your agency leads.</p>
                 </div>

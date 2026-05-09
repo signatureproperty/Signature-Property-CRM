@@ -27,6 +27,9 @@ import {
   ArrowUpDown,
   UserPlus,
   ChevronDown,
+  Building,
+  Ruler,
+  Wallet,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -42,7 +45,7 @@ import { PropertyDetailsDialog } from '@/components/property-details-dialog';
 import { MarkAsSoldDialog } from '@/components/mark-as-sold-dialog';
 import { MarkAsRentOutDialog } from '@/components/mark-as-rent-out-dialog';
 import { RecordVideoDialog } from '@/components/record-video-dialog';
-import { Card, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardFooter, CardContent } from '@/components/ui/card';
 import {
   Popover,
   PopoverContent,
@@ -431,19 +434,57 @@ function PropertiesPageContent() {
       <div className="space-y-4">
         {properties.map((prop, index) => (
           <motion.div key={prop.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: index * 0.05 }}>
-            <Card onClick={() => handleRowClick(prop)} className="cursor-pointer">
-              <CardHeader className="p-4 flex flex-row items-start justify-between">
-                <div className="flex gap-2"><Checkbox checked={selectedProperties.includes(prop.id)} onCheckedChange={(checked) => setSelectedProperties(prev => checked ? [...prev, prop.id] : prev.filter(id => id !== prop.id))} onClick={e => e.stopPropagation()} /><div><CardTitle className="text-base">{prop.auto_title}</CardTitle><div className="text-xs text-muted-foreground mt-1">{prop.serial_no} • {prop.area}</div></div></div>
-                <Badge className={cn("text-[10px]", statusOptions.find(o => o.value === prop.status)?.color || "bg-primary")}>{prop.status}</Badge>
+            <Card onClick={() => handleRowClick(prop)} className="cursor-pointer overflow-hidden border-l-4 border-l-primary/40">
+              <CardHeader className="p-4 pb-2 flex flex-row items-start justify-between space-y-0">
+                <div className="flex gap-3">
+                  <Checkbox 
+                    checked={selectedProperties.includes(prop.id)} 
+                    onCheckedChange={(checked) => setSelectedProperties(prev => checked ? [...prev, prop.id] : prev.filter(id => id !== prop.id))} 
+                    onClick={e => e.stopPropagation()} 
+                  />
+                  <div>
+                    <CardTitle className="text-base font-bold font-headline">{prop.auto_title}</CardTitle>
+                    <div className="flex items-center gap-2 mt-1">
+                       <Badge variant="outline" className="text-[10px] bg-background font-mono">{prop.serial_no}</Badge>
+                       <span className="text-[10px] text-muted-foreground">{prop.area}</span>
+                    </div>
+                  </div>
+                </div>
+                <Badge className={cn("text-[9px] uppercase font-bold px-2", statusOptions.find(o => o.value === prop.status)?.color || "bg-primary")}>
+                  {prop.status}
+                </Badge>
               </CardHeader>
-              <CardFooter className="p-4 pt-0 flex justify-between items-center">
-                 <div className="flex flex-wrap gap-1">
+              <CardContent className="p-4 pt-0">
+                <div className="grid grid-cols-2 gap-y-2 gap-x-4 mt-2">
+                    <div className="flex items-center gap-1.5 text-xs">
+                        <Building className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="font-medium">{prop.property_type}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs">
+                        <Ruler className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="font-medium">{prop.size_value} {prop.size_unit}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs col-span-2 mt-1">
+                        <Wallet className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="font-bold text-primary">{formatCurrency(formatUnit(prop.demand_amount, prop.demand_unit), currency)}</span>
+                        {prop.potential_rent_amount ? (
+                            <Badge variant="secondary" className="text-[9px] h-4 bg-emerald-50 text-emerald-700 border-emerald-100 ml-2">
+                                Rent: {formatCurrency(formatUnit(prop.potential_rent_amount, prop.potential_rent_unit || 'Thousand'), currency)}
+                            </Badge>
+                        ) : null}
+                    </div>
+                </div>
+                 <div className="flex flex-wrap gap-1 mt-4">
                     {prop.tags?.slice(0, 3).map(tagName => {
                          const tagObj = agencyTags?.find(t => t.name === tagName);
-                         return <Badge key={tagName} variant="outline" className={cn("text-[8px]", tagObj?.color || "bg-gray-100")}>{tagName}</Badge>
+                         return <Badge key={tagName} variant="outline" className={cn("text-[8px] px-1.5 py-0", tagObj?.color || "bg-gray-100")}>{tagName}</Badge>
                     })}
                  </div>
-                 <Button variant="ghost" size="sm" onClick={() => handleRowClick(prop)}>View Details</Button>
+              </CardContent>
+              <CardFooter className="p-2 bg-muted/20 border-t justify-end">
+                 <Button variant="ghost" size="sm" className="h-7 text-xs font-bold text-primary" onClick={() => handleRowClick(prop)}>
+                    Details <ChevronRight className="ml-1 h-3 w-3" />
+                 </Button>
               </CardFooter>
             </Card>
           </motion.div>
