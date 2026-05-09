@@ -56,7 +56,7 @@ interface BuyerDetailsDialogProps {
 }
 
 const DetailBox = ({ icon, label, value, className }: { icon: React.ReactNode, label: string, value: React.ReactNode, className?: string }) => (
-    <div className={cn("flex flex-col gap-1 p-3 rounded-xl bg-muted/30 border border-border/50", className)}>
+    <div className={cn("flex flex-col gap-1 p-3 rounded-xl bg-muted/20 border border-border/30", className)}>
         <div className="flex items-center gap-2 text-muted-foreground">
             <span className="text-primary/60">{icon}</span>
             <span className="text-[10px] font-bold uppercase tracking-wider">{label}</span>
@@ -189,7 +189,7 @@ export function BuyerDetailsDialog({
                 <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                   <FileText className="h-3.5 w-3.5" /> Additional Notes
                 </h3>
-                <div className="p-4 rounded-xl bg-muted/30 border border-border/50 text-sm">
+                <div className="p-4 rounded-xl bg-muted/20 border border-border/30 text-sm">
                   {buyer.notes || 'No extra requirements specified.'}
                 </div>
             </div>

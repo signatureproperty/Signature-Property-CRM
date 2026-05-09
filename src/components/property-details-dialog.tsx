@@ -47,7 +47,7 @@ interface PropertyDetailsDialogProps {
 }
 
 const DetailBox = ({ icon, label, value, className }: { icon: React.ReactNode, label: string, value: React.ReactNode, className?: string }) => (
-    <div className={cn("flex flex-col gap-1 p-3 rounded-xl bg-muted/30 border border-border/50", className)}>
+    <div className={cn("flex flex-col gap-1 p-3 rounded-xl bg-muted/20 border border-border/30", className)}>
         <div className="flex items-center gap-2 text-muted-foreground">
             <span className="text-primary/60">{icon}</span>
             <span className="text-[10px] font-bold uppercase tracking-wider">{label}</span>
@@ -183,7 +183,7 @@ export function PropertyDetailsDialog({
                   <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                     <FileText className="h-3.5 w-3.5" /> {property.is_for_rent ? 'Rental Policy' : 'Property Documents'}
                   </h3>
-                  <div className="p-3 rounded-xl bg-muted/30 border border-border/50 text-sm italic text-muted-foreground">
+                  <div className="p-3 rounded-xl bg-muted/20 border border-border/30 text-sm italic text-muted-foreground">
                     {property.is_for_rent ? (property.message || 'No policy notes.') : (property.documents || 'No document notes.')}
                   </div>
                 </div>
@@ -217,7 +217,7 @@ export function PropertyDetailsDialog({
                    <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                     <MessageSquare className="h-3.5 w-3.5" /> General Notes
                   </h3>
-                  <div className="p-4 rounded-xl bg-muted/30 border border-dashed border-border/60 text-sm text-foreground">
+                  <div className="p-4 rounded-xl bg-muted/20 border border-dashed border-border/30 text-sm text-foreground">
                     {property.message}
                   </div>
                 </div>
