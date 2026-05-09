@@ -478,7 +478,7 @@ function PropertiesPageContent() {
               <TableCell onClick={() => handleRowClick(prop)}>{prop.property_type}</TableCell>
               <TableCell onClick={() => handleRowClick(prop)}>{prop.size_value} {prop.size_unit}</TableCell>
               <TableCell onClick={() => handleRowClick(prop)}>{formatCurrency(formatUnit(prop.demand_amount, prop.demand_unit), currency)}</TableCell>
-              <TableCell onClick={() => handleRowClick(prop)}><Badge className={cn("text-[10px] uppercase font-bold", statusOptions.find(o => o.value === prop.status)?.color || "bg-primary")}>{prop.status}</Badge></TableCell>
+              <TableCell onClick={() => handleRowClick(prop)}><Badge className={cn("text-[10px] font-bold", statusOptions.find(o => o.value === prop.status)?.color || "bg-primary")}>{prop.status}</Badge></TableCell>
               <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="rounded-full"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
@@ -538,7 +538,7 @@ function PropertiesPageContent() {
                     </div>
                   </div>
                 </div>
-                <Badge className={cn("text-[9px] uppercase font-bold px-2", statusOptions.find(o => o.value === prop.status)?.color || "bg-primary")}>
+                <Badge className={cn("text-[9px] font-bold px-2", statusOptions.find(o => o.value === prop.status)?.color || "bg-primary")}>
                   {prop.status}
                 </Badge>
               </CardHeader>

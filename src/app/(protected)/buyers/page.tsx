@@ -436,7 +436,7 @@ function BuyersPageContent() {
                                 <TableCell>
                                     <div className="text-xs text-muted-foreground">{formatSize(buyer.size_min_value, buyer.size_min_unit, buyer.size_max_value, buyer.size_max_unit)}</div>
                                 </TableCell>
-                                <TableCell><Badge className={cn("text-[10px] uppercase font-bold", statusVariant[buyer.status as keyof typeof statusVariant] || 'bg-primary')}>{buyer.status}</Badge></TableCell>
+                                <TableCell><Badge className={cn("text-[10px] font-bold", statusVariant[buyer.status as keyof typeof statusVariant] || 'bg-primary')}>{buyer.status}</Badge></TableCell>
                                 <TableCell className="text-right" onClick={e => e.stopPropagation()}>
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild><Button size="icon" variant="ghost"><MoreHorizontal /></Button></DropdownMenuTrigger>
@@ -494,7 +494,7 @@ function BuyersPageContent() {
                                 </div>
                             </div>
                         </div>
-                        <Badge className={cn("text-[9px] uppercase font-bold px-2", statusVariant[buyer.status as keyof typeof statusVariant])}>
+                        <Badge className={cn("text-[9px] font-bold px-2", statusVariant[buyer.status as keyof typeof statusVariant])}>
                             {buyer.status}
                         </Badge>
                     </CardHeader>
