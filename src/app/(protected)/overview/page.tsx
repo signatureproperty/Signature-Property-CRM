@@ -1,7 +1,8 @@
+
 'use client';
 import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Building2, Users, DollarSign, Home, TrendingUp, Star, CalendarDays, CheckCircle, Briefcase, Info, Video, Loader2 } from 'lucide-react';
+import { Building2, Users, DollarSign, Home, TrendingUp, Star, CalendarDays, CheckCircle, Briefcase, Info, Video, Loader2, PlayCircle, Gem, ArrowRight, VideoOff, Circle, Clock } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useProfile } from '@/context/profile-context';
 import { useFirestore } from '@/firebase/provider';
@@ -105,7 +106,7 @@ export default function OverviewPage() {
     const propertiesQuery = useMemoFirebase(() => {
         if (!canFetch) return null;
         if (profile.role === 'Video Recorder') {
-             return query(collection(firestore, 'agencies', profile.agency_id, 'properties'), where('assignedTo', '==', profile.user_id));
+             return query(collection(firestore, 'agencies', profile.agency_id, 'properties'), where('assignedTo', 'array-contains', profile.user_id));
         }
         if (isAgent) {
              return query(collection(firestore, 'agencies', profile.agency_id, 'properties'), where('created_by', '==', profile.user_id));
@@ -116,7 +117,7 @@ export default function OverviewPage() {
     
     const assignedPropertiesQuery = useMemoFirebase(() => {
         if (!canFetch || !isAgent) return null;
-        return query(collection(firestore, 'agencies', profile.agency_id, 'properties'), where('assignedTo', '==', profile.user_id));
+        return query(collection(firestore, 'agencies', profile.agency_id, 'properties'), where('assignedTo', 'array-contains', profile.user_id));
     }, [canFetch, firestore, profile.agency_id, isAgent, profile.user_id]);
     const { data: assignedProperties } = useCollection<Property>(assignedPropertiesQuery);
 

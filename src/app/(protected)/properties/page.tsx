@@ -75,7 +75,7 @@ import { formatCurrency, formatUnit, formatPhoneNumberForWhatsApp } from '@/lib/
 import { useCurrency } from '@/context/currency-context';
 import { useProfile } from '@/context/profile-context';
 import { useFirestore } from '@/firebase/provider';
-import { collection, addDoc, setDoc, doc, writeBatch, updateDoc, query, where, or } from 'firebase/firestore';
+import { collection, addDoc, setDoc, doc, writeBatch, updateDoc, query, where, or, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/hooks';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/firebase/auth/use-user';
@@ -132,7 +132,7 @@ function PropertiesPageContent() {
         if(!profile.agency_id) return null;
         const ref = collection(firestore, 'agencies', profile.agency_id, 'properties');
         if(profile.role === 'Agent' && user?.uid) {
-            return query(ref, or(where('created_by', '==', user.uid), where('assignedTo', '==', user.uid)));
+            return query(ref, or(where('created_by', '==', user.uid), where('assignedTo', 'array-contains', user.uid)));
         }
         return ref;
     },
@@ -185,8 +185,8 @@ function PropertiesPageContent() {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
-  const activeTeamMembers = useMemo(() => {
-    return teamMembers?.filter(m => m.status === 'Active' && m.role === 'Agent') || [];
+  const assignableMembers = useMemo(() => {
+    return teamMembers?.filter(m => m.status === 'Active' && m.role !== 'Admin') || [];
   }, [teamMembers]);
 
   const handleFilterChange = (key: keyof Filters, value: any) => {
@@ -349,25 +349,38 @@ function PropertiesPageContent() {
   const handleAssignAgent = async (propId: string, agentUid: string, agentName: string) => {
     if (!profile.agency_id) return;
     try {
-      const docRef = doc(firestore, 'agencies', profile.agency_id, 'properties', propId);
-      await updateDoc(docRef, { assignedTo: agentUid });
-      
+      const propRef = doc(firestore, 'agencies', profile.agency_id, 'properties', propId);
       const prop = allProperties?.find(p => p.id === propId);
-      if(prop && profile.agency_id) {
-          const activityLogRef = collection(firestore, 'agencies', profile.agency_id, 'activityLogs');
-          await addDoc(activityLogRef, {
-              userName: profile.name,
-              action: `assigned property to ${agentName}`,
-              target: prop.serial_no,
-              targetType: 'Property',
-              timestamp: new Date().toISOString(),
-              agency_id: profile.agency_id,
-              assignedToId: agentUid,
-              assignedToName: agentName
-          });
+      if (!prop) return;
+
+      let currentAssigned = prop.assignedTo;
+      if (!Array.isArray(currentAssigned)) {
+          currentAssigned = currentAssigned ? [currentAssigned] : [];
       }
 
-      toast({ title: `Assigned to ${agentName}` });
+      const isAlreadyAssigned = currentAssigned.includes(agentUid);
+
+      if (isAlreadyAssigned) {
+        await updateDoc(propRef, { assignedTo: arrayRemove(agentUid) });
+        toast({ title: `Unassigned from ${agentName}` });
+      } else {
+        await updateDoc(propRef, { assignedTo: arrayUnion(agentUid) });
+        toast({ title: `Assigned to ${agentName}` });
+        
+        if(profile.agency_id) {
+            const activityLogRef = collection(firestore, 'agencies', profile.agency_id, 'activityLogs');
+            await addDoc(activityLogRef, {
+                userName: profile.name,
+                action: `assigned property to ${agentName}`,
+                target: prop.serial_no,
+                targetType: 'Property',
+                timestamp: new Date().toISOString(),
+                agency_id: profile.agency_id,
+                assignedToId: agentUid,
+                assignedToName: agentName
+            });
+        }
+      }
     } catch (error) {
       toast({ title: "Assignment Failed", variant: 'destructive' });
     }
@@ -376,10 +389,10 @@ function PropertiesPageContent() {
   const handleBulkAssign = async (agentDocId: string) => {
     if (selectedProperties.length === 0 || !agentDocId || !profile.agency_id) return;
     
-    const agent = activeTeamMembers.find(a => a.id === agentDocId);
+    const agent = assignableMembers.find(a => a.id === agentDocId);
     if(!agent) return;
 
-    const actualAgentUid = agent.user_id || agent.id; // Use UID for invited agents
+    const actualAgentUid = agent.user_id || agent.id;
     const batch = writeBatch(firestore);
     const propertySerials: string[] = [];
     
@@ -388,7 +401,7 @@ function PropertiesPageContent() {
       if(prop) propertySerials.push(prop.serial_no);
       
       const docRef = doc(firestore, 'agencies', profile.agency_id, 'properties', propId);
-      batch.update(docRef, { assignedTo: actualAgentUid });
+      batch.update(docRef, { assignedTo: arrayUnion(actualAgentUid) });
     });
     
     const activityLogRef = doc(collection(firestore, 'agencies', profile.agency_id, 'activityLogs'));
@@ -492,14 +505,22 @@ function PropertiesPageContent() {
                     
                     {profile.role === 'Admin' && (
                         <DropdownMenuSub>
-                            <DropdownMenuSubTrigger><UserPlus /> Assign Agent</DropdownMenuSubTrigger>
+                            <DropdownMenuSubTrigger><UserPlus /> Assign to...</DropdownMenuSubTrigger>
                             <DropdownMenuPortal>
                                 <DropdownMenuSubContent>
-                                    {activeTeamMembers.map(member => (
-                                        <DropdownMenuItem key={member.id} onSelect={() => handleAssignAgent(prop.id, member.user_id || member.id, member.name)}>
-                                            {member.name}
-                                        </DropdownMenuItem>
-                                    ))}
+                                    {assignableMembers.map(member => {
+                                        const isAssigned = Array.isArray(prop.assignedTo) 
+                                            ? prop.assignedTo.includes(member.user_id || member.id)
+                                            : prop.assignedTo === (member.user_id || member.id);
+                                        return (
+                                            <DropdownMenuItem key={member.id} onSelect={() => handleAssignAgent(prop.id, member.user_id || member.id, member.name)}>
+                                                <div className="flex items-center justify-between w-full">
+                                                    {member.name}
+                                                    {isAssigned && <Check className="h-4 w-4 ml-2" />}
+                                                </div>
+                                            </DropdownMenuItem>
+                                        );
+                                    })}
                                 </DropdownMenuSubContent>
                             </DropdownMenuPortal>
                         </DropdownMenuSub>
@@ -586,14 +607,22 @@ function PropertiesPageContent() {
                     
                     {profile.role === 'Admin' && (
                         <DropdownMenuSub>
-                            <DropdownMenuSubTrigger><UserPlus /> Assign Agent</DropdownMenuSubTrigger>
+                            <DropdownMenuSubTrigger><UserPlus /> Assign to...</DropdownMenuSubTrigger>
                             <DropdownMenuPortal>
                                 <DropdownMenuSubContent>
-                                    {activeTeamMembers.map(member => (
-                                        <DropdownMenuItem key={member.id} onSelect={() => handleAssignAgent(prop.id, member.user_id || member.id, member.name)}>
-                                            {member.name}
-                                        </DropdownMenuItem>
-                                    ))}
+                                    {assignableMembers.map(member => {
+                                        const isAssigned = Array.isArray(prop.assignedTo) 
+                                            ? prop.assignedTo.includes(member.user_id || member.id)
+                                            : prop.assignedTo === (member.user_id || member.id);
+                                        return (
+                                            <DropdownMenuItem key={member.id} onSelect={() => handleAssignAgent(prop.id, member.user_id || member.id, member.name)}>
+                                                <div className="flex items-center justify-between w-full">
+                                                    {member.name}
+                                                    {isAssigned && <Check className="h-4 w-4 ml-2" />}
+                                                </div>
+                                            </DropdownMenuItem>
+                                        );
+                                    })}
                                 </DropdownMenuSubContent>
                             </DropdownMenuPortal>
                         </DropdownMenuSub>
@@ -625,7 +654,7 @@ function PropertiesPageContent() {
                 <div className="flex items-center gap-2">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild><Button variant="outline" className="rounded-full"><UserPlus className="mr-2 h-4 w-4" /> Assign</Button></DropdownMenuTrigger>
-                    <DropdownMenuContent>{activeTeamMembers.map((member) => <DropdownMenuItem key={member.id} onSelect={() => handleBulkAssign(member.id)}>{member.name}</DropdownMenuItem>)}</DropdownMenuContent>
+                    <DropdownMenuContent>{assignableMembers.map((member) => <DropdownMenuItem key={member.id} onSelect={() => handleBulkAssign(member.id)}>{member.name}</DropdownMenuItem>)}</DropdownMenuContent>
                   </DropdownMenu>
                   <Button variant="destructive" className="rounded-full" onClick={handleBulkDelete}><Trash2 className="mr-2 h-4 w-4" /> Delete ({selectedProperties.length})</Button>
                 </div>

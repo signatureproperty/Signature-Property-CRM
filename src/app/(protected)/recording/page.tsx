@@ -47,7 +47,7 @@ export default function RecordingPage() {
     profile.agency_id && profile.user_id
         ? query(
             collection(firestore, 'agencies', profile.agency_id, 'properties'), 
-            where('assignedTo', '==', profile.user_id),
+            where('assignedTo', 'array-contains', profile.user_id),
             where('is_recorded', '==', false)
           ) 
         : null, 
@@ -99,9 +99,10 @@ export default function RecordingPage() {
       if (!profile.agency_id) return;
       try {
           const propRef = doc(firestore, 'agencies', profile.agency_id, 'properties', property.id);
+          // For recorders, we remove them from the array
           await updateDoc(propRef, {
               recording_notes: reason,
-              assignedTo: null // Un-assign the property
+              assignedTo: arrayRemove(profile.user_id)
           });
 
           // Create an inbox message for the admin

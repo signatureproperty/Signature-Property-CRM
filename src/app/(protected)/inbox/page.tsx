@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useFirestore } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, orderBy, doc, updateDoc, deleteDoc, arrayUnion } from 'firebase/firestore';
 import { useProfile } from '@/context/profile-context';
 import { useMemoFirebase } from '@/firebase/hooks';
 import type { InboxMessage, Property } from '@/lib/types';
@@ -130,7 +130,8 @@ export default function InboxPage() {
         
         try {
             const propRef = doc(firestore, 'agencies', profile.agency_id, 'properties', selectedMessage.propertyId);
-            await updateDoc(propRef, { assignedTo: selectedMessage.fromUserId });
+            // Properties use arrayUnion now
+            await updateDoc(propRef, { assignedTo: arrayUnion(selectedMessage.fromUserId) });
             
             const msgRef = doc(firestore, 'agencies', profile.agency_id, 'inboxMessages', selectedMessage.id);
             await deleteDoc(msgRef);

@@ -38,7 +38,7 @@ export default function EditingPage() {
         profile.agency_id && profile.user_id
             ? query(
                 collection(firestore, 'agencies', profile.agency_id, 'properties'), 
-                where('assignedTo', '==', profile.user_id),
+                where('assignedTo', 'array-contains', profile.user_id),
                 where('is_recorded', '==', true)
             ) 
             : null, 

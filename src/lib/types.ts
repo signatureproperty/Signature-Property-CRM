@@ -22,6 +22,7 @@ export type User = {
   invitedAt?: any; // Timestamp for pending invites
   planName?: PlanName;
   planStartDate?: string;
+  user_id?: string; // Actual Auth UID
 };
 
 export type Tag = {
@@ -30,6 +31,7 @@ export type Tag = {
   color: string; // Hex or tailwind class
   agency_id: string;
   createdAt: string;
+  listingType?: ListingType | 'All';
 };
 
 
@@ -92,7 +94,7 @@ export type Property = {
     other?: string;
   };
   is_deleted?: boolean;
-  assignedTo?: string | null; // ID of the agent assigned to this property
+  assignedTo?: string | string[] | null; // Properties can have multiple assignments
   // Sale details
   sold_price?: number;
   sold_price_unit?: PriceUnit;
@@ -186,7 +188,7 @@ export type Buyer = {
     agency_id: string;
     is_deleted?: boolean;
     last_follow_up_note?: string;
-    assignedTo?: string | null; // ID of the agent assigned to this buyer
+    assignedTo?: string | null; // Buyers have ONE specific assignment
     sharedProperties?: {
         propertyId: string;
         propertySerialNo: string;
