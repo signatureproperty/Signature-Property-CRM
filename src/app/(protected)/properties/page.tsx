@@ -32,6 +32,7 @@ import {
   Wallet,
   CalendarPlus,
   Share2,
+  Check,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -604,6 +605,7 @@ function PropertiesPageContent() {
                 </DropdownMenu>
               </CardFooter>
             </Card>
+          </motion.div>
         ))}
       </div>
     );
@@ -736,18 +738,15 @@ function PropertiesPageContent() {
             </div>
           </div>
 
-          {/* Smart Horizontal Filter Bar */}
           <Card className="border-none shadow-none bg-transparent">
             <ScrollArea className="w-full whitespace-nowrap pb-4">
               <div className="flex items-center gap-3">
-                {/* 1. Listing Type Selection */}
                 <div className="flex items-center gap-2 pr-4 border-r border-border/50">
                     <Badge variant={activeListingType === 'All' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full", activeListingType === 'All' ? "bg-primary" : "hover:bg-accent")} onClick={() => setActiveListingType('All')}>All Types</Badge>
                     <Badge variant={activeListingType === 'For Sale' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-blue-50 text-blue-700 border-blue-100", activeListingType === 'For Sale' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Sale')}>For Sale</Badge>
                     <Badge variant={activeListingType === 'For Rent' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border-emerald-100", activeListingType === 'For Rent' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Rent')}>For Rent</Badge>
                 </div>
 
-                {/* 2. Dynamic Status Section (Filters based on Sale/Rent) */}
                 <div className="flex items-center gap-2 pr-4 border-r border-border/50">
                     {statusOptions.filter(opt => activeListingType === 'All' || opt.listing === 'All' || opt.listing === activeListingType).map(opt => (
                         <Badge 
@@ -759,7 +758,6 @@ function PropertiesPageContent() {
                     ))}
                 </div>
 
-                {/* 3. Custom Tags (Filtered by Listing Type) */}
                 <div className="flex items-center gap-2">
                     {agencyTags?.filter(tag => activeListingType === 'All' || !tag.listingType || tag.listingType === 'All' || tag.listingType === activeListingType).map(tag => (
                         <Badge 
@@ -776,7 +774,7 @@ function PropertiesPageContent() {
             </ScrollArea>
           </Card>
 
-          <div className="mt-4">{isMobile ? renderCards(paginatedProperties) : <Card className="p-0">{renderTable(paginatedProperties)}</Card>}</div>
+          <div className="mt-4">{isMobile ? renderCards(paginatedProperties) : <Card className="p-0 overflow-hidden">{renderTable(paginatedProperties)}</Card>}</div>
           {totalPages > 1 && (
             <div className="flex items-center justify-end space-x-2 py-4">
                 <span className="text-sm text-muted-foreground">Page {currentPage} of {totalPages}</span>
