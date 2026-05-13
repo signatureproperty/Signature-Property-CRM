@@ -341,7 +341,8 @@ function BuyersPageContent() {
             buyers = buyers.filter(b => (b.listing_type || 'For Sale') === activeListingType);
         }
         if (activeStatus !== 'All') {
-            buyers = buyers.filter(b => b.status === activeStatus);
+            // Modified: Show if main status matches OR if it's in the tags array
+            buyers = buyers.filter(b => b.status === activeStatus || b.tags?.includes(activeStatus));
         }
         if (activeCustomTags.length > 0) {
             buyers = buyers.filter(b => activeCustomTags.every(tag => b.tags?.includes(tag)));
@@ -404,7 +405,7 @@ function BuyersPageContent() {
                         <TableHead>Requirement</TableHead>
                         <TableHead>Budget</TableHead>
                         <TableHead>Size</TableHead>
-                        <TableHead>Status</TableHead>
+                        <TableHead>Status / Tags</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -435,7 +436,15 @@ function BuyersPageContent() {
                                 <TableCell>
                                     <div className="text-xs text-muted-foreground">{formatSize(buyer.size_min_value, buyer.size_min_unit, buyer.size_max_value, buyer.size_max_unit)}</div>
                                 </TableCell>
-                                <TableCell><Badge className={cn("text-[10px] font-bold", statusVariant[buyer.status as keyof typeof statusVariant] || 'bg-primary')}>{buyer.status}</Badge></TableCell>
+                                <TableCell>
+                                    <div className="flex flex-wrap gap-1 items-center">
+                                        <Badge className={cn("text-[10px] font-bold", statusVariant[buyer.status as keyof typeof statusVariant] || 'bg-primary')}>{buyer.status}</Badge>
+                                        {buyer.tags?.filter(t => t !== buyer.status).map(tagName => {
+                                            const tagObj = agencyTags?.find(t => t.name === tagName);
+                                            return <Badge key={tagName} variant="outline" className={cn("text-[9px] px-1.5 py-0", tagObj?.color || "bg-gray-100")}>{tagName}</Badge>
+                                        })}
+                                    </div>
+                                </TableCell>
                                 <TableCell className="text-right" onClick={e => e.stopPropagation()}>
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild><Button size="icon" variant="ghost"><MoreHorizontal /></Button></DropdownMenuTrigger>
@@ -516,6 +525,12 @@ function BuyersPageContent() {
                         <div className="flex items-center gap-1.5 text-xs mt-3 text-muted-foreground italic">
                             <MapPin className="h-3 w-3" />
                             <span className="truncate">{buyer.area_preference || 'No area specified'}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1 mt-3">
+                             {buyer.tags?.filter(t => t !== buyer.status).map(tagName => {
+                                const tagObj = agencyTags?.find(t => t.name === tagName);
+                                return <Badge key={tagName} variant="outline" className={cn("text-[8px] px-1.5 py-0", tagObj?.color || "bg-gray-100")}>{tagName}</Badge>
+                            })}
                         </div>
                     </CardContent>
                     <CardFooter className="p-2 bg-muted/20 border-t justify-end">

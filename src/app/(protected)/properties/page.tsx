@@ -230,7 +230,8 @@ function PropertiesPageContent() {
         baseProperties = baseProperties.filter(p => p.listing_type === activeListingType);
     }
     if (activeStatus !== 'All') {
-        baseProperties = baseProperties.filter(p => p.status === activeStatus);
+        // Modified: Show if main status matches OR if it's in the tags array
+        baseProperties = baseProperties.filter(p => p.status === activeStatus || p.tags?.includes(activeStatus));
     }
     if (activeCustomTags.length > 0) {
         baseProperties = baseProperties.filter(p => 
@@ -470,7 +471,7 @@ function PropertiesPageContent() {
             <TableHead className="w-[350px]">
               <Button variant="ghost" onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}>Property <ArrowUpDown className="ml-2 h-4 w-4" /></Button>
             </TableHead>
-            <TableHead>Type</TableHead><TableHead>Size</TableHead><TableHead>Demand</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead>
+            <TableHead>Type</TableHead><TableHead>Size</TableHead><TableHead>Demand</TableHead><TableHead>Status / Tags</TableHead><TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -481,16 +482,20 @@ function PropertiesPageContent() {
                 <div className="flex items-center gap-2 font-bold font-headline text-base">{prop.auto_title || `${prop.size_value} ${prop.size_unit} ${prop.property_type}`} {prop.is_recorded && <Video className="h-4 w-4 text-primary" />}</div>
                 <div className="flex flex-wrap gap-1 mt-1">
                     <Badge variant="default" className={cn('font-mono text-[10px]', prop.serial_no.startsWith('RP') ? 'bg-emerald-100 text-emerald-700' : 'bg-primary/20 text-primary')}>{prop.serial_no}</Badge>
-                    {prop.tags?.map(tagName => {
-                        const tagObj = agencyTags?.find(t => t.name === tagName);
-                        return <Badge key={tagName} variant="outline" className={cn("text-[9px] px-1 py-0", tagObj?.color || "bg-gray-100")}>{tagName}</Badge>
-                    })}
                 </div>
               </TableCell>
               <TableCell onClick={() => handleRowClick(prop)}>{prop.property_type}</TableCell>
               <TableCell onClick={() => handleRowClick(prop)}>{prop.size_value} {prop.size_unit}</TableCell>
               <TableCell onClick={() => handleRowClick(prop)}>{formatCurrency(formatUnit(prop.demand_amount, prop.demand_unit), currency)}</TableCell>
-              <TableCell onClick={() => handleRowClick(prop)}><Badge className={cn("text-[10px] font-bold", statusOptions.find(o => o.value === prop.status)?.color || "bg-primary")}>{prop.status}</Badge></TableCell>
+              <TableCell onClick={() => handleRowClick(prop)}>
+                <div className="flex flex-wrap gap-1 items-center">
+                    <Badge className={cn("text-[10px] font-bold", statusOptions.find(o => o.value === prop.status)?.color || "bg-primary")}>{prop.status}</Badge>
+                    {prop.tags?.filter(t => t !== prop.status).map(tagName => {
+                        const tagObj = agencyTags?.find(t => t.name === tagName);
+                        return <Badge key={tagName} variant="outline" className={cn("text-[9px] px-1.5 py-0", tagObj?.color || "bg-gray-100")}>{tagName}</Badge>
+                    })}
+                </div>
+              </TableCell>
               <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="rounded-full"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
@@ -584,7 +589,7 @@ function PropertiesPageContent() {
                     </div>
                 </div>
                  <div className="flex flex-wrap gap-1 mt-4">
-                    {prop.tags?.slice(0, 3).map(tagName => {
+                    {prop.tags?.filter(t => t !== prop.status).slice(0, 5).map(tagName => {
                          const tagObj = agencyTags?.find(t => t.name === tagName);
                          return <Badge key={tagName} variant="outline" className={cn("text-[8px] px-1.5 py-0", tagObj?.color || "bg-gray-100")}>{tagName}</Badge>
                     })}

@@ -46,15 +46,15 @@ interface ManageTagsDialogProps {
 }
 
 const tagColors = [
-    { name: 'Blue', class: 'bg-blue-100 text-blue-700 border-blue-200' },
-    { name: 'Emerald', class: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-    { name: 'Amber', class: 'bg-amber-100 text-amber-700 border-amber-200' },
-    { name: 'Purple', class: 'bg-purple-100 text-purple-700 border-purple-200' },
-    { name: 'Red', class: 'bg-red-100 text-red-700 border-red-200' },
-    { name: 'Indigo', class: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
-    { name: 'Pink', class: 'bg-pink-100 text-pink-700 border-pink-200' },
-    { name: 'Orange', class: 'bg-orange-100 text-orange-700 border-orange-200' },
-    { name: 'Gray', class: 'bg-gray-100 text-gray-700 border-gray-200' },
+    { name: 'Blue', class: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800' },
+    { name: 'Emerald', class: 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800' },
+    { name: 'Amber', class: 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800' },
+    { name: 'Purple', class: 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800' },
+    { name: 'Red', class: 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800' },
+    { name: 'Indigo', class: 'bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-400 dark:border-indigo-800' },
+    { name: 'Pink', class: 'bg-pink-100 text-pink-700 border-pink-200 dark:bg-pink-900/30 dark:text-pink-400 dark:border-pink-800' },
+    { name: 'Orange', class: 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800' },
+    { name: 'Gray', class: 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700' },
 ];
 
 const defaultPropertyStatuses = ['Available', 'Sold', 'Rent Out', 'Pending'];
@@ -109,10 +109,17 @@ export function ManageTagsDialog({ isOpen, setIsOpen }: ManageTagsDialogProps) {
         toast({ title: `Tag "${name}" already in list.` });
         return;
     }
+    
+    // Choose a color based on status name for defaults
+    let initialColor = tagColors[0].class; // default blue
+    if (['Sold', 'Deal Closed', 'Available'].includes(name)) initialColor = tagColors[1].class; // emerald
+    if (['Not Interested', 'Deal Lost'].includes(name)) initialColor = tagColors[4].class; // red
+    if (['Follow Up', 'Pending'].includes(name)) initialColor = tagColors[3].class; // purple
+
     try {
         await addDoc(collection(firestore, 'agencies', profile.agency_id, 'tags'), {
             name: name,
-            color: tagColors[0].class, // Default blue for status tags
+            color: initialColor,
             agency_id: profile.agency_id,
             createdAt: new Date().toISOString(),
         });
@@ -250,7 +257,7 @@ export function ManageTagsDialog({ isOpen, setIsOpen }: ManageTagsDialogProps) {
                             >
                                 {name}
                                 {!isAdded && <Plus className="h-3 w-3" />}
-                                {isAdded && <Check className="h-3 w-3" />}
+                                {isAdded && <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
                             </Badge>
                         );
                     })}
@@ -264,11 +271,4 @@ export function ManageTagsDialog({ isOpen, setIsOpen }: ManageTagsDialogProps) {
       </DialogContent>
     </Dialog>
   );
-}
-
-// Helper icons
-function Check({ className }: { className?: string }) {
-    return (
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="20 6 9 17 4 12"/></svg>
-    )
 }
