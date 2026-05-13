@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -30,17 +31,17 @@ import { useTheme } from 'next-themes';
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Download, Upload, Server, Eye, EyeOff, AlertTriangle, Loader2, Link as LinkIcon, ChevronsUpDown, Check, Building } from 'lucide-react';
+import { Download, Upload, Server, Eye, EyeOff, AlertTriangle, Loader2, Link as LinkIcon, ChevronsUpDown, Check, Building, FileSpreadsheet, FileUp, FileDown } from 'lucide-react';
 import { ResetAccountDialog } from '@/components/reset-account-dialog';
 import { useFirestore, useAuth, useStorage } from '@/firebase/provider';
 import { useUser } from '@/firebase/auth/use-user';
 import { useGetCollection } from '@/firebase/firestore/use-get-collection';
-import { collection, getDocs, writeBatch, addDoc, serverTimestamp, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, writeBatch, addDoc, serverTimestamp, doc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
 import { getStorage, ref as storageRef, uploadString, getDownloadURL, uploadBytes } from 'firebase/storage';
 import { useMemoFirebase } from '@/firebase/hooks';
 import { EmailAuthProvider, reauthenticateWithCredential, deleteUser, updatePassword, GoogleAuthProvider, reauthenticateWithPopup } from 'firebase/auth';
 import { zodResolver } from '@hookform/resolvers/zod';
-import *as z from 'zod';
+import * as z from 'zod';
 import { useForm } from 'react-hook-form';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { formatPhoneNumber } from '@/lib/utils';
@@ -49,6 +50,7 @@ import { AvatarCropDialog } from '@/components/avatar-crop-dialog';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
+import type { Buyer, Property } from '@/lib/types';
 
 const passwordFormSchema = z.object({
     currentPassword: z.string().min(1, 'Current password is required.'),
@@ -89,6 +91,9 @@ export default function SettingsPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [isAvatarCropOpen, setIsAvatarCropOpen] = useState(false);
 
+  const [isImporting, setIsImporting] = useState(false);
+  const importBuyersInputRef = useRef<HTMLInputElement>(null);
+  const importPropertiesInputRef = useRef<HTMLInputElement>(null);
 
   const [appointmentNotifications, setAppointmentNotifications] = useState(true);
 
@@ -102,10 +107,10 @@ export default function SettingsPage() {
   });
 
   const agencyPropertiesQuery = useMemoFirebase(() => profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'properties') : null, [profile.agency_id, firestore]);
-  const { data: agencyProperties } = useGetCollection(agencyPropertiesQuery);
+  const { data: agencyProperties } = useGetCollection<Property>(agencyPropertiesQuery);
 
   const agencyBuyersQuery = useMemoFirebase(() => profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'buyers') : null, [profile.agency_id, firestore]);
-  const { data: agencyBuyers } = useGetCollection(agencyBuyersQuery);
+  const { data: agencyBuyers } = useGetCollection<Buyer>(agencyBuyersQuery);
 
   const agencyAppointmentsQuery = useMemoFirebase(() => profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'appointments') : null, [profile.agency_id, firestore]);
   const { data: agencyAppointments } = useGetCollection(agencyAppointmentsQuery);
@@ -448,6 +453,127 @@ export default function SettingsPage() {
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
     setLocalProfile(prev => ({...prev, [id]: value}));
+  }
+
+  const handleExportCSV = (type: 'Buyers' | 'Properties') => {
+    const data = type === 'Buyers' ? agencyBuyers : agencyProperties;
+    if (!data || data.length === 0) {
+        toast({ title: `No ${type} to export.` });
+        return;
+    }
+
+    let csvContent = "";
+    if (type === 'Buyers') {
+        csvContent = "Serial,Name,Phone,Email,Status,Listing,Area,Type,Min Budget,Max Budget,Notes\n";
+        data.forEach((b: any) => {
+            csvContent += `${b.serial_no},"${b.name}","${b.phone}",${b.email || ''},${b.status},${b.listing_type},"${b.area_preference || ''}","${b.property_type_preference || ''}",${b.budget_min_amount || 0},${b.budget_max_amount || 0},"${(b.notes || '').replace(/"/g, '""')}"\n`;
+        });
+    } else {
+        csvContent = "Serial,Title,Owner Phone,Area,Address,Type,Size,Unit,Demand,Demand Unit,Status\n";
+        data.forEach((p: any) => {
+            csvContent += `${p.serial_no},"${p.auto_title}","${p.owner_number}","${p.area}","${p.address}","${p.property_type}",${p.size_value},${p.size_unit},${p.demand_amount},${p.demand_unit},${p.status}\n`;
+        });
+    }
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${profile.agencyName.replace(/\s+/g, '_')}_${type.toLowerCase()}_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast({ title: `${type} Exported Successfully` });
+  }
+
+  const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>, type: 'Buyers' | 'Properties') => {
+    const file = e.target.files?.[0];
+    if (!file || !profile.agency_id) return;
+
+    setIsImporting(true);
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+        const text = event.target?.result as string;
+        const lines = text.split('\n');
+        const headers = lines[0].split(',');
+        
+        const batch = writeBatch(firestore);
+        const collectionRef = collection(firestore, 'agencies', profile.agency_id, type.toLowerCase());
+        
+        let importCount = 0;
+
+        for (let i = 1; i < lines.length; i++) {
+            if (!lines[i].trim()) continue;
+            const values = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/); // Better CSV split that handles quotes
+            
+            if (type === 'Buyers') {
+                const [serial, name, phone, email, status, listing, area, propType, minB, maxB, notes] = values.map(v => v?.replace(/"/g, '').trim());
+                if (!name || !phone) continue;
+                
+                // Smart number formatting
+                const formattedPhone = formatPhoneNumber(phone);
+
+                const newBuyerRef = doc(collectionRef);
+                batch.set(newBuyerRef, {
+                    serial_no: serial || `B-${(agencyBuyers?.length || 0) + i}`,
+                    name,
+                    phone: formattedPhone,
+                    email: email || '',
+                    status: status || 'New',
+                    listing_type: listing || 'For Sale',
+                    area_preference: area || '',
+                    property_type_preference: propType || 'House',
+                    budget_min_amount: Number(minB) || 0,
+                    budget_max_amount: Number(maxB) || 0,
+                    notes: notes || '',
+                    agency_id: profile.agency_id,
+                    created_by: profile.user_id,
+                    created_at: new Date().toISOString(),
+                    tags: [status || 'New'],
+                    is_deleted: false
+                });
+            } else {
+                const [serial, title, phone, area, address, typeVal, size, unit, demand, demandUnit, status] = values.map(v => v?.replace(/"/g, '').trim());
+                if (!phone || !area) continue;
+
+                const formattedPhone = formatPhoneNumber(phone);
+
+                const newPropRef = doc(collectionRef);
+                batch.set(newPropRef, {
+                    serial_no: serial || `P-${(agencyProperties?.length || 0) + i}`,
+                    auto_title: title || `${size} ${unit} ${typeVal} in ${area}`,
+                    owner_number: formattedPhone,
+                    area,
+                    address: address || '',
+                    property_type: typeVal || 'House',
+                    size_value: Number(size) || 0,
+                    size_unit: unit || 'Marla',
+                    demand_amount: Number(demand) || 0,
+                    demand_unit: demandUnit || 'Lacs',
+                    status: status || 'New',
+                    agency_id: profile.agency_id,
+                    created_by: profile.user_id,
+                    created_at: new Date().toISOString(),
+                    is_for_rent: false,
+                    listing_type: 'For Sale',
+                    is_recorded: false,
+                    tags: [status || 'New'],
+                    is_deleted: false
+                });
+            }
+            importCount++;
+        }
+
+        try {
+            await batch.commit();
+            toast({ title: 'Import Successful', description: `Imported ${importCount} ${type.toLowerCase()}.` });
+        } catch (error) {
+            toast({ title: 'Import Failed', description: 'Could not upload leads.', variant: 'destructive' });
+        } finally {
+            setIsImporting(false);
+            if (e.target) e.target.value = '';
+        }
+    };
+    reader.readAsText(file);
   }
 
 
@@ -826,6 +952,43 @@ export default function SettingsPage() {
             </Form>
         </Card>
       )}
+
+      <Card>
+        <CardHeader>
+            <CardTitle className="flex items-center gap-2"><FileSpreadsheet /> Data Management</CardTitle>
+            <CardDescription>Import and Export your Properties and Buyers data via CSV.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-4">
+                    <h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground">Properties</h3>
+                    <div className="flex flex-wrap gap-2">
+                        <Button variant="outline" size="sm" onClick={() => handleExportCSV('Properties')}>
+                            <FileDown className="mr-2 h-4 w-4" /> Export CSV
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => importPropertiesInputRef.current?.click()} disabled={isImporting}>
+                            {isImporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileUp className="mr-2 h-4 w-4" />}
+                            Import CSV
+                        </Button>
+                        <input type="file" ref={importPropertiesInputRef} className="hidden" accept=".csv" onChange={(e) => handleImportCSV(e, 'Properties')} />
+                    </div>
+                </div>
+                <div className="space-y-4">
+                    <h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground">Buyers</h3>
+                    <div className="flex flex-wrap gap-2">
+                        <Button variant="outline" size="sm" onClick={() => handleExportCSV('Buyers')}>
+                            <FileDown className="mr-2 h-4 w-4" /> Export CSV
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => importBuyersInputRef.current?.click()} disabled={isImporting}>
+                            {isImporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileUp className="mr-2 h-4 w-4" />}
+                            Import CSV
+                        </Button>
+                        <input type="file" ref={importBuyersInputRef} className="hidden" accept=".csv" onChange={(e) => handleImportCSV(e, 'Buyers')} />
+                    </div>
+                </div>
+            </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
