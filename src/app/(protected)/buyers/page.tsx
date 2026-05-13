@@ -1,3 +1,4 @@
+
 'use client';
 
 import { AddBuyerDialog } from '@/components/add-buyer-dialog';
@@ -671,45 +672,52 @@ function BuyersPageContent() {
             </div>
 
             <Card className="border-none shadow-none bg-transparent">
-                <ScrollArea className="w-full whitespace-nowrap pb-4">
-                    <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2 pr-4 border-r border-border/50">
-                            <Badge variant={activeListingType === 'All' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full", activeListingType === 'All' ? "bg-primary" : "hover:bg-accent")} onClick={() => setActiveListingType('All')}>All Types</Badge>
-                            <Badge variant={activeListingType === 'For Sale' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800", activeListingType === 'For Sale' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Sale')}>For Sale</Badge>
-                            <Badge variant={activeListingType === 'For Rent' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800", activeListingType === 'For Rent' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Rent')}>For Rent</Badge>
-                        </div>
-                        <div className="flex items-center gap-2 pr-4 border-r border-border/50">
-                            <Badge 
-                                variant={activeStatus === 'All' ? 'default' : 'outline'} 
-                                className={cn("cursor-pointer px-4 py-1.5 rounded-full", activeStatus === 'All' ? "bg-primary" : "hover:bg-accent")} 
-                                onClick={() => setActiveStatus('All')}
-                            >
-                                All Status
-                            </Badge>
-                            {buyerStatuses.map(status => (
+                <div className="flex items-center gap-2">
+                    <ScrollArea className="flex-1 whitespace-nowrap pb-4">
+                        <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2 pr-4 border-r border-border/50">
+                                <Badge variant={activeListingType === 'All' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full", activeListingType === 'All' ? "bg-primary" : "hover:bg-accent")} onClick={() => setActiveListingType('All')}>All Types</Badge>
+                                <Badge variant={activeListingType === 'For Sale' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800", activeListingType === 'For Sale' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Sale')}>For Sale</Badge>
+                                <Badge variant={activeListingType === 'For Rent' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800", activeListingType === 'For Rent' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Rent')}>For Rent</Badge>
+                            </div>
+                            <div className="flex items-center gap-2 pr-4 border-r border-border/50">
                                 <Badge 
-                                    key={status} 
-                                    variant={activeStatus === status ? 'default' : 'outline'} 
-                                    className={cn(
-                                        "cursor-pointer px-4 py-1.5 rounded-full transition-all", 
-                                        statusVariant[status as keyof typeof statusVariant],
-                                        activeStatus === status && "ring-2 ring-primary ring-offset-2"
-                                    )} 
-                                    onClick={() => setActiveStatus(status)}
+                                    variant={activeStatus === 'All' ? 'default' : 'outline'} 
+                                    className={cn("cursor-pointer px-4 py-1.5 rounded-full", activeStatus === 'All' ? "bg-primary" : "hover:bg-accent")} 
+                                    onClick={() => setActiveStatus('All')}
                                 >
-                                    {status}
+                                    All Status
                                 </Badge>
-                            ))}
+                                {buyerStatuses.map(status => (
+                                    <Badge 
+                                        key={status} 
+                                        variant={activeStatus === status ? 'default' : 'outline'} 
+                                        className={cn(
+                                            "cursor-pointer px-4 py-1.5 rounded-full transition-all", 
+                                            statusVariant[status as keyof typeof statusVariant],
+                                            activeStatus === status && "ring-2 ring-primary ring-offset-2"
+                                        )} 
+                                        onClick={() => setActiveStatus(status)}
+                                    >
+                                        {status}
+                                    </Badge>
+                                ))}
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {agencyTags?.map(tag => (
+                                    <Badge key={tag.id} variant={activeCustomTags.includes(tag.name) ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full transition-all", tag.color, activeCustomTags.includes(tag.name) && "ring-2 ring-primary ring-offset-2")} onClick={() => handleToggleCustomTag(tag.name)}>{tag.name}</Badge>
+                                ))}
+                            </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                            {agencyTags?.map(tag => (
-                                <Badge key={tag.id} variant={activeCustomTags.includes(tag.name) ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full transition-all", tag.color, activeCustomTags.includes(tag.name) && "ring-2 ring-primary ring-offset-2")} onClick={() => handleToggleCustomTag(tag.name)}>{tag.name}</Badge>
-                            ))}
-                            <Button variant="ghost" size="sm" className="rounded-full h-8 px-4 text-xs font-bold gap-2 text-primary hover:bg-primary/10" onClick={() => setIsManageTagsOpen(true)}><PlusCircle className="h-4 w-4" />Manage Tags</Button>
-                        </div>
+                        <ScrollBar orientation="horizontal" />
+                    </ScrollArea>
+                    <div className="pb-4">
+                        <Button variant="ghost" size="sm" className="rounded-full h-8 px-4 text-xs font-bold gap-2 text-primary hover:bg-primary/10 shadow-sm border border-primary/20" onClick={() => setIsManageTagsOpen(true)}>
+                            <PlusCircle className="h-4 w-4" />
+                            Manage Tags
+                        </Button>
                     </div>
-                    <ScrollBar orientation="horizontal" />
-                </ScrollArea>
+                </div>
             </Card>
 
             <div className="mt-4">{isMobile ? renderCards(paginatedBuyers) : <Card className="p-0 overflow-hidden">{renderTable(paginatedBuyers)}</Card>}</div>

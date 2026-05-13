@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -17,11 +18,11 @@ import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from './ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase/provider';
-import { collection, addDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { useProfile } from '@/context/profile-context';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useMemoFirebase } from '@/firebase/hooks';
-import { Trash2, Plus, Tag as TagIcon, X, Info } from 'lucide-react';
+import { Trash2, Plus, Tag as TagIcon, X, Info, Edit2, RotateCcw } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
 import { Tag } from '@/lib/types';
@@ -65,6 +66,7 @@ export function ManageTagsDialog({ isOpen, setIsOpen }: ManageTagsDialogProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [selectedColor, setSelectedColor] = useState(tagColors[0].class);
+  const [editingTag, setEditingTag] = useState<Tag | null>(null);
 
   const tagsQuery = useMemoFirebase(() => 
     profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'tags') : null,
@@ -80,23 +82,46 @@ export function ManageTagsDialog({ isOpen, setIsOpen }: ManageTagsDialogProps) {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!profile.agency_id) return;
     
-    if (tags?.some(t => t.name.toLowerCase() === values.name.toLowerCase())) {
+    // Check for duplicates if not editing current tag
+    if (!editingTag && tags?.some(t => t.name.toLowerCase() === values.name.toLowerCase())) {
         toast({ title: "Tag already exists", variant: 'destructive' });
         return;
     }
 
     try {
-        await addDoc(collection(firestore, 'agencies', profile.agency_id, 'tags'), {
-            name: values.name,
-            color: selectedColor,
-            agency_id: profile.agency_id,
-            createdAt: new Date().toISOString(),
-        });
+        if (editingTag) {
+            const tagRef = doc(firestore, 'agencies', profile.agency_id, 'tags', editingTag.id);
+            await updateDoc(tagRef, {
+                name: values.name,
+                color: selectedColor
+            });
+            toast({ title: "Tag Updated" });
+            setEditingTag(null);
+        } else {
+            await addDoc(collection(firestore, 'agencies', profile.agency_id, 'tags'), {
+                name: values.name,
+                color: selectedColor,
+                agency_id: profile.agency_id,
+                createdAt: new Date().toISOString(),
+            });
+            toast({ title: "Tag Created" });
+        }
         form.reset();
-        toast({ title: "Tag Created" });
     } catch (error) {
-        toast({ title: "Error", description: "Could not create tag.", variant: 'destructive' });
+        toast({ title: "Error", description: "Could not save tag.", variant: 'destructive' });
     }
+  };
+
+  const handleEditClick = (tag: Tag) => {
+    setEditingTag(tag);
+    form.setValue('name', tag.name);
+    setSelectedColor(tag.color);
+  };
+
+  const cancelEdit = () => {
+    setEditingTag(null);
+    form.reset({ name: '' });
+    setSelectedColor(tagColors[0].class);
   };
 
   const handleDeleteTag = async (tagId: string) => {
@@ -104,6 +129,7 @@ export function ManageTagsDialog({ isOpen, setIsOpen }: ManageTagsDialogProps) {
     try {
         await deleteDoc(doc(firestore, 'agencies', profile.agency_id, 'tags', tagId));
         toast({ title: "Tag Deleted" });
+        if (editingTag?.id === tagId) cancelEdit();
     } catch (error) {
         toast({ title: "Error", description: "Could not delete tag.", variant: 'destructive' });
     }
@@ -115,7 +141,9 @@ export function ManageTagsDialog({ isOpen, setIsOpen }: ManageTagsDialogProps) {
         <div className="p-6 pb-2">
             <DialogHeader>
               <DialogTitle className="font-headline flex items-center gap-2"><TagIcon className="h-5 w-5" /> Manage Agency Tags</DialogTitle>
-              <DialogDescription>Create custom tags or manage existing status labels.</DialogDescription>
+              <DialogDescription>
+                {editingTag ? `Updating tag: ${editingTag.name}` : 'Create custom tags or manage existing status labels.'}
+              </DialogDescription>
             </DialogHeader>
 
             <Form {...form}>
@@ -126,7 +154,7 @@ export function ManageTagsDialog({ isOpen, setIsOpen }: ManageTagsDialogProps) {
                             name="name"
                             render={({ field }) => (
                                 <FormItem className="flex-1">
-                                    <FormLabel>New Tag Name</FormLabel>
+                                    <FormLabel>{editingTag ? 'Update Tag Name' : 'New Tag Name'}</FormLabel>
                                     <FormControl>
                                         <Input placeholder="e.g. Interested, Hot Lead, Follow Up" {...field} className="h-9" />
                                     </FormControl>
@@ -134,7 +162,14 @@ export function ManageTagsDialog({ isOpen, setIsOpen }: ManageTagsDialogProps) {
                                 </FormItem>
                             )}
                         />
-                        <Button type="submit" size="icon" className="mb-[2px] h-9 w-9"><Plus className="h-4 w-4" /></Button>
+                        {editingTag ? (
+                            <div className="flex gap-1 mb-[2px]">
+                                <Button type="button" variant="outline" size="icon" onClick={cancelEdit} className="h-9 w-9"><X className="h-4 w-4" /></Button>
+                                <Button type="submit" className="h-9 px-4">Update</Button>
+                            </div>
+                        ) : (
+                            <Button type="submit" size="icon" className="mb-[2px] h-9 w-9"><Plus className="h-4 w-4" /></Button>
+                        )}
                     </div>
                     <div className="space-y-2">
                         <div className="flex flex-wrap gap-2">
@@ -172,28 +207,40 @@ export function ManageTagsDialog({ isOpen, setIsOpen }: ManageTagsDialogProps) {
                             {tags.map(tag => (
                                 <Badge 
                                     key={tag.id} 
-                                    className={cn("px-3 py-1 flex items-center gap-2 pr-1 rounded-lg transition-all", tag.color)}
+                                    className={cn(
+                                        "px-3 py-1 flex items-center gap-2 pr-1 rounded-lg transition-all group", 
+                                        tag.color,
+                                        editingTag?.id === tag.id && "ring-2 ring-primary ring-offset-2"
+                                    )}
                                 >
-                                    {tag.name}
-                                    <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                            <button className="h-5 w-5 flex items-center justify-center rounded-full hover:bg-black/10 transition-colors">
-                                                <X className="h-3 w-3" />
-                                            </button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                            <AlertDialogHeader>
-                                                <AlertDialogTitle className="font-headline">Delete Tag?</AlertDialogTitle>
-                                                <AlertDialogDescription>
-                                                    Are you sure you want to delete the "{tag.name}" tag? This will remove it from all leads. This action cannot be undone.
-                                                </AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                <AlertDialogAction onClick={() => handleDeleteTag(tag.id)} className="bg-destructive text-white hover:bg-destructive/90">Delete Permanently</AlertDialogAction>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
+                                    <span className="cursor-default">{tag.name}</span>
+                                    <div className="flex items-center gap-0.5 ml-1">
+                                        <button 
+                                            onClick={() => handleEditClick(tag)}
+                                            className="h-5 w-5 flex items-center justify-center rounded-full hover:bg-black/10 transition-colors"
+                                        >
+                                            <Edit2 className="h-3 w-3" />
+                                        </button>
+                                        <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                <button className="h-5 w-5 flex items-center justify-center rounded-full hover:bg-black/10 transition-colors">
+                                                    <X className="h-3 w-3" />
+                                                </button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle className="font-headline">Delete Tag?</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                        Are you sure you want to delete the "{tag.name}" tag? This will remove it from all leads. This action cannot be undone.
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={() => handleDeleteTag(tag.id)} className="bg-destructive text-white hover:bg-destructive/90">Delete Permanently</AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+                                    </div>
                                 </Badge>
                             ))}
                         </div>
