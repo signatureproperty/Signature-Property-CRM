@@ -773,7 +773,7 @@ function BuyersPageContent() {
                     <div className="pb-4">
                         <Button variant="ghost" size="sm" className="rounded-full h-8 px-4 text-xs font-bold gap-2 text-primary hover:bg-primary/10 shadow-sm border border-primary/20" onClick={() => setIsManageTagsOpen(true)}>
                             <PlusCircle className="h-4 w-4" />
-                            Manage Tags
+                            <span className="hidden md:inline">Manage </span>Tags
                         </Button>
                     </div>
                 </div>
