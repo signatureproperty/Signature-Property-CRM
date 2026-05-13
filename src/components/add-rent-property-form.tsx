@@ -64,6 +64,8 @@ const formSchema = z.object({
     .positive('Rent amount must be positive'),
   demand_unit: z.enum(priceUnitValues).default('Thousand'),
   message: z.string().optional(),
+  tags: z.string().optional(),
+  status: z.enum(['New', 'Available', 'Sold', 'Rent Out', 'Sold (External)']).default('New'),
 });
 
 type AddRentPropertyFormValues = z.infer<typeof formSchema>;
@@ -104,6 +106,8 @@ export function AddRentPropertyForm({
       demand_amount: propertyToEdit?.demand_amount || 0,
       demand_unit: propertyToEdit?.demand_unit === 'Thousand' || propertyToEdit?.demand_unit === 'Lacs' || propertyToEdit?.demand_unit === 'Crore' ? (propertyToEdit.demand_unit as any) : 'Thousand',
       message: propertyToEdit?.message || '',
+      tags: propertyToEdit?.tags?.join(', ') || 'New',
+      status: propertyToEdit?.status || 'New',
     },
   });
 
@@ -131,6 +135,11 @@ export function AddRentPropertyForm({
         ? values.property_type_other
         : values.property_type;
 
+    const tagsArray = values.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [];
+    if (!propertyToEdit && values.status === 'New' && !tagsArray.includes('New')) {
+        tagsArray.push('New');
+    }
+
     const propertyData: Omit<Property, 'id'> & { id?: string } = {
       ...propertyToEdit,
       ...values,
@@ -140,7 +149,7 @@ export function AddRentPropertyForm({
       potential_rent_unit: 'Thousand',
       id: propertyToEdit?.id,
       serial_no: propertyToEdit?.serial_no || `RP-${totalProperties + 1}`,
-      status: propertyToEdit?.status || 'Available',
+      status: values.status as any,
       created_at: propertyToEdit?.created_at || new Date().toISOString(),
       created_by: propertyToEdit?.created_by || user?.uid || '',
       agency_id: propertyToEdit?.agency_id || profile.agency_id || '',
@@ -148,6 +157,7 @@ export function AddRentPropertyForm({
       owner_number: formatPhoneNumber(values.owner_number, values.country_code),
       property_type: finalPropertyType as PropertyType,
       demand_unit: values.demand_unit as 'Lacs' | 'Crore' | 'Thousand',
+      tags: tagsArray,
     };
 
     onSave(propertyData);
@@ -437,6 +447,36 @@ export function AddRentPropertyForm({
                         )} />
                     </div>
                 </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+               <FormField
+                  control={control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Property Status</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          <SelectItem value="New">New</SelectItem>
+                          <SelectItem value="Available">Available</SelectItem>
+                          <SelectItem value="Rent Out">Rent Out</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={control}
+                  name="tags"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tags (comma separated)</FormLabel>
+                      <FormControl><Input {...field} placeholder="e.g. Urgent, Hot" /></FormControl>
+                    </FormItem>
+                  )}
+                />
             </div>
 
             <FormField

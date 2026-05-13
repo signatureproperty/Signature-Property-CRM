@@ -69,6 +69,8 @@ const formSchema = z.object({
   demand_unit: z.enum(priceUnitValues).default('Lacs'),
   documents: z.string().optional(),
   message: z.string().optional(),
+  tags: z.string().optional(),
+  status: z.enum(['New', 'Available', 'Sold', 'Rent Out', 'Sold (External)']).default('New'),
 });
 
 type AddSalePropertyFormValues = z.infer<typeof formSchema>;
@@ -115,6 +117,8 @@ export function AddSalePropertyForm({
         demand_unit: propertyToEdit?.demand_unit === 'Lacs' || propertyToEdit?.demand_unit === 'Crore' ? propertyToEdit.demand_unit : 'Lacs',
         documents: propertyToEdit?.documents || '',
         message: propertyToEdit?.message || '',
+        tags: propertyToEdit?.tags?.join(', ') || 'New',
+        status: propertyToEdit?.status || 'New',
     },
   });
 
@@ -142,6 +146,11 @@ export function AddSalePropertyForm({
         ? values.property_type_other
         : values.property_type;
 
+    const tagsArray = values.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [];
+    if (!propertyToEdit && values.status === 'New' && !tagsArray.includes('New')) {
+        tagsArray.push('New');
+    }
+
     const propertyData: Omit<Property, 'id'> & { id?: string } = {
       ...propertyToEdit,
       ...values,
@@ -149,7 +158,7 @@ export function AddSalePropertyForm({
       is_for_rent: false,
       id: propertyToEdit?.id,
       serial_no: propertyToEdit?.serial_no || `P-${totalProperties + 1}`,
-      status: propertyToEdit?.status || 'Available',
+      status: values.status as any,
       created_at: propertyToEdit?.created_at || new Date().toISOString(),
       created_by: propertyToEdit?.created_by || user?.uid || '',
       agency_id: propertyToEdit?.agency_id || profile.agency_id || '',
@@ -157,6 +166,7 @@ export function AddSalePropertyForm({
       owner_number: formatPhoneNumber(values.owner_number, values.country_code),
       property_type: finalPropertyType as PropertyType,
       demand_unit: values.demand_unit as 'Lacs' | 'Crore' | 'Thousand',
+      tags: tagsArray,
     };
 
     onSave(propertyData);
@@ -483,6 +493,36 @@ export function AddSalePropertyForm({
                         <FormItem><FormControl><Input placeholder="e.g. Registry, NOC, Fard" {...field} value={field.value ?? ''} className="h-9" /></FormControl></FormItem>
                     )} />
                 </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+               <FormField
+                  control={control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Property Status</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          <SelectItem value="New">New</SelectItem>
+                          <SelectItem value="Available">Available</SelectItem>
+                          <SelectItem value="Sold">Sold</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={control}
+                  name="tags"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tags (comma separated)</FormLabel>
+                      <FormControl><Input {...field} placeholder="e.g. Urgent, Hot" /></FormControl>
+                    </FormItem>
+                  )}
+                />
             </div>
 
             <FormField

@@ -110,7 +110,7 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
         size_max_value: buyerToEdit?.size_max_value ?? 0,
         budget_min_amount: buyerToEdit?.budget_min_amount ?? 0,
         budget_max_amount: buyerToEdit?.budget_max_amount ?? 0,
-        tags: buyerToEdit?.tags?.join(', ') || '',
+        tags: buyerToEdit?.tags?.join(', ') || 'New',
         created_at: buyerToEdit?.created_at || new Date().toISOString(),
         created_by: buyerToEdit?.created_by || user?.uid || '',
     }
@@ -133,6 +133,12 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
         ? values.property_type_other
         : values.property_type_preference;
 
+     const tagsArray = values.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [];
+     // Ensure 'New' is in tags if this is a new lead and status is New
+     if (!buyerToEdit && values.status === 'New' && !tagsArray.includes('New')) {
+        tagsArray.push('New');
+     }
+
      const buyerData = {
         ...values,
         property_type_preference: finalPropertyType,
@@ -142,7 +148,7 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
         is_deleted: buyerToEdit?.is_deleted || false,
         created_by: buyerToEdit?.created_by || user?.uid || '',
         agency_id: buyerToEdit?.agency_id || profile.agency_id || '',
-        tags: values.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [],
+        tags: tagsArray,
     };
     onSave(buyerData);
     setDialogOpen(false);

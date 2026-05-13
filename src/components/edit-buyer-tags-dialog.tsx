@@ -18,7 +18,7 @@ import { useProfile } from '@/context/profile-context';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useMemoFirebase } from '@/firebase/hooks';
 import { collection } from 'firebase/firestore';
-import { Tag, Buyer } from '@/lib/types';
+import { Tag, Buyer, BuyerStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from './ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -89,9 +89,24 @@ export function EditBuyerTagsDialog({ buyer, isOpen, setIsOpen }: EditBuyerTagsD
 
   const handleSave = async () => {
     if (!profile.agency_id) return;
+    
+    // Determine the main status based on selection
+    // If multiple status tags are selected, we pick the first one that is NOT 'New' 
+    // unless only 'New' is selected.
+    let newMainStatus: BuyerStatus = buyer.status;
+    const selectedStatuses = selectedTags.filter(tag => buyerStatuses.includes(tag as any)) as BuyerStatus[];
+    
+    if (selectedStatuses.length > 0) {
+        const nonNewStatus = selectedStatuses.find(s => s !== 'New');
+        newMainStatus = nonNewStatus || 'New';
+    }
+
     try {
         const buyerRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', buyer.id);
-        await updateDoc(buyerRef, { tags: selectedTags });
+        await updateDoc(buyerRef, { 
+            tags: selectedTags,
+            status: newMainStatus
+        });
         toast({ title: "Buyer Tags Updated" });
         setIsOpen(false);
     } catch (error) {
