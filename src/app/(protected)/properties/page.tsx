@@ -81,7 +81,7 @@ import { cn } from '@/lib/utils';
 import { useUser } from '@/firebase/auth/use-user';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { ManageTagsDialog } from '@/components/manage-tags-dialog';
 import { EditPropertyTagsDialog } from '@/components/edit-property-tags-dialog';
@@ -107,7 +107,6 @@ interface Filters {
 }
 
 const statusOptions = [
-  { value: 'All', label: 'All', color: 'bg-gray-100 text-gray-700 dark:bg-neutral-800 dark:text-neutral-300', listing: 'All' },
   { value: 'Available', label: 'Available', color: 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800', listing: 'All' },
   { value: 'Sold', label: 'Sold', color: 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800', listing: 'For Sale' },
   { value: 'Rent Out', label: 'Rent Out', color: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800', listing: 'For Rent' },
@@ -171,6 +170,11 @@ function PropertiesPageContent() {
   const [activeListingType, setActiveListingType] = useState<ListingType | 'All'>('All');
   const [activeStatus, setActiveStatus] = useState<string>('All');
   const [activeCustomTags, setActiveCustomTags] = useState<string[]>([]);
+
+  // Filter expansion states
+  const [isTypesExpanded, setIsTypesExpanded] = useState(false);
+  const [isStatusExpanded, setIsStatusExpanded] = useState(false);
+  const [isTagsExpanded, setIsTagsExpanded] = useState(false);
 
   const [propertyToEdit, setPropertyToEdit] = useState<Property | null>(null);
   const [propertyForDetails, setPropertyForDetails] = useState<Property | null>(null);
@@ -791,31 +795,93 @@ function PropertiesPageContent() {
                 <ScrollArea className="flex-1 whitespace-nowrap pb-4">
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2 pr-4 border-r border-border/50">
-                            <Badge variant={activeListingType === 'All' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full", activeListingType === 'All' ? "bg-primary" : "hover:bg-accent")} onClick={() => setActiveListingType('All')}>All Types</Badge>
-                            <Badge variant={activeListingType === 'For Sale' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800", activeListingType === 'For Sale' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Sale')}>For Sale</Badge>
-                            <Badge variant={activeListingType === 'For Rent' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800", activeListingType === 'For Rent' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Rent')}>For Rent</Badge>
+                            <Badge 
+                                variant={activeListingType === 'All' ? 'default' : 'outline'} 
+                                className={cn("cursor-pointer px-4 py-1.5 rounded-full flex items-center gap-1", activeListingType === 'All' ? "bg-primary" : "hover:bg-accent")} 
+                                onClick={() => {
+                                    setActiveListingType('All');
+                                    setIsTypesExpanded(!isTypesExpanded);
+                                }}
+                            >
+                                All Types {isTypesExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                            </Badge>
+                            <AnimatePresence>
+                                {isTypesExpanded && (
+                                    <motion.div 
+                                        initial={{ opacity: 0, x: -10 }} 
+                                        animate={{ opacity: 1, x: 0 }} 
+                                        exit={{ opacity: 0, x: -10 }}
+                                        className="flex items-center gap-2"
+                                    >
+                                        <Badge variant={activeListingType === 'For Sale' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800", activeListingType === 'For Sale' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Sale')}>For Sale</Badge>
+                                        <Badge variant={activeListingType === 'For Rent' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800", activeListingType === 'For Rent' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Rent')}>For Rent</Badge>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
 
                         <div className="flex items-center gap-2 pr-4 border-r border-border/50">
-                            {statusOptions.filter(opt => activeListingType === 'All' || opt.listing === 'All' || opt.listing === activeListingType).map(opt => (
-                                <Badge 
-                                    key={opt.value}
-                                    variant={activeStatus === opt.value ? 'default' : 'outline'}
-                                    className={cn("cursor-pointer px-4 py-1.5 rounded-full transition-all", opt.color, activeStatus === opt.value && "ring-2 ring-primary ring-offset-2")}
-                                    onClick={() => setActiveStatus(opt.value)}
-                                >{opt.label}</Badge>
-                            ))}
+                            <Badge 
+                                variant={activeStatus === 'All' ? 'default' : 'outline'} 
+                                className={cn("cursor-pointer px-4 py-1.5 rounded-full flex items-center gap-1", activeStatus === 'All' ? "bg-primary" : "hover:bg-accent")} 
+                                onClick={() => {
+                                    setActiveStatus('All');
+                                    setIsStatusExpanded(!isStatusExpanded);
+                                }}
+                            >
+                                All Status {isStatusExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                            </Badge>
+                            <AnimatePresence>
+                                {isStatusExpanded && (
+                                    <motion.div 
+                                        initial={{ opacity: 0, x: -10 }} 
+                                        animate={{ opacity: 1, x: 0 }} 
+                                        exit={{ opacity: 0, x: -10 }}
+                                        className="flex items-center gap-2"
+                                    >
+                                        {statusOptions.filter(opt => activeListingType === 'All' || opt.listing === 'All' || opt.listing === activeListingType).map(opt => (
+                                            <Badge 
+                                                key={opt.value}
+                                                variant={activeStatus === opt.value ? 'default' : 'outline'}
+                                                className={cn("cursor-pointer px-4 py-1.5 rounded-full transition-all", opt.color, activeStatus === opt.value && "ring-2 ring-primary ring-offset-2")}
+                                                onClick={() => setActiveStatus(opt.value)}
+                                            >{opt.label}</Badge>
+                                        ))}
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
 
                         <div className="flex items-center gap-2">
-                            {agencyTags?.filter(tag => activeListingType === 'All' || !tag.listingType || tag.listingType === 'All' || tag.listingType === activeListingType).map(tag => (
-                                <Badge 
-                                    key={tag.id}
-                                    variant={activeCustomTags.includes(tag.name) ? 'default' : 'outline'}
-                                    className={cn("cursor-pointer px-4 py-1.5 rounded-full transition-all", tag.color, activeCustomTags.includes(tag.name) && "ring-2 ring-primary ring-offset-2")}
-                                    onClick={() => handleToggleCustomTag(tag.name)}
-                                >{tag.name}</Badge>
-                            ))}
+                             <Badge 
+                                variant={activeCustomTags.length === 0 ? 'default' : 'outline'} 
+                                className={cn("cursor-pointer px-4 py-1.5 rounded-full flex items-center gap-1", activeCustomTags.length === 0 ? "bg-primary" : "hover:bg-accent")} 
+                                onClick={() => {
+                                    setActiveCustomTags([]);
+                                    setIsTagsExpanded(!isTagsExpanded);
+                                }}
+                            >
+                                All Tags {isTagsExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                            </Badge>
+                            <AnimatePresence>
+                                {isTagsExpanded && (
+                                    <motion.div 
+                                        initial={{ opacity: 0, x: -10 }} 
+                                        animate={{ opacity: 1, x: 0 }} 
+                                        exit={{ opacity: 0, x: -10 }}
+                                        className="flex items-center gap-2"
+                                    >
+                                        {agencyTags?.filter(tag => activeListingType === 'All' || !tag.listingType || tag.listingType === 'All' || tag.listingType === activeListingType).map(tag => (
+                                            <Badge 
+                                                key={tag.id}
+                                                variant={activeCustomTags.includes(tag.name) ? 'default' : 'outline'}
+                                                className={cn("cursor-pointer px-4 py-1.5 rounded-full transition-all", tag.color, activeCustomTags.includes(tag.name) && "ring-2 ring-primary ring-offset-2")}
+                                                onClick={() => handleToggleCustomTag(tag.name)}
+                                            >{tag.name}</Badge>
+                                        ))}
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
                     </div>
                     <ScrollBar orientation="horizontal" />

@@ -45,6 +45,7 @@ import { ManageTagsDialog } from '@/components/manage-tags-dialog';
 import { EditBuyerTagsDialog } from '@/components/edit-buyer-tags-dialog';
 import { SetAppointmentDialog } from '@/components/set-appointment-dialog';
 import { PropertyRecommenderDialog } from '@/components/property-recommender-dialog';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const ITEMS_PER_PAGE = 50;
 
@@ -137,6 +138,11 @@ function BuyersPageContent() {
     const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+    // Filter expansion states
+    const [isTypesExpanded, setIsTypesExpanded] = useState(false);
+    const [isStatusExpanded, setIsStatusExpanded] = useState(false);
+    const [isTagsExpanded, setIsTagsExpanded] = useState(false);
 
     const [filters, setFilters] = useState<Filters>({
         area: [],
@@ -676,37 +682,92 @@ function BuyersPageContent() {
                     <ScrollArea className="flex-1 whitespace-nowrap pb-4">
                         <div className="flex items-center gap-3">
                             <div className="flex items-center gap-2 pr-4 border-r border-border/50">
-                                <Badge variant={activeListingType === 'All' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full", activeListingType === 'All' ? "bg-primary" : "hover:bg-accent")} onClick={() => setActiveListingType('All')}>All Types</Badge>
-                                <Badge variant={activeListingType === 'For Sale' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800", activeListingType === 'For Sale' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Sale')}>For Sale</Badge>
-                                <Badge variant={activeListingType === 'For Rent' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800", activeListingType === 'For Rent' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Rent')}>For Rent</Badge>
+                                <Badge 
+                                    variant={activeListingType === 'All' ? 'default' : 'outline'} 
+                                    className={cn("cursor-pointer px-4 py-1.5 rounded-full flex items-center gap-1", activeListingType === 'All' ? "bg-primary" : "hover:bg-accent")} 
+                                    onClick={() => {
+                                        setActiveListingType('All');
+                                        setIsTypesExpanded(!isTypesExpanded);
+                                    }}
+                                >
+                                    All Types {isTypesExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                                </Badge>
+                                <AnimatePresence>
+                                    {isTypesExpanded && (
+                                        <motion.div 
+                                            initial={{ opacity: 0, x: -10 }} 
+                                            animate={{ opacity: 1, x: 0 }} 
+                                            exit={{ opacity: 0, x: -10 }}
+                                            className="flex items-center gap-2"
+                                        >
+                                            <Badge variant={activeListingType === 'For Sale' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800", activeListingType === 'For Sale' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Sale')}>For Sale</Badge>
+                                            <Badge variant={activeListingType === 'For Rent' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800", activeListingType === 'For Rent' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Rent')}>For Rent</Badge>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </div>
                             <div className="flex items-center gap-2 pr-4 border-r border-border/50">
                                 <Badge 
                                     variant={activeStatus === 'All' ? 'default' : 'outline'} 
-                                    className={cn("cursor-pointer px-4 py-1.5 rounded-full", activeStatus === 'All' ? "bg-primary" : "hover:bg-accent")} 
-                                    onClick={() => setActiveStatus('All')}
+                                    className={cn("cursor-pointer px-4 py-1.5 rounded-full flex items-center gap-1", activeStatus === 'All' ? "bg-primary" : "hover:bg-accent")} 
+                                    onClick={() => {
+                                        setActiveStatus('All');
+                                        setIsStatusExpanded(!isStatusExpanded);
+                                    }}
                                 >
-                                    All Status
+                                    All Status {isStatusExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
                                 </Badge>
-                                {buyerStatuses.map(status => (
-                                    <Badge 
-                                        key={status} 
-                                        variant={activeStatus === status ? 'default' : 'outline'} 
-                                        className={cn(
-                                            "cursor-pointer px-4 py-1.5 rounded-full transition-all", 
-                                            statusVariant[status as keyof typeof statusVariant],
-                                            activeStatus === status && "ring-2 ring-primary ring-offset-2"
-                                        )} 
-                                        onClick={() => setActiveStatus(status)}
-                                    >
-                                        {status}
-                                    </Badge>
-                                ))}
+                                <AnimatePresence>
+                                    {isStatusExpanded && (
+                                        <motion.div 
+                                            initial={{ opacity: 0, x: -10 }} 
+                                            animate={{ opacity: 1, x: 0 }} 
+                                            exit={{ opacity: 0, x: -10 }}
+                                            className="flex items-center gap-2"
+                                        >
+                                            {buyerStatuses.map(status => (
+                                                <Badge 
+                                                    key={status} 
+                                                    variant={activeStatus === status ? 'default' : 'outline'} 
+                                                    className={cn(
+                                                        "cursor-pointer px-4 py-1.5 rounded-full transition-all", 
+                                                        statusVariant[status as keyof typeof statusVariant],
+                                                        activeStatus === status && "ring-2 ring-primary ring-offset-2"
+                                                    )} 
+                                                    onClick={() => setActiveStatus(status)}
+                                                >
+                                                    {status}
+                                                </Badge>
+                                            ))}
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </div>
                             <div className="flex items-center gap-2">
-                                {agencyTags?.map(tag => (
-                                    <Badge key={tag.id} variant={activeCustomTags.includes(tag.name) ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full transition-all", tag.color, activeCustomTags.includes(tag.name) && "ring-2 ring-primary ring-offset-2")} onClick={() => handleToggleCustomTag(tag.name)}>{tag.name}</Badge>
-                                ))}
+                                <Badge 
+                                    variant={activeCustomTags.length === 0 ? 'default' : 'outline'} 
+                                    className={cn("cursor-pointer px-4 py-1.5 rounded-full flex items-center gap-1", activeCustomTags.length === 0 ? "bg-primary" : "hover:bg-accent")} 
+                                    onClick={() => {
+                                        setActiveCustomTags([]);
+                                        setIsTagsExpanded(!isTagsExpanded);
+                                    }}
+                                >
+                                    All Tags {isTagsExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                                </Badge>
+                                <AnimatePresence>
+                                    {isTagsExpanded && (
+                                        <motion.div 
+                                            initial={{ opacity: 0, x: -10 }} 
+                                            animate={{ opacity: 1, x: 0 }} 
+                                            exit={{ opacity: 0, x: -10 }}
+                                            className="flex items-center gap-2"
+                                        >
+                                            {agencyTags?.map(tag => (
+                                                <Badge key={tag.id} variant={activeCustomTags.includes(tag.name) ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full transition-all", tag.color, activeCustomTags.includes(tag.name) && "ring-2 ring-primary ring-offset-2")} onClick={() => handleToggleCustomTag(tag.name)}>{tag.name}</Badge>
+                                            ))}
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </div>
                         </div>
                         <ScrollBar orientation="horizontal" />
