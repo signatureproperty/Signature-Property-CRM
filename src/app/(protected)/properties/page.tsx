@@ -40,8 +40,8 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSub,
   DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
   DropdownMenuPortal,
+  DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu';
 import { AddPropertyDialog } from '@/components/add-property-dialog';
 import { Input } from '@/components/ui/input';
@@ -107,10 +107,18 @@ interface Filters {
 
 const statusOptions = [
   { value: 'All', label: 'All', color: 'bg-gray-100 text-gray-700 dark:bg-neutral-800 dark:text-neutral-300', listing: 'All' },
-  { value: 'Available', label: 'Available', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', listing: 'All' },
-  { value: 'Sold', label: 'Sold', color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400', listing: 'For Sale' },
-  { value: 'Rent Out', label: 'Rent Out', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400', listing: 'For Rent' },
+  { value: 'Available', label: 'Available', color: 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800', listing: 'All' },
+  { value: 'Sold', label: 'Sold', color: 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800', listing: 'For Sale' },
+  { value: 'Rent Out', label: 'Rent Out', color: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800', listing: 'For Rent' },
 ];
+
+const statusVariant = {
+  'Available': 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800',
+  'Sold': 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800',
+  'Rent Out': 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800',
+  'Sold (External)': 'bg-slate-400 text-white border-slate-300 dark:bg-slate-600 dark:border-slate-500',
+  'Pending': 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800'
+} as const;
 
 const propertyTypesForFilter: (PropertyType | 'All' | 'Other')[] = [
   'All', 'House', 'Flat', 'Farm House', 'Penthouse', 'Plot', 'Residential Plot', 'Commercial Plot', 'Agricultural Land', 'Industrial Land', 'Office', 'Shop', 'Warehouse', 'Factory', 'Building', 'Residential Property', 'Commercial Property', 'Semi Commercial', 'Other'
@@ -214,6 +222,12 @@ function PropertiesPageContent() {
     setActiveCustomTags(prev => 
         prev.includes(tagName) ? prev.filter(t => t !== tagName) : [...prev, tagName]
     );
+  };
+
+  const getTagColor = (tagName: string) => {
+    const tagObj = agencyTags?.find(t => t.name === tagName);
+    if (tagObj) return tagObj.color;
+    return statusVariant[tagName as keyof typeof statusVariant] || 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700';
   };
 
   useEffect(() => {
@@ -489,11 +503,10 @@ function PropertiesPageContent() {
               <TableCell onClick={() => handleRowClick(prop)}>{formatCurrency(formatUnit(prop.demand_amount, prop.demand_unit), currency)}</TableCell>
               <TableCell onClick={() => handleRowClick(prop)}>
                 <div className="flex flex-wrap gap-1 items-center">
-                    <Badge className={cn("text-[10px] font-bold", statusOptions.find(o => o.value === prop.status)?.color || "bg-primary")}>{prop.status}</Badge>
-                    {prop.tags?.filter(t => t !== prop.status).map(tagName => {
-                        const tagObj = agencyTags?.find(t => t.name === tagName);
-                        return <Badge key={tagName} variant="outline" className={cn("text-[9px] px-1.5 py-0", tagObj?.color || "bg-gray-100")}>{tagName}</Badge>
-                    })}
+                    <Badge className={cn("text-[10px] font-bold", getTagColor(prop.status))}>{prop.status}</Badge>
+                    {prop.tags?.filter(t => t !== prop.status).map(tagName => (
+                        <Badge key={tagName} className={cn("text-[10px] font-bold", getTagColor(tagName))}>{tagName}</Badge>
+                    ))}
                 </div>
               </TableCell>
               <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
@@ -564,7 +577,7 @@ function PropertiesPageContent() {
                     </div>
                   </div>
                 </div>
-                <Badge className={cn("text-[9px] font-bold px-2", statusOptions.find(o => o.value === prop.status)?.color || "bg-primary")}>
+                <Badge className={cn("text-[9px] font-bold px-2", getTagColor(prop.status))}>
                   {prop.status}
                 </Badge>
               </CardHeader>
@@ -589,10 +602,9 @@ function PropertiesPageContent() {
                     </div>
                 </div>
                  <div className="flex flex-wrap gap-1 mt-4">
-                    {prop.tags?.filter(t => t !== prop.status).slice(0, 5).map(tagName => {
-                         const tagObj = agencyTags?.find(t => t.name === tagName);
-                         return <Badge key={tagName} variant="outline" className={cn("text-[8px] px-1.5 py-0", tagObj?.color || "bg-gray-100")}>{tagName}</Badge>
-                    })}
+                    {prop.tags?.filter(t => t !== prop.status).slice(0, 5).map(tagName => (
+                         <Badge key={tagName} className={cn("text-[8px] px-1.5 py-0 font-bold", getTagColor(tagName))}>{tagName}</Badge>
+                    ))}
                  </div>
               </CardContent>
               <CardFooter className="p-2 bg-muted/20 border-t justify-end">

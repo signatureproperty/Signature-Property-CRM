@@ -38,7 +38,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { buyerStatuses } from '@/lib/data';
 
 interface ManageTagsDialogProps {
   isOpen: boolean;
@@ -56,9 +55,6 @@ const tagColors = [
     { name: 'Orange', class: 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800' },
     { name: 'Gray', class: 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700' },
 ];
-
-const defaultPropertyStatuses = ['Available', 'Sold', 'Rent Out', 'Pending'];
-const allDefaults = Array.from(new Set([...buyerStatuses, ...defaultPropertyStatuses])).sort();
 
 const formSchema = z.object({
   name: z.string().min(1, 'Tag name is required').max(20, 'Tag name too long'),
@@ -103,32 +99,6 @@ export function ManageTagsDialog({ isOpen, setIsOpen }: ManageTagsDialogProps) {
     }
   };
 
-  const handleAddDefault = async (name: string) => {
-    if (!profile.agency_id) return;
-    if (tags?.some(t => t.name.toLowerCase() === name.toLowerCase())) {
-        toast({ title: `Tag "${name}" already in list.` });
-        return;
-    }
-    
-    // Choose a color based on status name for defaults
-    let initialColor = tagColors[0].class; // default blue
-    if (['Sold', 'Deal Closed', 'Available'].includes(name)) initialColor = tagColors[1].class; // emerald
-    if (['Not Interested', 'Deal Lost'].includes(name)) initialColor = tagColors[4].class; // red
-    if (['Follow Up', 'Pending'].includes(name)) initialColor = tagColors[3].class; // purple
-
-    try {
-        await addDoc(collection(firestore, 'agencies', profile.agency_id, 'tags'), {
-            name: name,
-            color: initialColor,
-            agency_id: profile.agency_id,
-            createdAt: new Date().toISOString(),
-        });
-        toast({ title: "Added to Agency Tags" });
-    } catch (error) {
-        toast({ title: "Error", variant: 'destructive' });
-    }
-  };
-
   const handleDeleteTag = async (tagId: string) => {
     if (!profile.agency_id) return;
     try {
@@ -145,7 +115,7 @@ export function ManageTagsDialog({ isOpen, setIsOpen }: ManageTagsDialogProps) {
         <div className="p-6 pb-2">
             <DialogHeader>
               <DialogTitle className="font-headline flex items-center gap-2"><TagIcon className="h-5 w-5" /> Manage Agency Tags</DialogTitle>
-              <DialogDescription>Create custom tags or add default statuses as manageable tags.</DialogDescription>
+              <DialogDescription>Create custom tags or manage existing status labels.</DialogDescription>
             </DialogHeader>
 
             <Form {...form}>
@@ -156,9 +126,9 @@ export function ManageTagsDialog({ isOpen, setIsOpen }: ManageTagsDialogProps) {
                             name="name"
                             render={({ field }) => (
                                 <FormItem className="flex-1">
-                                    <FormLabel>New Custom Tag</FormLabel>
+                                    <FormLabel>New Tag Name</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="e.g. Hot Lead" {...field} className="h-9" />
+                                        <Input placeholder="e.g. Interested, Hot Lead, Follow Up" {...field} className="h-9" />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -189,22 +159,20 @@ export function ManageTagsDialog({ isOpen, setIsOpen }: ManageTagsDialogProps) {
 
         <Separator />
 
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-8">
-            {/* Custom/Agency Tags Section */}
+        <div className="flex-1 overflow-y-auto px-6 py-4">
             <div className="space-y-3">
                 <h4 className="text-sm font-bold uppercase tracking-wider flex items-center justify-between">
                     Agency Tags
-                    <span className="text-[10px] text-muted-foreground font-normal bg-muted px-2 py-0.5 rounded-full">Used for filtering & labels</span>
+                    <span className="text-[10px] text-muted-foreground font-normal bg-muted px-2 py-0.5 rounded-full">Labels & Filters</span>
                 </h4>
-                <div className="rounded-xl border p-4 bg-muted/5 min-h-[100px]">
+                <div className="rounded-xl border p-4 bg-muted/5 min-h-[150px]">
                     {isLoading ? <p className="text-center text-muted-foreground py-10">Loading tags...</p> : 
                     tags && tags.length > 0 ? (
                         <div className="flex flex-wrap gap-2">
                             {tags.map(tag => (
                                 <Badge 
                                     key={tag.id} 
-                                    variant="outline" 
-                                    className={cn("px-3 py-1 flex items-center gap-2 pr-1 rounded-lg transition-all hover:pr-1", tag.color)}
+                                    className={cn("px-3 py-1 flex items-center gap-2 pr-1 rounded-lg transition-all", tag.color)}
                                 >
                                     {tag.name}
                                     <AlertDialog>
@@ -230,37 +198,11 @@ export function ManageTagsDialog({ isOpen, setIsOpen }: ManageTagsDialogProps) {
                             ))}
                         </div>
                     ) : (
-                        <div className="flex flex-col items-center justify-center h-20 text-muted-foreground">
-                            <Info className="h-5 w-5 mb-2 opacity-20" />
-                            <p className="text-xs">No custom agency tags created yet.</p>
+                        <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
+                            <Info className="h-8 w-8 mb-2 opacity-20" />
+                            <p className="text-sm text-center max-w-[200px]">No agency tags created yet. Add statuses like "Interested" here.</p>
                         </div>
                     )}
-                </div>
-            </div>
-
-            {/* Default Statuses Section */}
-            <div className="space-y-3">
-                <h4 className="text-sm font-bold uppercase tracking-wider">Default Status Tags</h4>
-                <p className="text-xs text-muted-foreground">Click "+" to add these to your Agency Tags so you can customize or remove them.</p>
-                <div className="flex flex-wrap gap-2 p-4 border border-dashed rounded-xl bg-muted/5">
-                    {allDefaults.map(name => {
-                        const isAdded = tags?.some(t => t.name === name);
-                        return (
-                            <Badge 
-                                key={name} 
-                                variant="outline" 
-                                className={cn(
-                                    "px-3 py-1 flex items-center gap-2 rounded-lg transition-all",
-                                    isAdded ? "opacity-30 grayscale pointer-events-none" : "hover:bg-primary/5 cursor-pointer border-primary/20 text-primary"
-                                )}
-                                onClick={() => !isAdded && handleAddDefault(name)}
-                            >
-                                {name}
-                                {!isAdded && <Plus className="h-3 w-3" />}
-                                {isAdded && <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
-                            </Badge>
-                        );
-                    })}
                 </div>
             </div>
         </div>

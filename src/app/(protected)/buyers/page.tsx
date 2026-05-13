@@ -9,8 +9,8 @@ import {
     DropdownMenuTrigger,
     DropdownMenuSub,
     DropdownMenuSubTrigger,
-    DropdownMenuSubContent,
     DropdownMenuPortal,
+    DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { buyerStatuses } from '@/lib/data';
@@ -333,6 +333,13 @@ function BuyersPageContent() {
         return `${formatCurrency(minVal, currency)} - ${formatCurrency(maxVal, currency)}`;
     }
 
+    const getTagColor = (tagName: string) => {
+        const tagObj = agencyTags?.find(t => t.name === tagName);
+        if (tagObj) return tagObj.color;
+        // Fallback to status colors if not found in custom tags
+        return statusVariant[tagName as keyof typeof statusVariant] || 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700';
+    };
+
     const filteredBuyers = useMemo(() => {
         if (!allBuyers) return [];
         let buyers = allBuyers.filter(b => !b.is_deleted);
@@ -438,11 +445,10 @@ function BuyersPageContent() {
                                 </TableCell>
                                 <TableCell>
                                     <div className="flex flex-wrap gap-1 items-center">
-                                        <Badge className={cn("text-[10px] font-bold", statusVariant[buyer.status as keyof typeof statusVariant] || 'bg-primary')}>{buyer.status}</Badge>
-                                        {buyer.tags?.filter(t => t !== buyer.status).map(tagName => {
-                                            const tagObj = agencyTags?.find(t => t.name === tagName);
-                                            return <Badge key={tagName} variant="outline" className={cn("text-[9px] px-1.5 py-0", tagObj?.color || "bg-gray-100")}>{tagName}</Badge>
-                                        })}
+                                        <Badge className={cn("text-[10px] font-bold", getTagColor(buyer.status))}>{buyer.status}</Badge>
+                                        {buyer.tags?.filter(t => t !== buyer.status).map(tagName => (
+                                            <Badge key={tagName} className={cn("text-[10px] font-bold", getTagColor(tagName))}>{tagName}</Badge>
+                                        ))}
                                     </div>
                                 </TableCell>
                                 <TableCell className="text-right" onClick={e => e.stopPropagation()}>
@@ -503,7 +509,7 @@ function BuyersPageContent() {
                                 </div>
                             </div>
                         </div>
-                        <Badge className={cn("text-[9px] font-bold px-2", statusVariant[buyer.status as keyof typeof statusVariant])}>
+                        <Badge className={cn("text-[9px] font-bold px-2", getTagColor(buyer.status))}>
                             {buyer.status}
                         </Badge>
                     </CardHeader>
@@ -527,10 +533,9 @@ function BuyersPageContent() {
                             <span className="truncate">{buyer.area_preference || 'No area specified'}</span>
                         </div>
                         <div className="flex flex-wrap gap-1 mt-3">
-                             {buyer.tags?.filter(t => t !== buyer.status).map(tagName => {
-                                const tagObj = agencyTags?.find(t => t.name === tagName);
-                                return <Badge key={tagName} variant="outline" className={cn("text-[8px] px-1.5 py-0", tagObj?.color || "bg-gray-100")}>{tagName}</Badge>
-                            })}
+                             {buyer.tags?.filter(t => t !== buyer.status).map(tagName => (
+                                <Badge key={tagName} className={cn("text-[8px] px-1.5 py-0 font-bold", getTagColor(tagName))}>{tagName}</Badge>
+                            ))}
                         </div>
                     </CardContent>
                     <CardFooter className="p-2 bg-muted/20 border-t justify-end">
