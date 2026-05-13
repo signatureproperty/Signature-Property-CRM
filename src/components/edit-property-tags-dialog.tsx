@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -30,6 +30,8 @@ interface EditPropertyTagsDialogProps {
   setIsOpen: (open: boolean) => void;
 }
 
+const defaultPropertyStatuses = ['Available', 'Sold', 'Rent Out', 'Sold (External)', 'Pending'];
+
 export function EditPropertyTagsDialog({ property, isOpen, setIsOpen }: EditPropertyTagsDialogProps) {
   const { profile } = useProfile();
   const firestore = useFirestore();
@@ -41,6 +43,26 @@ export function EditPropertyTagsDialog({ property, isOpen, setIsOpen }: EditProp
     [profile.agency_id, firestore]
   );
   const { data: agencyTags } = useCollection<Tag>(tagsQuery);
+
+  // Combine default statuses with custom agency tags
+  const allAvailableTags = useMemo(() => {
+    const statusTags = defaultPropertyStatuses.map(status => ({
+        id: `status-${status}`,
+        name: status,
+        color: 'bg-primary/10 text-primary border-primary/20',
+        isStatus: true
+    }));
+
+    const customTags = (agencyTags || []).map(tag => ({
+        ...tag,
+        isStatus: false
+    }));
+
+    // Filter out custom tags that have the same name as statuses to avoid duplicates
+    const filteredCustom = customTags.filter(ct => !defaultPropertyStatuses.includes(ct.name as any));
+
+    return [...statusTags, ...filteredCustom];
+  }, [agencyTags]);
 
   useEffect(() => {
     if (isOpen) {
@@ -72,14 +94,14 @@ export function EditPropertyTagsDialog({ property, isOpen, setIsOpen }: EditProp
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Manage Tags for {property.serial_no}</DialogTitle>
-          <DialogDescription>Select the tags you want to apply to this property lead.</DialogDescription>
+          <DialogTitle className="font-headline">Manage Tags for {property.serial_no}</DialogTitle>
+          <DialogDescription>Select statuses or custom tags to apply to this property lead.</DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="h-64 mt-4 pr-4">
+        <ScrollArea className="h-80 mt-4 pr-4">
             <div className="grid gap-3">
-                {agencyTags && agencyTags.length > 0 ? (
-                    agencyTags.map(tag => (
+                {allAvailableTags.length > 0 ? (
+                    allAvailableTags.map(tag => (
                         <div 
                             key={tag.id} 
                             className={cn(
@@ -96,22 +118,25 @@ export function EditPropertyTagsDialog({ property, isOpen, setIsOpen }: EditProp
                             />
                             <Label 
                                 htmlFor={`edit-tag-${tag.id}`} 
-                                className="flex-1 cursor-pointer font-medium flex items-center gap-2"
+                                className="flex-1 cursor-pointer font-medium flex items-center justify-between"
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                <Badge variant="outline" className={tag.color}>{tag.name}</Badge>
+                                <Badge variant="outline" className={cn("px-2 py-0.5", tag.color)}>
+                                    {tag.name}
+                                </Badge>
+                                {tag.isStatus && <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Status</span>}
                             </Label>
                         </div>
                     ))
                 ) : (
-                    <p className="text-center text-muted-foreground py-10">No custom tags created yet. Go to Manage Tags to create some.</p>
+                    <p className="text-center text-muted-foreground py-10">No tags found.</p>
                 )}
             </div>
         </ScrollArea>
 
         <DialogFooter className="pt-4 border-t">
           <Button variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
-          <Button onClick={handleSave}>Save Tags</Button>
+          <Button onClick={handleSave} className="glowing-btn px-6">Save Tags</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

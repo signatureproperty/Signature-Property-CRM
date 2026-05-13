@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -23,6 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from './ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Badge } from './ui/badge';
+import { buyerStatuses } from '@/lib/data';
 
 interface EditBuyerTagsDialogProps {
   buyer: Buyer;
@@ -41,6 +42,26 @@ export function EditBuyerTagsDialog({ buyer, isOpen, setIsOpen }: EditBuyerTagsD
     [profile.agency_id, firestore]
   );
   const { data: agencyTags } = useCollection<Tag>(tagsQuery);
+
+  // Combine default statuses with custom agency tags
+  const allAvailableTags = useMemo(() => {
+    const statusTags = buyerStatuses.map(status => ({
+        id: `status-${status}`,
+        name: status,
+        color: 'bg-primary/10 text-primary border-primary/20',
+        isStatus: true
+    }));
+
+    const customTags = (agencyTags || []).map(tag => ({
+        ...tag,
+        isStatus: false
+    }));
+
+    // Filter out custom tags that have the same name as statuses to avoid duplicates
+    const filteredCustom = customTags.filter(ct => !buyerStatuses.includes(ct.name as any));
+
+    return [...statusTags, ...filteredCustom];
+  }, [agencyTags]);
 
   useEffect(() => {
     if (isOpen) {
@@ -72,14 +93,14 @@ export function EditBuyerTagsDialog({ buyer, isOpen, setIsOpen }: EditBuyerTagsD
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Manage Tags for {buyer.name}</DialogTitle>
-          <DialogDescription>Select the tags you want to apply to this buyer lead.</DialogDescription>
+          <DialogTitle className="font-headline">Manage Tags for {buyer.name}</DialogTitle>
+          <DialogDescription>Select statuses or custom tags to apply to this buyer lead.</DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="h-64 mt-4 pr-4">
+        <ScrollArea className="h-80 mt-4 pr-4">
             <div className="grid gap-3">
-                {agencyTags && agencyTags.length > 0 ? (
-                    agencyTags.map(tag => (
+                {allAvailableTags.length > 0 ? (
+                    allAvailableTags.map(tag => (
                         <div 
                             key={tag.id} 
                             className={cn(
@@ -96,22 +117,25 @@ export function EditBuyerTagsDialog({ buyer, isOpen, setIsOpen }: EditBuyerTagsD
                             />
                             <Label 
                                 htmlFor={`edit-tag-${tag.id}`} 
-                                className="flex-1 cursor-pointer font-medium flex items-center gap-2"
+                                className="flex-1 cursor-pointer font-medium flex items-center justify-between"
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                <Badge variant="outline" className={tag.color}>{tag.name}</Badge>
+                                <Badge variant="outline" className={cn("px-2 py-0.5", tag.color)}>
+                                    {tag.name}
+                                </Badge>
+                                {tag.isStatus && <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Status</span>}
                             </Label>
                         </div>
                     ))
                 ) : (
-                    <p className="text-center text-muted-foreground py-10">No custom tags created yet. Go to Manage Tags to create some.</p>
+                    <p className="text-center text-muted-foreground py-10">No tags found.</p>
                 )}
             </div>
         </ScrollArea>
 
         <DialogFooter className="pt-4 border-t">
           <Button variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
-          <Button onClick={handleSave}>Save Tags</Button>
+          <Button onClick={handleSave} className="glowing-btn px-6">Save Tags</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
