@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -28,6 +27,17 @@ import { ScrollArea } from './ui/scroll-area';
 import { Tag } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface ManageTagsDialogProps {
   isOpen: boolean;
@@ -136,7 +146,7 @@ export function ManageTagsDialog({ isOpen, setIsOpen }: ManageTagsDialogProps) {
                                 onClick={() => setSelectedColor(color.class)}
                                 className={cn(
                                     "h-8 w-8 rounded-full border-2 transition-all",
-                                    color.class.split(' ')[0], // Use the bg color part for the dot
+                                    color.class.split(' ')[0],
                                     selectedColor === color.class ? "border-primary scale-110" : "border-transparent"
                                 )}
                                 title={color.name}
@@ -162,9 +172,25 @@ export function ManageTagsDialog({ isOpen, setIsOpen }: ManageTagsDialogProps) {
                                 className={cn("px-3 py-1 flex items-center gap-2", tag.color)}
                             >
                                 {tag.name}
-                                <button onClick={() => handleDeleteTag(tag.id)} className="hover:text-destructive">
-                                    <X className="h-3 w-3" />
-                                </button>
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <button className="hover:text-destructive">
+                                            <X className="h-3 w-3" />
+                                        </button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Delete Tag?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                Are you sure you want to delete the "{tag.name}" tag? This action cannot be undone.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => handleDeleteTag(tag.id)}>Delete</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
                             </Badge>
                         ))}
                     </div>
@@ -181,4 +207,3 @@ export function ManageTagsDialog({ isOpen, setIsOpen }: ManageTagsDialogProps) {
     </Dialog>
   );
 }
-

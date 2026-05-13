@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -504,30 +503,31 @@ function PropertiesPageContent() {
                     <DropdownMenuItem onSelect={() => handleMarkAsSoldOrRent(prop)}><Check /> {prop.is_for_rent ? 'Mark as Rent Out' : 'Mark as Sold'}</DropdownMenuItem>
                     
                     {profile.role === 'Admin' && (
-                        <DropdownMenuSub>
-                            <DropdownMenuSubTrigger><UserPlus /> Assign to...</DropdownMenuSubTrigger>
-                            <DropdownMenuPortal>
-                                <DropdownMenuSubContent>
-                                    {assignableMembers.map(member => {
-                                        const isAssigned = Array.isArray(prop.assignedTo) 
-                                            ? prop.assignedTo.includes(member.user_id || member.id)
-                                            : prop.assignedTo === (member.user_id || member.id);
-                                        return (
-                                            <DropdownMenuItem key={member.id} onSelect={() => handleAssignAgent(prop.id, member.user_id || member.id, member.name)}>
-                                                <div className="flex items-center justify-between w-full">
-                                                    {member.name}
-                                                    {isAssigned && <Check className="h-4 w-4 ml-2" />}
-                                                </div>
-                                            </DropdownMenuItem>
-                                        );
-                                    })}
-                                </DropdownMenuSubContent>
-                            </DropdownMenuPortal>
-                        </DropdownMenuSub>
+                        <>
+                            <DropdownMenuSub>
+                                <DropdownMenuSubTrigger><UserPlus /> Assign to...</DropdownMenuSubTrigger>
+                                <DropdownMenuPortal>
+                                    <DropdownMenuSubContent>
+                                        {assignableMembers.map(member => {
+                                            const isAssigned = Array.isArray(prop.assignedTo) 
+                                                ? prop.assignedTo.includes(member.user_id || member.id)
+                                                : prop.assignedTo === (member.user_id || member.id);
+                                            return (
+                                                <DropdownMenuItem key={member.id} onSelect={() => handleAssignAgent(prop.id, member.user_id || member.id, member.name)}>
+                                                    <div className="flex items-center justify-between w-full">
+                                                        {member.name}
+                                                        {isAssigned && <Check className="h-4 w-4 ml-2" />}
+                                                    </div>
+                                                </DropdownMenuItem>
+                                            );
+                                        })}
+                                    </DropdownMenuSubContent>
+                                </DropdownMenuPortal>
+                            </DropdownMenuSub>
+                            <DropdownMenuItem onSelect={() => handleEdit(prop)}><Edit />Edit</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => handleDelete(prop)} className="text-destructive"><Trash2 />Delete</DropdownMenuItem>
+                        </>
                     )}
-
-                    {profile.role !== 'Agent' && <DropdownMenuItem onSelect={() => handleEdit(prop)}><Edit />Edit</DropdownMenuItem>}
-                    {profile.role !== 'Agent' && <DropdownMenuItem onSelect={() => handleDelete(prop)} className="text-destructive"><Trash2 />Delete</DropdownMenuItem>}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TableCell>
@@ -606,30 +606,31 @@ function PropertiesPageContent() {
                     <DropdownMenuItem onSelect={() => handleMarkAsSoldOrRent(prop)}><Check /> {prop.is_for_rent ? 'Mark as Rent Out' : 'Mark as Sold'}</DropdownMenuItem>
                     
                     {profile.role === 'Admin' && (
-                        <DropdownMenuSub>
-                            <DropdownMenuSubTrigger><UserPlus /> Assign to...</DropdownMenuSubTrigger>
-                            <DropdownMenuPortal>
-                                <DropdownMenuSubContent>
-                                    {assignableMembers.map(member => {
-                                        const isAssigned = Array.isArray(prop.assignedTo) 
-                                            ? prop.assignedTo.includes(member.user_id || member.id)
-                                            : prop.assignedTo === (member.user_id || member.id);
-                                        return (
-                                            <DropdownMenuItem key={member.id} onSelect={() => handleAssignAgent(prop.id, member.user_id || member.id, member.name)}>
-                                                <div className="flex items-center justify-between w-full">
-                                                    {member.name}
-                                                    {isAssigned && <Check className="h-4 w-4 ml-2" />}
-                                                </div>
-                                            </DropdownMenuItem>
-                                        );
-                                    })}
-                                </DropdownMenuSubContent>
-                            </DropdownMenuPortal>
-                        </DropdownMenuSub>
+                        <>
+                            <DropdownMenuSub>
+                                <DropdownMenuSubTrigger><UserPlus /> Assign to...</DropdownMenuSubTrigger>
+                                <DropdownMenuPortal>
+                                    <DropdownMenuSubContent>
+                                        {assignableMembers.map(member => {
+                                            const isAssigned = Array.isArray(prop.assignedTo) 
+                                                ? prop.assignedTo.includes(member.user_id || member.id)
+                                                : prop.assignedTo === (member.user_id || member.id);
+                                            return (
+                                                <DropdownMenuItem key={member.id} onSelect={() => handleAssignAgent(prop.id, member.user_id || member.id, member.name)}>
+                                                    <div className="flex items-center justify-between w-full">
+                                                        {member.name}
+                                                        {isAssigned && <Check className="h-4 w-4 ml-2" />}
+                                                    </div>
+                                                </DropdownMenuItem>
+                                            );
+                                        })}
+                                    </DropdownMenuSubContent>
+                                </DropdownMenuPortal>
+                            </DropdownMenuSub>
+                            <DropdownMenuItem onSelect={() => handleEdit(prop)}><Edit />Edit Details</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => handleDelete(prop)} className="text-destructive"><Trash2 />Delete Property</DropdownMenuItem>
+                        </>
                     )}
-
-                    {profile.role !== 'Agent' && <DropdownMenuItem onSelect={() => handleEdit(prop)}><Edit />Edit Details</DropdownMenuItem>}
-                    {profile.role !== 'Agent' && <DropdownMenuItem onSelect={() => handleDelete(prop)} className="text-destructive"><Trash2 />Delete Property</DropdownMenuItem>}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </CardFooter>

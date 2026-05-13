@@ -1,4 +1,3 @@
-
 'use client';
 
 import { AddBuyerDialog } from '@/components/add-buyer-dialog';
@@ -448,22 +447,23 @@ function BuyersPageContent() {
                                             <DropdownMenuItem onSelect={() => handleSetAppointment(buyer)}><CalendarPlus /> Set Appointment</DropdownMenuItem>
                                             
                                             {profile.role === 'Admin' && (
-                                                <DropdownMenuSub>
-                                                    <DropdownMenuSubTrigger><UserPlus /> Assign Agent</DropdownMenuSubTrigger>
-                                                    <DropdownMenuPortal>
-                                                        <DropdownMenuSubContent>
-                                                            {activeAgents.map(member => (
-                                                                <DropdownMenuItem key={member.id} onSelect={() => handleAssignAgent(buyer.id, member.user_id || member.id, member.name)}>
-                                                                    {member.name}
-                                                                </DropdownMenuItem>
-                                                            ))}
-                                                        </DropdownMenuSubContent>
-                                                    </DropdownMenuPortal>
-                                                </DropdownMenuSub>
+                                                <>
+                                                    <DropdownMenuSub>
+                                                        <DropdownMenuSubTrigger><UserPlus /> Assign Agent</DropdownMenuSubTrigger>
+                                                        <DropdownMenuPortal>
+                                                            <DropdownMenuSubContent>
+                                                                {activeAgents.map(member => (
+                                                                    <DropdownMenuItem key={member.id} onSelect={() => handleAssignAgent(buyer.id, member.user_id || member.id, member.name)}>
+                                                                        {member.name}
+                                                                    </DropdownMenuItem>
+                                                                ))}
+                                                            </DropdownMenuSubContent>
+                                                        </DropdownMenuPortal>
+                                                    </DropdownMenuSub>
+                                                    <DropdownMenuItem onSelect={() => handleEdit(buyer)}><Edit /> Edit Details</DropdownMenuItem>
+                                                    <DropdownMenuItem onSelect={() => handleDelete(buyer)} className="text-destructive"><Trash2 /> Delete Buyer</DropdownMenuItem>
+                                                </>
                                             )}
-
-                                            <DropdownMenuItem onSelect={() => handleEdit(buyer)}><Edit /> Edit Details</DropdownMenuItem>
-                                            <DropdownMenuItem onSelect={() => handleDelete(buyer)} className="text-destructive"><Trash2 /> Delete Buyer</DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                 </TableCell>
@@ -533,22 +533,23 @@ function BuyersPageContent() {
                                 <DropdownMenuItem onSelect={() => handleSetAppointment(buyer)}><CalendarPlus /> Set Appointment</DropdownMenuItem>
                                 
                                 {profile.role === 'Admin' && (
-                                    <DropdownMenuSub>
-                                        <DropdownMenuSubTrigger><UserPlus /> Assign Agent</DropdownMenuSubTrigger>
-                                        <DropdownMenuPortal>
-                                            <DropdownMenuSubContent>
-                                                {activeAgents.map(member => (
-                                                    <DropdownMenuItem key={member.id} onSelect={() => handleAssignAgent(buyer.id, member.user_id || member.id, member.name)}>
-                                                        {member.name}
-                                                    </DropdownMenuItem>
-                                                ))}
-                                            </DropdownMenuSubContent>
-                                        </DropdownMenuPortal>
-                                    </DropdownMenuSub>
+                                    <>
+                                        <DropdownMenuSub>
+                                            <DropdownMenuSubTrigger><UserPlus /> Assign Agent</DropdownMenuSubTrigger>
+                                            <DropdownMenuPortal>
+                                                <DropdownMenuSubContent>
+                                                    {activeAgents.map(member => (
+                                                        <DropdownMenuItem key={member.id} onSelect={() => handleAssignAgent(buyer.id, member.user_id || member.id, member.name)}>
+                                                            {member.name}
+                                                        </DropdownMenuItem>
+                                                    ))}
+                                                </DropdownMenuSubContent>
+                                            </DropdownMenuPortal>
+                                        </DropdownMenuSub>
+                                        <DropdownMenuItem onSelect={() => handleEdit(buyer)}><Edit /> Edit Details</DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => handleDelete(buyer)} className="text-destructive"><Trash2 /> Delete Buyer</DropdownMenuItem>
+                                    </>
                                 )}
-
-                                <DropdownMenuItem onSelect={() => handleEdit(buyer)}><Edit /> Edit Details</DropdownMenuItem>
-                                <DropdownMenuItem onSelect={() => handleDelete(buyer)} className="text-destructive"><Trash2 /> Delete Buyer</DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </CardFooter>
