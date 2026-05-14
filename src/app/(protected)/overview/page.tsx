@@ -177,8 +177,10 @@ export default function OverviewPage() {
     const statCards: StatCardProps[] = [
         { title: "Sale Properties", value: stats.totalProperties, change: `+${stats.newProps30d} new`, icon: <Home className="h-5 w-5" />, color: "bg-blue-500/10 text-blue-600", href: "/properties", isLoading },
         { title: "Sale Buyers", value: stats.totalBuyers, change: `+${stats.newBuyers30d} new`, icon: <Users className="h-5 w-5" />, color: "bg-indigo-500/10 text-indigo-600", href: "/buyers", isLoading },
-        { title: "Revenue (30d)", value: formatCurrency(stats.revenue, currency, { notation: 'compact' }), change: `From ${stats.soldCount} deals`, icon: <DollarSign className="h-5 w-5" />, color: "bg-emerald-500/10 text-emerald-600", href: "/reports", isLoading },
-        { title: "Interested", value: stats.interested, change: "Active leads", icon: <Star className="h-5 w-5" />, color: "bg-amber-500/10 text-amber-600", href: "/buyers?status=Interested", isLoading },
+        { title: "Rent Properties", value: stats.rentProperties, change: "Active", icon: <Building2 className="h-5 w-5" />, color: "bg-emerald-500/10 text-emerald-600", href: "/properties?listing_type=For+Rent", isLoading },
+        { title: "Rent Buyers", value: stats.rentBuyers, change: "Active", icon: <Users className="h-5 w-5" />, color: "bg-teal-500/10 text-teal-600", href: "/buyers?listing_type=For+Rent", isLoading },
+        { title: "Revenue (30d)", value: formatCurrency(stats.revenue, currency, { notation: 'compact' }), change: `From ${stats.soldCount} deals`, icon: <DollarSign className="h-5 w-5" />, color: "bg-amber-500/10 text-amber-600", href: "/reports", isLoading },
+        { title: "Interested", value: stats.interested, change: "Hot leads", icon: <Star className="h-5 w-5" />, color: "bg-purple-500/10 text-purple-600", href: "/buyers?status=Interested", isLoading },
     ];
 
     if (profile.role === 'Video Recorder') {
@@ -221,7 +223,7 @@ export default function OverviewPage() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                 {statCards.map(card => <StatCard key={card.title} {...card} />)}
             </div>
 
