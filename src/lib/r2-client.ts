@@ -14,9 +14,8 @@ export const r2Client = new S3Client({
 export const BUCKET_NAME = "signature-crm-assets";
 
 /**
- * Uploads a file to Cloudflare R2 and returns a presumed public URL.
- * Note: Constructing the public URL depends on your R2 bucket being public
- * or having a custom domain configured.
+ * Uploads a file to Cloudflare R2 and returns a path-style URL.
+ * Note: To view this in browser, Public Access or a Custom Domain must be enabled on R2.
  */
 export async function uploadToR2(file: File, path: string): Promise<string> {
   const fileArrayBuffer = await file.arrayBuffer();
@@ -31,10 +30,8 @@ export async function uploadToR2(file: File, path: string): Promise<string> {
   try {
     await r2Client.send(command);
     
-    // Construction of the URL. 
-    // Using the account-specific endpoint format. 
-    // If you have a custom domain or r2.dev subdomain, this would be updated accordingly.
-    // Standard format for direct public access if enabled:
+    // Constructing the S3-compatible path-style URL.
+    // For direct public viewing, the user should ideally configure an r2.dev subdomain.
     return `https://889826ecda9570b1a561c1722b044e1d.r2.cloudflarestorage.com/${BUCKET_NAME}/${path}`;
   } catch (error) {
     console.error("R2 Upload Error:", error);

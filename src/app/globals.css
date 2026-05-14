@@ -12,22 +12,22 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
     
-    /* Striking Blue Theme */
-    --primary: 217 91% 60%;      /* Bright Blue */
+    /* Striking Professional Blue Theme */
+    --primary: 217 91% 60%;      /* Electric Blue */
     --primary-foreground: 210 40% 98%;
     
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222 47% 11.2%;
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 217 91% 92%;       /* Soft Blue */
+    --accent: 217 91% 94%;       /* Pale Blue */
     --accent-foreground: 222 47% 11.2%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
-    --radius: 1.25rem;
+    --radius: 1.5rem;
 
     --chart-1: 221.2 83.2% 53.3%;
     --chart-2: 212 95% 68%;
@@ -37,7 +37,7 @@
   }
 
   .dark {
-    --background: 222 47% 4%;    /* Deep Navy */
+    --background: 222 47% 3%;    /* Deep Navy */
     --foreground: 210 40% 98%;
     --card: 222 47% 6%;
     --card-foreground: 210 40% 98%;
@@ -65,8 +65,8 @@
   }
   body {
     @apply bg-background text-foreground;
-    /* Bright Blue to Deep Blue Linear Gradient */
-    background: linear-gradient(135deg, hsl(210 40% 98%) 0%, hsl(217 91% 94%) 50%, hsl(217 91% 88%) 100%);
+    /* High-End Blue Linear Gradient Background */
+    background: linear-gradient(135deg, hsl(210 40% 98%) 0%, hsl(217 91% 92%) 40%, hsl(217 91% 85%) 100%);
     background-attachment: fixed;
     min-height: 100vh;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
@@ -74,7 +74,7 @@
   }
 
   .dark body {
-    background: linear-gradient(135deg, hsl(222 47% 4%) 0%, hsl(222 47% 8%) 50%, hsl(222 47% 12%) 100%);
+    background: linear-gradient(135deg, hsl(222 47% 3%) 0%, hsl(222 47% 8%) 50%, hsl(222 47% 12%) 100%);
     background-color: hsl(var(--background));
     background-attachment: fixed;
   }
@@ -82,15 +82,15 @@
 
 @layer components {
   .glass-card {
-    @apply bg-card/60 backdrop-blur-xl border border-white/20 dark:border-white/5 rounded-3xl shadow-xl transition-all duration-300;
+    @apply bg-card/70 backdrop-blur-2xl border border-white/30 dark:border-white/5 rounded-[2rem] shadow-2xl transition-all duration-500;
   }
 
   .glass-modal {
-    @apply bg-card/95 backdrop-blur-2xl border-2 border-primary/10 rounded-[2.5rem] shadow-2xl;
+    @apply bg-card/95 backdrop-blur-3xl border-2 border-primary/10 rounded-[3rem] shadow-2xl;
   }
   
   .glowing-btn {
-    @apply bg-gradient-to-br from-blue-500 to-primary text-white font-bold relative overflow-hidden shadow-lg shadow-primary/20 transition-all active:scale-95;
+    @apply bg-gradient-to-br from-blue-400 via-primary to-blue-700 text-white font-bold relative overflow-hidden shadow-xl shadow-primary/30 transition-all hover:shadow-primary/50 active:scale-95;
   }
 
   .glowing-btn::before {
@@ -98,11 +98,11 @@
     @apply absolute -top-1/2 -left-1/2 w-[200%] h-[200%];
     background-image: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.4), transparent);
     transform: rotate(20deg);
-    animation: glow-sweep 3s infinite;
+    animation: glow-sweep 4s infinite linear;
   }
 
   .animate-fade-in {
-    animation: fade-in 0.3s ease-out forwards;
+    animation: fade-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
 }
 
@@ -112,6 +112,6 @@
 }
 
 @keyframes fade-in {
-    from { opacity: 0; transform: translateY(5px); }
-    to { opacity: 1; transform: translateY(0); }
+    from { opacity: 0; transform: translateY(10px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
 }
