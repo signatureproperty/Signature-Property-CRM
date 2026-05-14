@@ -70,7 +70,7 @@ const allMenuItems = [
   { href: '/finance', label: 'Finance', icon: <DollarSign />, roles: ['Admin'] },
   { href: '/team', label: 'Team', icon: <UserCog />, roles: ['Admin'] },
   { href: '/appointments', label: 'Appointments', icon: <Calendar />, roles: ['Admin', 'Agent']},
-  { href: '/inbox', label: 'Inbox', icon: <Mail />, roles: ['Admin']},
+  { href: '/inbox', label: 'Inbox', icon: <Mail />, roles: ['Admin', 'Agent']},
   { href: '/tools', label: 'Tools', icon: <Rocket />, roles: ['Admin', 'Agent'] },
   { href: '/reports', label: 'Reports', icon: <ClipboardList />, roles: ['Admin'] },
   { href: '/activities', label: 'Activities', icon: <History />, roles: ['Admin', 'Agent'] },

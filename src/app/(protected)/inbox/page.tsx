@@ -1,327 +1,288 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useFirestore } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, orderBy, doc, updateDoc, deleteDoc, arrayUnion, where } from 'firebase/firestore';
+import { collection, query, orderBy, doc, updateDoc, addDoc, arrayUnion } from 'firebase/firestore';
 import { useProfile } from '@/context/profile-context';
 import { useMemoFirebase } from '@/firebase/hooks';
-import type { InboxMessage, Property, Buyer } from '@/lib/types';
-import { formatDistanceToNow } from 'date-fns';
+import type { InboxMessage, Property, Buyer, LeadNote } from '@/lib/types';
+import { formatDistanceToNow, format } from 'date-fns';
 import { Button } from '@/components/ui/button';
-import { Mail, AlertTriangle, Banknote, Check, Trash2, RotateCcw, Eye, X, MessageSquareText } from 'lucide-react';
+import { Mail, Send, User, Search, MessageSquare, ArrowLeft, Building2, Briefcase, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { PropertyDetailsDialog } from '@/components/property-details-dialog';
 import { BuyerDetailsDialog } from '@/components/buyer-details-dialog';
-import { Badge } from '@/components/ui/badge';
 
-
-const MessageItem = ({ message, onMessageClick, isDemo = false }: { message: InboxMessage, onMessageClick: (message: InboxMessage) => void, isDemo?: boolean }) => {
-
-    const getIcon = () => {
-        switch(message.type) {
-            case 'cannot_record':
-                return <AlertTriangle className="h-5 w-5 text-red-500" />;
-            case 'payment_confirmation':
-                return <Banknote className="h-5 w-5 text-green-500" />;
-            case 'lead_update':
-                return <MessageSquareText className="h-5 w-5 text-primary" />;
-            default:
-                return <Mail className="h-5 w-5 text-muted-foreground" />;
-        }
-    }
-
-    return (
-        <div 
-            className={cn("flex items-start gap-4 p-4 border-b transition-colors cursor-pointer hover:bg-accent/50", !message.isRead && "bg-primary/5", isDemo && "opacity-50 pointer-events-none")}
-            onClick={() => !isDemo && onMessageClick(message)}
-        >
-            <div className="flex-shrink-0 pt-1">
-                {getIcon()}
-            </div>
-            <div className="flex-1">
-                <div className="flex justify-between items-start">
-                    <div>
-                        <div className="flex items-center gap-2">
-                             <p className="font-semibold">{message.fromUserName}</p>
-                             {message.buyerSerial && <Badge variant="outline" className="text-[10px] font-mono">{message.buyerSerial}</Badge>}
-                             {message.propertySerial && <Badge variant="outline" className="text-[10px] font-mono">{message.propertySerial}</Badge>}
-                        </div>
-                        <p className="text-sm text-muted-foreground line-clamp-2">{message.message}</p>
-                    </div>
-                     <p className="text-xs text-muted-foreground whitespace-nowrap ml-4">{formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}</p>
-                </div>
-            </div>
-        </div>
-    );
-};
-
+interface ChatLead {
+    id: string;
+    type: 'Buyer' | 'Property';
+    name: string;
+    serial: string;
+    lastMessage?: string;
+    lastTimestamp?: string;
+    isUnread?: boolean;
+}
 
 export default function InboxPage() {
     const { profile } = useProfile();
     const firestore = useFirestore();
     const { toast } = useToast();
+    const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+    const [replyText, setReplyText] = useState('');
+    const [isSending, setIsSaving] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const scrollRef = useRef<HTMLDivElement>(null);
 
-    const [selectedMessage, setSelectedMessage] = useState<InboxMessage | null>(null);
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [leadForDetails, setLeadForDetails] = useState<Buyer | Property | null>(null);
+    const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+
+    // Fetch all leads data to show in conversations
+    const buyersQuery = useMemoFirebase(() => profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'buyers') : null, [profile.agency_id, firestore]);
+    const { data: buyers } = useCollection<Buyer>(buyersQuery);
     
-    const [propertyForDetails, setPropertyForDetails] = useState<Property | null>(null);
-    const [isPropertyDialogOpen, setIsPropertyDialogOpen] = useState(false);
-
-    const [buyerForDetails, setBuyerForDetails] = useState<Buyer | null>(null);
-    const [isBuyerDialogOpen, setIsBuyerDialogOpen] = useState(false);
-
-
-    const inboxQuery = useMemoFirebase(
-        () => {
-            if (!profile.agency_id) return null;
-            const messagesRef = collection(firestore, 'agencies', profile.agency_id, 'inboxMessages');
-            
-            // If Agent, only see messages they sent (updates they posted)
-            // In a fuller chat system, we'd add direct addressing, but for now we focus on lead notifications.
-            if (profile.role === 'Agent') {
-                return query(
-                    messagesRef, 
-                    where('fromUserId', '==', profile.user_id),
-                    orderBy('createdAt', 'desc')
-                );
-            }
-            
-            // Admins see everything sent in their agency
-            return query(messagesRef, orderBy('createdAt', 'desc'));
-        },
-        [profile.agency_id, profile.user_id, profile.role, firestore]
-    );
-    const { data: messages, isLoading } = useCollection<InboxMessage>(inboxQuery);
-    
-    const propertiesQuery = useMemoFirebase(
-        () => profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'properties') : null,
-        [profile.agency_id, firestore]
-    );
+    const propertiesQuery = useMemoFirebase(() => profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'properties') : null, [profile.agency_id, firestore]);
     const { data: properties } = useCollection<Property>(propertiesQuery);
 
-    const buyersQuery = useMemoFirebase(
-        () => profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'buyers') : null,
-        [profile.agency_id, firestore]
-    );
-    const { data: buyers } = useCollection<Buyer>(buyersQuery);
-
-    
-    const unreadCannotRecord = useMemo(() => messages?.filter(m => m.type === 'cannot_record' && !m.isRead).length || 0, [messages]);
-    const unreadPayments = useMemo(() => messages?.filter(m => m.type === 'payment_confirmation' && !m.isRead).length || 0, [messages]);
-    const unreadLeadUpdates = useMemo(() => messages?.filter(m => m.type === 'lead_update' && !m.isRead).length || 0, [messages]);
-    
-    const cannotRecordMessages = useMemo(() => messages?.filter(m => m.type === 'cannot_record') || [], [messages]);
-    const paymentMessages = useMemo(() => messages?.filter(m => m.type === 'payment_confirmation') || [], [messages]);
-    const leadUpdateMessages = useMemo(() => messages?.filter(m => m.type === 'lead_update') || [], [messages]);
-
-    const handleMessageClick = async (message: InboxMessage) => {
-        setSelectedMessage(message);
-        setIsDialogOpen(true);
-        if (!message.isRead && profile.agency_id) {
-            const messageRef = doc(firestore, 'agencies', profile.agency_id, 'inboxMessages', message.id);
-            await updateDoc(messageRef, { isRead: true });
-        }
-    }
-    
-    const handleReassign = async () => {
-        if (!selectedMessage || !selectedMessage.propertyId || !selectedMessage.fromUserId || !profile.agency_id) return;
+    // Group leads that have timeline notes
+    const leadsWithChats = useMemo(() => {
+        const leads: ChatLead[] = [];
         
+        buyers?.forEach(b => {
+            if (b.timeline_notes && b.timeline_notes.length > 0) {
+                const last = b.timeline_notes[b.timeline_notes.length - 1];
+                leads.push({
+                    id: b.id,
+                    type: 'Buyer',
+                    name: b.name,
+                    serial: b.serial_no,
+                    lastMessage: last.text,
+                    lastTimestamp: last.timestamp,
+                    isUnread: b.timeline_notes.some(n => n.authorId !== profile.user_id && !n.id.includes('read_')) // Simple unread check
+                });
+            }
+        });
+
+        properties?.forEach(p => {
+            if (p.timeline_notes && p.timeline_notes.length > 0) {
+                const last = p.timeline_notes[p.timeline_notes.length - 1];
+                leads.push({
+                    id: p.id,
+                    type: 'Property',
+                    name: p.auto_title,
+                    serial: p.serial_no,
+                    lastMessage: last.text,
+                    lastTimestamp: last.timestamp,
+                });
+            }
+        });
+
+        return leads
+            .filter(l => !searchQuery || l.name.toLowerCase().includes(searchQuery.toLowerCase()) || l.serial.toLowerCase().includes(searchQuery.toLowerCase()))
+            .sort((a, b) => new Date(b.lastTimestamp || 0).getTime() - new Date(a.lastTimestamp || 0).getTime());
+    }, [buyers, properties, profile.user_id, searchQuery]);
+
+    const activeLead = useMemo(() => {
+        if (!selectedLeadId) return null;
+        return buyers?.find(b => b.id === selectedLeadId) || properties?.find(p => p.id === selectedLeadId);
+    }, [selectedLeadId, buyers, properties]);
+
+    const messages = useMemo(() => {
+        if (!activeLead) return [];
+        return [...(activeLead.timeline_notes || [])].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    }, [activeLead]);
+
+    useEffect(() => {
+        if (scrollRef.current) {
+            scrollRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [messages]);
+
+    const handleSendMessage = async () => {
+        if (!replyText.trim() || !profile.agency_id || !selectedLeadId || !activeLead) return;
+
+        setIsSaving(true);
         try {
-            const propRef = doc(firestore, 'agencies', profile.agency_id, 'properties', selectedMessage.propertyId);
-            await updateDoc(propRef, { assignedTo: arrayUnion(selectedMessage.fromUserId) });
+            const note: LeadNote = {
+                id: crypto.randomUUID(),
+                text: replyText.trim(),
+                authorId: profile.user_id,
+                authorName: profile.name,
+                authorRole: profile.role,
+                timestamp: new Date().toISOString(),
+            };
+
+            const isBuyer = 'serial_no' in activeLead && activeLead.serial_no.startsWith('B');
+            const colName = isBuyer ? 'buyers' : 'properties';
+            const leadRef = doc(firestore, 'agencies', profile.agency_id, colName, selectedLeadId);
             
-            const msgRef = doc(firestore, 'agencies', profile.agency_id, 'inboxMessages', selectedMessage.id);
-            await deleteDoc(msgRef);
+            await updateDoc(leadRef, {
+                timeline_notes: arrayUnion(note)
+            });
 
-            toast({ title: "Property Re-assigned", description: `${selectedMessage.propertySerial} has been re-assigned for recording.`});
-            setIsDialogOpen(false);
+            setReplyText('');
         } catch (error) {
-            toast({ title: "Error", description: "Could not re-assign property.", variant: "destructive" });
+            console.error("Chat error:", error);
+            toast({ title: "Failed to send", variant: "destructive" });
+        } finally {
+            setIsSaving(false);
         }
     };
 
-    const handleDelete = async () => {
-        if (!selectedMessage || !profile.agency_id) return;
-        try {
-            const msgRef = doc(firestore, 'agencies', profile.agency_id, 'inboxMessages', selectedMessage.id);
-            await deleteDoc(msgRef);
-            toast({ title: "Notification Deleted", variant: "destructive"});
-            setIsDialogOpen(false);
-        } catch (error) {
-             toast({ title: "Error", description: "Could not delete notification.", variant: "destructive" });
-        }
-    };
-    
     const handleViewDetails = () => {
-        if (selectedMessage?.propertyId) {
-            const property = properties?.find(p => p.id === selectedMessage.propertyId);
-            if (property) {
-                setPropertyForDetails(property);
-                setIsPropertyDialogOpen(true);
-                setIsDialogOpen(false);
-            }
-        } else if (selectedMessage?.buyerId) {
-            const buyer = buyers?.find(b => b.id === selectedMessage.buyerId);
-            if (buyer) {
-                setBuyerForDetails(buyer);
-                setIsBuyerDialogOpen(true);
-                setIsDialogOpen(false);
-            }
-        } else {
-            toast({ title: "Details not available", variant: "destructive" });
+        if (activeLead) {
+            setLeadForDetails(activeLead);
+            setIsDetailsOpen(true);
         }
     };
-
-    const getDialogTitle = () => {
-        if (!selectedMessage) return "";
-        switch(selectedMessage.type) {
-            case 'cannot_record': return "Cannot Record Report";
-            case 'payment_confirmation': return "Payment Confirmation";
-            case 'lead_update': return `Lead Update: ${selectedMessage.buyerSerial || ''}`;
-            default: return "Notification";
-        }
-    }
-
 
     return (
-        <>
-            <div className="space-y-6">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight font-headline flex items-center gap-2">
-                        <Mail/> Inbox
-                    </h1>
-                    <p className="text-muted-foreground">
-                        {profile.role === 'Admin' ? 'Notifications and messages from your agency team.' : 'History of messages and updates you have sent.'}
-                    </p>
-                </div>
+        <div className="flex h-[calc(100vh-140px)] gap-6 overflow-hidden">
+            {/* Sidebar: Lead Conversations */}
+            <Card className={cn("w-full md:w-80 flex flex-col p-0 overflow-hidden", selectedLeadId && "hidden md:flex")}>
+                <CardHeader className="p-4 border-b">
+                    <CardTitle className="text-xl font-bold font-headline flex items-center gap-2">
+                        <MessageSquare className="h-5 w-5 text-primary" /> Messages
+                    </CardTitle>
+                    <div className="relative mt-2">
+                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                        <Input 
+                            placeholder="Search leads..." 
+                            className="pl-8 h-8 text-xs bg-muted/50 rounded-full" 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
+                </CardHeader>
+                <ScrollArea className="flex-1">
+                    <div className="divide-y">
+                        {leadsWithChats.length > 0 ? (
+                            leadsWithChats.map(lead => (
+                                <div 
+                                    key={lead.id} 
+                                    className={cn(
+                                        "p-4 cursor-pointer transition-colors hover:bg-accent/50 group",
+                                        selectedLeadId === lead.id ? "bg-primary/5 border-l-4 border-l-primary" : "border-l-4 border-l-transparent"
+                                    )}
+                                    onClick={() => setSelectedLeadId(lead.id)}
+                                >
+                                    <div className="flex justify-between items-start mb-1">
+                                        <div className="flex items-center gap-2">
+                                            {lead.type === 'Buyer' ? <Briefcase className="h-3 w-3 text-emerald-500" /> : <Building2 className="h-3 w-3 text-sky-500" />}
+                                            <span className="font-bold text-sm truncate max-w-[120px]">{lead.name}</span>
+                                        </div>
+                                        <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                                            {lead.lastTimestamp ? formatDistanceToNow(new Date(lead.lastTimestamp), { addSuffix: true }) : ''}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <p className="text-xs text-muted-foreground line-clamp-1 flex-1 pr-2">
+                                            {lead.lastMessage}
+                                        </p>
+                                        <Badge variant="outline" className="text-[9px] font-mono h-4 px-1">{lead.serial}</Badge>
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="p-10 text-center text-muted-foreground opacity-50">
+                                <Mail className="h-12 w-12 mx-auto mb-2" />
+                                <p className="text-xs font-medium">No active chats.</p>
+                                <p className="text-[10px]">Start a message from a Buyer or Property page.</p>
+                            </div>
+                        )}
+                    </div>
+                </ScrollArea>
+            </Card>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Communication History</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                        <Tabs defaultValue="lead_update">
-                            <TabsList className="px-6 border-b w-full justify-start rounded-none h-12">
-                                <TabsTrigger value="lead_update" className="gap-2">Messages <Badge variant="secondary" className="h-5 px-1.5">{unreadLeadUpdates}</Badge></TabsTrigger>
-                                {profile.role === 'Admin' && (
-                                    <>
-                                        <TabsTrigger value="cannot_record" className="gap-2">Cannot Record <Badge variant="secondary" className="h-5 px-1.5">{unreadCannotRecord}</Badge></TabsTrigger>
-                                        <TabsTrigger value="payments" className="gap-2">Payments <Badge variant="secondary" className="h-5 px-1.5">{unreadPayments}</Badge></TabsTrigger>
-                                    </>
-                                )}
-                            </TabsList>
-                            
-                            <TabsContent value="lead_update">
-                                {isLoading ? <p className="p-6 text-muted-foreground">Loading messages...</p> : 
-                                leadUpdateMessages.length > 0 ? (
-                                    leadUpdateMessages.map(msg => <MessageItem key={msg.id} message={msg} onMessageClick={handleMessageClick} />)
-                                ) : (
-                                    <p className="p-10 text-center text-muted-foreground">No message updates found.</p>
-                                )
-                                }
-                            </TabsContent>
-
-                            {profile.role === 'Admin' && (
-                                <>
-                                    <TabsContent value="cannot_record">
-                                        {isLoading ? <p className="p-6 text-muted-foreground">Loading messages...</p> : 
-                                        cannotRecordMessages.length > 0 ? (
-                                            cannotRecordMessages.map(msg => <MessageItem key={msg.id} message={msg} onMessageClick={handleMessageClick} />)
-                                        ) : (
-                                            <p className="p-10 text-center text-muted-foreground">No "Cannot Record" notifications found.</p>
-                                        )
-                                        }
-                                    </TabsContent>
-                                    
-                                    <TabsContent value="payments">
-                                    {isLoading ? <p className="p-6 text-muted-foreground">Loading messages...</p> : 
-                                        paymentMessages.length > 0 ? (
-                                            paymentMessages.map(msg => <MessageItem key={msg.id} message={msg} onMessageClick={handleMessageClick}/>)
-                                        ) : (
-                                            <p className="p-10 text-center text-muted-foreground">No payment confirmation notifications found.</p>
-                                        )
-                                        }
-                                    </TabsContent>
-                                </>
-                            )}
-                        </Tabs>
-                    </CardContent>
-                </Card>
-            </div>
-            
-            {selectedMessage && (
-                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>{getDialogTitle()}</DialogTitle>
-                            <DialogDescription>
-                                From: {selectedMessage.fromUserName}
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="py-4 space-y-4">
-                            <p className="text-sm whitespace-pre-wrap"><span className="font-bold block mb-1">Message:</span> {selectedMessage.message}</p>
-                            <p className="text-xs text-muted-foreground pt-2 border-t">{formatDistanceToNow(new Date(selectedMessage.createdAt), { addSuffix: true })}</p>
-                        </div>
-                        <DialogFooter className="flex-col sm:flex-row sm:justify-end gap-2">
-                            <div className="flex w-full sm:w-auto justify-end gap-2">
-                                <Button variant="outline" size="sm" onClick={handleViewDetails}>
-                                    <Eye className="h-4 w-4 sm:mr-2" />
-                                    <span>View {selectedMessage.buyerId ? 'Lead' : 'Property'}</span>
+            {/* Main Content: Active Chat */}
+            <Card className={cn("flex-1 flex flex-col p-0 overflow-hidden", !selectedLeadId && "hidden md:flex")}>
+                {activeLead ? (
+                    <>
+                        <div className="p-4 border-b flex items-center justify-between bg-card">
+                            <div className="flex items-center gap-4">
+                                <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setSelectedLeadId(null)}>
+                                    <ArrowLeft className="h-5 w-5" />
                                 </Button>
-                                {profile.role === 'Admin' && selectedMessage.type === 'cannot_record' && (
-                                     <Button variant="outline" size="sm" onClick={handleReassign}>
-                                        <RotateCcw className="h-4 w-4 mr-2"/>
-                                        <span>Re-assign</span>
-                                     </Button>
-                                )}
-                                <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                        <Button variant="destructive" size="sm">
-                                            <Trash2 className="h-4 w-4 sm:mr-2"/>
-                                            <span className="hidden sm:inline">Delete</span>
-                                        </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                            <AlertDialogDescription>This will permanently delete this notification.</AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                            <AlertDialogAction onClick={handleDelete}>Confirm</AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
-                                <Button variant="secondary" onClick={() => setIsDialogOpen(false)} size="sm">
-                                    <X className="h-4 w-4 sm:mr-2" />
-                                    <span className="hidden sm:inline">Close</span>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="font-bold font-headline">{activeLead.name || (activeLead as any).auto_title}</h3>
+                                        <Badge variant="outline" className="text-[10px] font-mono h-4">{(activeLead as any).serial_no}</Badge>
+                                    </div>
+                                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">
+                                        {activeLead.status} • {(activeLead as any).listing_type || 'For Sale'}
+                                    </p>
+                                </div>
+                            </div>
+                            <Button variant="outline" size="sm" className="rounded-full h-8 px-4 text-xs font-bold gap-2" onClick={handleViewDetails}>
+                                <Eye className="h-3.5 w-3.5" /> View Detail
+                            </Button>
+                        </div>
+
+                        <ScrollArea className="flex-1 p-4 bg-muted/5">
+                            <div className="space-y-4">
+                                {messages.map((msg, index) => {
+                                    const isMe = msg.authorId === profile.user_id;
+                                    return (
+                                        <div key={msg.id} className={cn("flex flex-col", isMe ? "items-end" : "items-start")}>
+                                            <div className="flex items-center gap-2 mb-1 px-1">
+                                                {!isMe && <span className="text-[10px] font-bold text-muted-foreground">{msg.authorName} ({msg.authorRole})</span>}
+                                                <span className="text-[10px] text-muted-foreground/60">{format(new Date(msg.timestamp), 'p')}</span>
+                                            </div>
+                                            <div className={cn(
+                                                "max-w-[85%] md:max-w-[70%] p-3 rounded-2xl shadow-sm text-sm whitespace-pre-wrap leading-relaxed",
+                                                isMe ? "bg-primary text-primary-foreground rounded-tr-none" : "bg-card border rounded-tl-none"
+                                            )}>
+                                                {msg.text}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                <div ref={scrollRef} />
+                            </div>
+                        </ScrollArea>
+
+                        <div className="p-4 border-t bg-card">
+                            <div className="flex gap-3">
+                                <Input 
+                                    placeholder="Type a message..." 
+                                    className="rounded-full bg-muted/50 border-none focus-visible:ring-primary/20"
+                                    value={replyText}
+                                    onChange={(e) => setReplyText(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                                    disabled={isSending}
+                                />
+                                <Button 
+                                    size="icon" 
+                                    className="rounded-full h-10 w-10 flex-shrink-0 glowing-btn" 
+                                    onClick={handleSendMessage}
+                                    disabled={!replyText.trim() || isSending}
+                                >
+                                    <Send className="h-4 w-4" />
                                 </Button>
                             </div>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
+                        </div>
+                    </>
+                ) : (
+                    <div className="flex-1 flex flex-col items-center justify-center text-center p-8 opacity-40">
+                        <MessageSquare className="h-16 w-16 mb-4 text-muted-foreground" />
+                        <h3 className="text-xl font-bold">Select a conversation</h3>
+                        <p className="max-w-xs text-sm mt-2">Grouped real-time chat with your agents about specific leads.</p>
+                    </div>
+                )}
+            </Card>
+
+            {leadForDetails && 'serial_no' in leadForDetails && leadForDetails.serial_no.startsWith('B') && (
+                <BuyerDetailsDialog buyer={leadForDetails as Buyer} isOpen={isDetailsOpen} setIsOpen={setIsDetailsOpen} />
             )}
-             {propertyForDetails && (
-                <PropertyDetailsDialog
-                    property={propertyForDetails}
-                    isOpen={isPropertyDialogOpen}
-                    setIsOpen={setIsPropertyDialogOpen}
-                />
+            {leadForDetails && 'serial_no' in leadForDetails && (leadForDetails.serial_no.startsWith('P') || leadForDetails.serial_no.startsWith('RP')) && (
+                <PropertyDetailsDialog property={leadForDetails as Property} isOpen={isDetailsOpen} setIsOpen={setIsDetailsOpen} />
             )}
-            {buyerForDetails && (
-                <BuyerDetailsDialog
-                    buyer={buyerForDetails}
-                    isOpen={isBuyerDialogOpen}
-                    setIsOpen={setIsBuyerDialogOpen}
-                />
-            )}
-        </>
+        </div>
     );
 }
-

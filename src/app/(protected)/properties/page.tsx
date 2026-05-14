@@ -32,6 +32,7 @@ import {
   CalendarPlus,
   Share2,
   Check,
+  MessageSquareText,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -87,6 +88,7 @@ import { EditPropertyTagsDialog } from '@/components/edit-property-tags-dialog';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { SetAppointmentDialog } from '@/components/set-appointment-dialog';
 import { SharePropertyDialog } from '@/components/share-property-dialog';
+import { PropertyNotesDialog } from '@/components/property-notes-dialog';
 
 const ITEMS_PER_PAGE = 50;
 
@@ -164,6 +166,7 @@ function PropertiesPageContent() {
   const [isEditTagsOpen, setIsEditTagsOpen] = useState(false);
   const [isAppointmentOpen, setIsAppointmentOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isNotesOpen, setIsNotesOpen] = useState(false);
 
   const [activeListingType, setActiveListingType] = useState<ListingType | 'All'>('All');
   const [activeStatus, setActiveStatus] = useState<string>('All');
@@ -335,6 +338,11 @@ function PropertiesPageContent() {
     setIsShareOpen(true);
   };
 
+  const handleNotesClick = (prop: Property) => {
+      setPropertyForDetails(prop);
+      setIsNotesOpen(true);
+  };
+
   const handleMarkAsSoldOrRent = (prop: Property) => {
     setPropertyForDetails(prop);
     if (prop.is_for_rent) {
@@ -492,11 +500,17 @@ function PropertiesPageContent() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {properties.map((prop, index) => (
+          {properties.map((prop, index) => {
+            const hasRecentNotes = (prop.timeline_notes?.length || 0) > 0;
+            return (
             <motion.tr key={prop.id} className="hover:bg-accent/50 transition-colors cursor-pointer" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: index * 0.05 }} >
               <TableCell onClick={(e) => e.stopPropagation()}><Checkbox checked={selectedProperties.includes(prop.id)} onCheckedChange={(checked) => setSelectedProperties(prev => checked ? [...prev, prop.id] : prev.filter(id => id !== prop.id))} /></TableCell>
               <TableCell onClick={() => handleRowClick(prop)}>
-                <div className="flex items-center gap-2 font-bold font-headline text-base">{prop.auto_title || `${prop.size_value} ${prop.size_unit} ${prop.property_type}`} {prop.is_recorded && <Video className="h-4 w-4 text-primary" />}</div>
+                <div className="flex items-center gap-2 font-bold font-headline text-base">
+                    {prop.auto_title || `${prop.size_value} ${prop.size_unit} ${prop.property_type}`} 
+                    {prop.is_recorded && <Video className="h-4 w-4 text-primary" />}
+                    {hasRecentNotes && <MessageSquareText className="h-3.5 w-3.5 text-primary animate-pulse" />}
+                </div>
                 <div className="flex flex-wrap gap-1 mt-1">
                     <Badge variant="default" className={cn('font-mono text-[10px]', prop.serial_no.startsWith('RP') ? 'bg-emerald-100 text-emerald-700' : 'bg-primary/20 text-primary')}>{prop.serial_no}</Badge>
                 </div>
@@ -517,6 +531,7 @@ function PropertiesPageContent() {
                   <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="rounded-full"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="glass-card">
                     <DropdownMenuItem onSelect={() => handleRowClick(prop)}><Eye />View Details</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleNotesClick(prop)}><MessageSquareText /> Message</DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => handleShare(prop)}><Share2 />Share Details</DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => handleManageTags(prop)}><TagIcon />Edit Tags</DropdownMenuItem>
                     <DropdownMenuItem onSelect={(e) => handleWhatsAppChat(e, prop)}><MessageSquare /> WhatsApp</DropdownMenuItem>
@@ -555,7 +570,7 @@ function PropertiesPageContent() {
                 </DropdownMenu>
               </TableCell>
             </motion.tr>
-          ))}
+          )})}
         </TableBody>
       </Table>
     );
@@ -564,7 +579,9 @@ function PropertiesPageContent() {
   const renderCards = (properties: Property[]) => {
     return (
       <div className="space-y-4">
-        {properties.map((prop, index) => (
+        {properties.map((prop, index) => {
+          const hasRecentNotes = (prop.timeline_notes?.length || 0) > 0;
+          return (
           <motion.div key={prop.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: index * 0.05 }}>
             <Card className="overflow-hidden border-l-4 border-l-primary/40">
               <CardHeader className="p-4 pb-2 flex flex-row items-start justify-between space-y-0">
@@ -575,7 +592,10 @@ function PropertiesPageContent() {
                     onClick={e => e.stopPropagation()} 
                   />
                   <div onClick={() => handleRowClick(prop)} className="cursor-pointer">
-                    <CardTitle className="text-base font-bold font-headline">{prop.auto_title}</CardTitle>
+                    <div className="flex items-center gap-2">
+                        <CardTitle className="text-base font-bold font-headline">{prop.auto_title}</CardTitle>
+                        {hasRecentNotes && <MessageSquareText className="h-3.5 w-3.5 text-primary" />}
+                    </div>
                     <div className="flex items-center gap-2 mt-1">
                        <Badge variant="outline" className="text-[10px] bg-background font-mono">{prop.serial_no}</Badge>
                        <span className="text-[10px] text-muted-foreground">{prop.area}</span>
@@ -612,7 +632,11 @@ function PropertiesPageContent() {
                     ))}
                  </div>
               </CardContent>
-              <CardFooter className="p-2 bg-muted/20 border-t justify-end">
+              <CardFooter className="p-2 bg-muted/20 border-t justify-between items-center">
+                <Button variant="ghost" size="sm" className="h-8 gap-2 text-[10px] font-bold" onClick={() => handleNotesClick(prop)}>
+                    <MessageSquareText className="h-3.5 w-3.5" />
+                    Message
+                </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm" className="h-8 w-8 rounded-full p-0">
@@ -660,7 +684,7 @@ function PropertiesPageContent() {
               </CardFooter>
             </Card>
           </motion.div>
-        ))}
+        )})}
       </div>
     );
   };
@@ -920,6 +944,7 @@ function PropertiesPageContent() {
           <MarkAsRentOutDialog property={propertyForDetails} isOpen={isRentOutOpen} setIsOpen={setIsRentOutOpen} onUpdateProperty={() => {}} />
           <RecordVideoDialog property={propertyForDetails} isOpen={isRecordVideoOpen} setIsOpen={setIsRecordVideoOpen} onUpdateProperty={() => {}} />
           <SharePropertyDialog property={propertyForDetails} isOpen={isShareOpen} setIsOpen={setIsShareOpen} />
+          <PropertyNotesDialog property={propertyForDetails} isOpen={isNotesOpen} setIsOpen={setIsNotesOpen} />
           <SetAppointmentDialog 
               isOpen={isAppointmentOpen}
               setIsOpen={setIsAppointmentOpen}

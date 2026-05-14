@@ -141,6 +141,9 @@ export type Property = {
 
   // Tags
   tags?: string[];
+  
+  // Messaging
+  timeline_notes?: LeadNote[];
 };
 
 export type RecommendedProperty = Property & {
