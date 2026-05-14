@@ -1,11 +1,10 @@
-
 'use client';
 
 import { useState, useMemo, Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MoreVertical, PlusCircle, Trash2, Edit, User, Shield, Camera, MoreHorizontal, UserCog } from 'lucide-react';
+import { MoreVertical, PlusCircle, Trash2, Edit, User, Shield, Camera, MoreHorizontal, UserCog, Mail, Phone, CalendarDays } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AddTeamMemberDialog } from '@/components/add-team-member-dialog';
 import type { User as TeamMember, UserRole, Property, Buyer, PlanName } from '@/lib/types';
@@ -19,6 +18,8 @@ import { TeamMemberDetailsDialog } from '@/components/team-member-details-dialog
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { format } from 'date-fns';
 
 const roleConfig: Record<UserRole, { icon: React.ReactNode, color: string }> = {
     Admin: { icon: <Shield className="h-4 w-4" />, color: 'bg-red-500/10 text-red-500' },
@@ -90,14 +91,15 @@ function TeamPageContent() {
     const isLoading = isMembersLoading;
 
     const renderTable = () => (
-        <Card className="p-0 overflow-hidden">
+        <Card className="p-0 overflow-hidden border-none shadow-xl">
         <Table>
-            <TableHeader>
+            <TableHeader className="bg-muted/50">
                 <TableRow>
-                    <TableHead>Member</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="py-4">Member Info</TableHead>
+                    <TableHead className="py-4">Role</TableHead>
+                    <TableHead className="py-4">Status</TableHead>
+                    <TableHead className="py-4">Joined Date</TableHead>
+                    <TableHead className="text-right py-4 pr-6">Actions</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
@@ -105,33 +107,46 @@ function TeamPageContent() {
                     const config = roleConfig[member.role] || roleConfig.Agent;
                     const isOwner = member.id === profile.user_id;
                     const status = (member.role === 'Admin' || member.status === 'Active') ? 'Active' : 'Pending';
+                    const joinedDate = member.joinedAt?.toDate ? format(member.joinedAt.toDate(), 'PP') : (member.joinedAt ? format(new Date(member.joinedAt), 'PP') : 'N/A');
                     
                     return (
-                        <TableRow key={member.id || member.email} onClick={() => handleCardClick(member)} className='cursor-pointer hover:bg-accent/50'>
-                            <TableCell className="font-medium">
-                                <div className="flex flex-col">
-                                    <p className="font-bold">{member.name || 'Invitation Sent'}</p>
-                                    <p className="text-xs text-muted-foreground">{member.email}</p>
+                        <TableRow key={member.id || member.email} onClick={() => handleCardClick(member)} className='cursor-pointer hover:bg-accent/50 transition-colors group'>
+                            <TableCell className="font-medium py-4">
+                                <div className="flex items-center gap-3">
+                                    <Avatar className="h-10 w-10 border border-primary/20">
+                                        <AvatarImage src={member.avatar} />
+                                        <AvatarFallback className="bg-primary/5 text-primary text-xs font-bold">
+                                            {member.name?.split(' ').map(n => n[0]).join('') || '?'}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex flex-col">
+                                        <p className="font-bold group-hover:text-primary transition-colors">{member.name || 'Invitation Sent'}</p>
+                                        <p className="text-xs text-muted-foreground flex items-center gap-1"><Mail className="h-3 w-3" /> {member.email}</p>
+                                    </div>
                                 </div>
                             </TableCell>
                             <TableCell><Badge variant="outline" className={config.color}>{config.icon} <span className="ml-1.5">{member.role}</span></Badge></TableCell>
                             <TableCell>
                                 <Badge variant={status === 'Active' ? 'success' : 'secondary'} className="capitalize">{status}</Badge>
                             </TableCell>
-                            <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                            <TableCell className="text-muted-foreground text-sm flex items-center gap-2 py-8"><CalendarDays className="h-4 w-4" /> {joinedDate}</TableCell>
+                            <TableCell className="text-right py-4 pr-6" onClick={(e) => e.stopPropagation()}>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                         <Button variant="ghost" size="icon" className="rounded-full">
                                             <MoreHorizontal className="h-4 w-4" />
                                         </Button>
                                     </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
+                                    <DropdownMenuContent align="end" className="glass-card">
+                                        <DropdownMenuItem onSelect={() => handleCardClick(member)}>
+                                            <MoreHorizontal className="mr-2 h-4 w-4" /> View Stats
+                                        </DropdownMenuItem>
                                         {!isOwner && (
                                             <>
                                                 <DropdownMenuItem onSelect={() => handleEdit(member)}>
                                                     <Edit className="mr-2 h-4 w-4" /> Edit Role
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem onSelect={() => handleDelete(member)} className="text-destructive">
+                                                <DropdownMenuItem onSelect={() => handleDelete(member)} className="text-destructive focus:bg-destructive focus:text-white">
                                                     <Trash2 className="mr-2 h-4 w-4" /> Remove Member
                                                 </DropdownMenuItem>
                                             </>
@@ -157,18 +172,21 @@ function TeamPageContent() {
             return (
                 <Card 
                     key={member.id || member.email} 
-                    className="flex flex-col hover:shadow-lg transition-shadow cursor-pointer"
+                    className="flex flex-col hover:shadow-lg transition-all cursor-pointer border-l-4 border-l-primary/40"
                     onClick={() => handleCardClick(member)}
                 >
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <Badge variant="outline" className={config.color}>{config.icon} <span className="ml-1.5">{member.role}</span></Badge>
+                    <CardHeader className="flex flex-row items-center justify-between p-4 pb-2">
+                        <Badge variant="outline" className={cn("text-[10px] font-bold", config.color)}>
+                            {config.icon} <span className="ml-1.5">{member.role}</span>
+                        </Badge>
                          <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2" onClick={(e) => e.stopPropagation()}>
                                     <MoreVertical className="h-4 w-4" />
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
+                            <DropdownMenuContent align="end" className="glass-card">
+                                 <DropdownMenuItem onSelect={() => handleCardClick(member)}>View Stats</DropdownMenuItem>
                                  {!isOwner && (
                                     <>
                                         <DropdownMenuItem onSelect={() => handleEdit(member)}>
@@ -182,11 +200,24 @@ function TeamPageContent() {
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </CardHeader>
-                    <CardContent className="flex flex-col gap-1">
-                        <CardTitle className="text-lg font-bold font-headline">{member.name || 'Invitation Sent'}</CardTitle>
-                        <CardDescription>{member.email}</CardDescription>
-                        <div className="mt-2">
-                           <Badge variant={status === 'Active' ? 'success' : 'secondary'} className="text-[10px] uppercase font-bold">{status}</Badge>
+                    <CardContent className="p-4 pt-2">
+                        <div className="flex items-center gap-3">
+                            <Avatar className="h-12 w-12 border-2 border-background shadow-md">
+                                <AvatarImage src={member.avatar} />
+                                <AvatarFallback className="bg-primary/5 text-primary text-sm font-bold">
+                                    {member.name?.split(' ').map(n => n[0]).join('') || '?'}
+                                </AvatarFallback>
+                            </Avatar>
+                            <div className="flex flex-col min-w-0">
+                                <CardTitle className="text-lg font-bold font-headline truncate">{member.name || 'Invitation Sent'}</CardTitle>
+                                <div className="text-xs text-muted-foreground truncate">{member.email}</div>
+                            </div>
+                        </div>
+                        <div className="mt-4 flex items-center justify-between">
+                           <Badge variant={status === 'Active' ? 'success' : 'secondary'} className="text-[9px] uppercase font-black tracking-widest">{status}</Badge>
+                           <div className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
+                               <CalendarDays className="h-3 w-3" /> Joined: {member.joinedAt?.toDate ? format(member.joinedAt.toDate(), 'PP') : (member.joinedAt ? format(new Date(member.joinedAt), 'PP') : 'N/A')}
+                           </div>
                         </div>
                     </CardContent>
                 </Card>
@@ -199,37 +230,50 @@ function TeamPageContent() {
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight font-headline flex items-center gap-2">
-                        <UserCog /> Team Management
+                    <h1 className="text-3xl font-black tracking-tight font-headline flex items-center gap-3">
+                        <UserCog className="h-8 w-8 text-primary" /> Team Management
                     </h1>
-                    <p className="text-muted-foreground">
-                        Invite agents or create video recorder accounts for your agency.
+                    <p className="text-muted-foreground font-medium">
+                        Manage your agency experts and track their performance.
                     </p>
                 </div>
-                <div className="flex justify-end ml-auto">
-                    <Button className="rounded-full glowing-btn" onClick={() => { setMemberToEdit(null); setIsAddMemberOpen(true); }}>
+                <div className="flex justify-end ml-auto w-full md:w-auto">
+                    <Button className="rounded-full glowing-btn px-6 font-bold w-full md:w-auto" onClick={() => { setMemberToEdit(null); setIsAddMemberOpen(true); }}>
                         <PlusCircle className="mr-2 h-4 w-4" /> Add Team Member
                     </Button>
                 </div>
             </div>
 
-            <Card className="bg-primary/5 border-primary/20">
-                <CardContent className="p-4">
-                    <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Plan Usage (Agent Seats)</span>
-                        <span className="text-sm font-bold">{currentCount} / {limit === Infinity ? 'Unlimited' : limit}</span>
+            <Card className="bg-primary/5 border-primary/20 shadow-none">
+                <CardContent className="p-5">
+                    <div className="flex justify-between items-center mb-3">
+                        <div className="flex flex-col">
+                            <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Agency Capacity</span>
+                            <span className="text-sm font-bold text-muted-foreground">{currentCount} of {limit === Infinity ? 'Unlimited' : limit} Agent Seats Used</span>
+                        </div>
+                        <Badge variant="outline" className="bg-background font-bold">{Math.round(progress)}%</Badge>
                     </div>
-                    <Progress value={progress} className="h-2" />
+                    <Progress value={progress} className="h-2.5 bg-background" indicatorClassName="bg-gradient-to-r from-primary to-blue-500" />
                 </CardContent>
             </Card>
 
             {isLoading ? (
-                <div className="text-center py-20 text-muted-foreground">Loading team members...</div>
+                <div className="text-center py-20 text-muted-foreground">
+                    <div className="flex flex-col items-center gap-4">
+                        <Progress value={45} className="w-64 h-1 animate-pulse" />
+                        <span className="text-sm font-medium">Loading agency team...</span>
+                    </div>
+                </div>
             ) : !sortedTeamMembers || sortedTeamMembers.length === 0 ? (
-                 <Card className="flex items-center justify-center h-64 border-dashed bg-muted/20">
-                    <div className="text-center">
-                        <p className="text-lg font-medium">Your team is empty</p>
-                        <p className="text-muted-foreground">Click "Add Team Member" to invite your first agent.</p>
+                 <Card className="flex items-center justify-center h-64 border-dashed border-2 bg-muted/5">
+                    <div className="text-center space-y-4">
+                        <div className="bg-background p-4 rounded-full w-fit mx-auto shadow-sm">
+                            <UserCog className="h-8 w-8 text-muted-foreground/40" />
+                        </div>
+                        <div>
+                            <p className="text-lg font-bold">Your team is empty</p>
+                            <p className="text-muted-foreground text-sm">Start building your agency by inviting your first agent.</p>
+                        </div>
                     </div>
                 </Card>
             ) : (
@@ -248,6 +292,7 @@ function TeamPageContent() {
                     setIsOpen={setIsDetailsOpen}
                     member={selectedMember}
                     properties={properties || []}
+                    buyers={buyers || []}
                 />
             )}
         </div>
@@ -256,7 +301,7 @@ function TeamPageContent() {
 
 export default function TeamPage() {
     return (
-        <Suspense fallback={<div className="text-center py-20 text-muted-foreground">Loading team...</div>}>
+        <Suspense fallback={<div className="flex items-center justify-center h-screen"><Progress value={30} className="w-48" /></div>}>
             <TeamPageContent />
         </Suspense>
     );
