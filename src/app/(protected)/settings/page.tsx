@@ -74,6 +74,7 @@ export default function SettingsPage() {
   const { toast } = useToast();
   
   const [localProfile, setLocalProfile] = useState<ProfileData>(profile);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [isClearActivitiesDialogOpen, setIsClearActivitiesDialogOpen] = useState(false);
@@ -120,27 +121,29 @@ export default function SettingsPage() {
 
   useEffect(() => {
     setMounted(true);
-    const phone = profile.phone || '';
-    const phoneHasPlus = phone.startsWith('+');
-    
-    if (phoneHasPlus) {
-        const selectedCountry = countryCodes.find(c => phone.startsWith(c.dial_code));
-        if (selectedCountry) {
-            setCountryCode(selectedCountry.dial_code);
-            setLocalProfile({ ...profile, phone: phone.substring(selectedCountry.dial_code.length) });
+    if (!isProfileLoading) {
+        const phone = profile.phone || '';
+        const phoneHasPlus = phone.startsWith('+');
+        
+        if (phoneHasPlus) {
+            const selectedCountry = countryCodes.find(c => phone.startsWith(c.dial_code));
+            if (selectedCountry) {
+                setCountryCode(selectedCountry.dial_code);
+                setLocalProfile({ ...profile, phone: phone.substring(selectedCountry.dial_code.length) });
+            } else {
+                const code = phone.substring(0, phone.search(/\d{10}$/));
+                setCountryCode(code || '+92');
+                setLocalProfile({ ...profile, phone: phone.substring(code.length) });
+            }
         } else {
-            const code = phone.substring(0, phone.search(/\d{10}$/));
-            setCountryCode(code || '+92');
-            setLocalProfile({ ...profile, phone: phone.substring(code.length) });
+            setCountryCode('+92');
+            setLocalProfile(profile);
         }
-    } else {
-        setCountryCode('+92');
-        setLocalProfile(profile);
     }
 
     const savedAppointmentSetting = localStorage.getItem('notifications_appointments_enabled');
     setAppointmentNotifications(savedAppointmentSetting !== 'false');
-  }, [profile]);
+  }, [profile, isProfileLoading]);
 
 
   useEffect(() => {
@@ -202,6 +205,8 @@ export default function SettingsPage() {
     e.preventDefault();
     if (!user) return;
 
+    setIsSavingProfile(true);
+
     const fullPhoneNumber = localProfile.phone ? `${countryCode}${localProfile.phone.replace(/\D/g, '')}` : '';
 
     if (
@@ -210,6 +215,7 @@ export default function SettingsPage() {
         fullPhoneNumber === profile.phone
     ) {
         toast({ title: 'No Changes Detected', description: 'Your profile information is already up to date.'});
+        setIsSavingProfile(false);
         return;
     }
 
@@ -220,22 +226,22 @@ export default function SettingsPage() {
 
         if (profile.agency_id) {
             const teamMemberRef = doc(firestore, 'agencies', profile.agency_id, 'teamMembers', user.uid);
-            batch.update(teamMemberRef, { name: localProfile.name, phone: fullPhoneNumber });
+            batch.set(teamMemberRef, { name: localProfile.name, phone: fullPhoneNumber }, { merge: true });
         }
 
         const userDocRef = doc(firestore, 'users', user.uid);
-        batch.update(userDocRef, { name: localProfile.name });
+        batch.set(userDocRef, { name: localProfile.name }, { merge: true });
 
         if (isUserAdmin && profile.agency_id) {
             const agencyDocRef = doc(firestore, 'agencies', profile.agency_id);
-            batch.update(agencyDocRef, { 
+            batch.set(agencyDocRef, { 
                 agencyName: localProfile.agencyName, 
                 name: localProfile.name, 
                 phone: fullPhoneNumber 
-            });
+            }, { merge: true });
         } else if (profile.role === 'Agent') {
             const agentDocRef = doc(firestore, 'agents', user.uid);
-            batch.update(agentDocRef, { name: localProfile.name, phone: fullPhoneNumber });
+            batch.set(agentDocRef, { name: localProfile.name, phone: fullPhoneNumber }, { merge: true });
         }
 
         await batch.commit();
@@ -252,8 +258,10 @@ export default function SettingsPage() {
           description: 'Your profile information has been saved successfully.',
         });
     } catch(error) {
-         toast({ title: 'Error updating Profile', description: 'Could not Save Changes.', variant: 'destructive'});
+         toast({ title: 'Error updating Profile', description: 'Could not Save Changes. Please try again.', variant: 'destructive'});
          console.error("Profile save error:", error);
+    } finally {
+        setIsSavingProfile(false);
     }
   };
 
@@ -698,7 +706,12 @@ export default function SettingsPage() {
                                 </div>
                             </div>
                         </CardContent>
-                         <CardFooter className="border-t px-6 py-4"><Button>Save Changes</Button></CardFooter>
+                         <CardFooter className="border-t px-6 py-4">
+                            <Button type="submit" disabled={isSavingProfile}>
+                                {isSavingProfile && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Save Changes
+                            </Button>
+                        </CardFooter>
                     </form>
                 </Card>
                 {isPasswordSignIn && (
@@ -907,7 +920,10 @@ export default function SettingsPage() {
             </div>
           </CardContent>
           <CardFooter className="border-t px-6 py-4">
-            <Button>Save Changes</Button>
+            <Button type="submit" disabled={isSavingProfile}>
+                {isSavingProfile && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Save Changes
+            </Button>
           </CardFooter>
         </form>
       </Card>
