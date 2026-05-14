@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -7,14 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useFirestore, useStorage } from '@/firebase/provider';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Palette, Upload, Image as ImageIcon, Save, Smartphone, Globe } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import type { BrandingConfig } from '@/lib/types';
-import Image from 'next/image';
 
 export default function BrandingPage() {
     const firestore = useFirestore();
@@ -70,22 +70,24 @@ export default function BrandingPage() {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        if (file.size > 2 * 1024 * 1024) {
-            toast({ title: 'File too large', description: 'Please select an image smaller than 2MB.', variant: 'destructive' });
+        if (file.size > 5 * 1024 * 1024) {
+            toast({ title: 'File too large', description: 'Please select an image smaller than 5MB.', variant: 'destructive' });
             return;
         }
 
         setIsUploading(true);
         try {
-            const path = `system/pwa-icon.png`;
+            const uniqueName = `pwa-icon-${Date.now()}.png`;
+            const path = `system/${uniqueName}`;
             const sRef = storageRef(storage, path);
             await uploadBytes(sRef, file);
             const url = await getDownloadURL(sRef);
             
             setConfig(prev => ({ ...prev, pwaIconUrl: url }));
-            toast({ title: 'Icon Uploaded', description: 'Click Save to apply changes to the platform.' });
-        } catch (error) {
-            toast({ title: 'Upload Failed', variant: 'destructive' });
+            toast({ title: 'Icon Uploaded', description: 'Click Save Branding to apply changes.' });
+        } catch (error: any) {
+            console.error("Upload error:", error);
+            toast({ title: 'Upload Failed', description: error.message || 'Check storage permissions.', variant: 'destructive' });
         } finally {
             setIsUploading(false);
         }
@@ -157,11 +159,9 @@ export default function BrandingPage() {
                                 <div className="flex flex-col items-center gap-4">
                                     <div className="w-48 h-48 rounded-[2.5rem] border-4 border-dashed border-primary/20 bg-muted/30 flex items-center justify-center overflow-hidden shadow-inner group relative">
                                         {config.pwaIconUrl ? (
-                                            <Image 
+                                            <img 
                                                 src={config.pwaIconUrl} 
                                                 alt="App Icon" 
-                                                width={192} 
-                                                height={192} 
                                                 className="w-full h-full object-cover transition-transform group-hover:scale-110"
                                             />
                                         ) : (
@@ -217,7 +217,7 @@ export default function BrandingPage() {
                             </div>
                         </CardContent>
                         <CardFooter className="bg-muted/50 p-4">
-                            <p className="text-[10px] text-muted-foreground font-medium italic italic text-center w-full">
+                            <p className="text-[10px] text-muted-foreground font-medium italic text-center w-full">
                                 Note: PWA updates might take a few hours to propagate to existing installed devices.
                             </p>
                         </CardFooter>
@@ -251,7 +251,7 @@ export default function BrandingPage() {
                                 <li className="flex gap-2"><div className="w-1 h-1 rounded-full bg-primary mt-1.5 shrink-0" /> Icons must be square.</li>
                                 <li className="flex gap-2"><div className="w-1 h-1 rounded-full bg-primary mt-1.5 shrink-0" /> Use PNG for transparency support.</li>
                                 <li className="flex gap-2"><div className="w-1 h-1 rounded-full bg-primary mt-1.5 shrink-0" /> Keep the logo centered for circle/squircle masks.</li>
-                                <li className="flex gap-2"><div className="w-1 h-1 rounded-full bg-primary mt-1.5 shrink-0" /> Max file size: 2MB.</li>
+                                <li className="flex gap-2"><div className="w-1 h-1 rounded-full bg-primary mt-1.5 shrink-0" /> Max file size: 5MB.</li>
                             </ul>
                         </CardContent>
                     </Card>

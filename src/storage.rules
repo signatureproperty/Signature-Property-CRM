@@ -15,10 +15,14 @@ service firebase.storage {
     }
     
     // Allow any authenticated user to read/write to the documents folder.
-    // The {allPaths=**} is a recursive wildcard that matches files in any subdirectories.
-    // This simplifies the rule to ensure uploads are not blocked by complex, unsupported checks.
     match /documents/{agencyId}/{propertyId}/{allPaths=**} {
       allow read, write: if request.auth != null;
+    }
+
+    // Allow system config and branding access for administrators
+    match /system/{allPaths=**} {
+      allow read: if true; // Publicly readable for manifest/PWA
+      allow write: if request.auth != null; // Protected write
     }
   }
 }
