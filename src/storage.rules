@@ -19,10 +19,11 @@ service firebase.storage {
       allow read, write: if request.auth != null;
     }
 
-    // Allow system config and branding access for administrators
+    // Allow system config and branding access
+    // Public read for PWA support, write restricted to authenticated users
     match /system/{allPaths=**} {
-      allow read: if true; // Publicly readable for manifest/PWA
-      allow write: if request.auth != null; // Protected write
+      allow read: if true;
+      allow write: if request.auth != null;
     }
   }
 }

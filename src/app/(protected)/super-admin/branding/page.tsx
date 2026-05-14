@@ -9,20 +9,23 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useFirestore, useStorage } from '@/firebase/provider';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Palette, Upload, Image as ImageIcon, Save, Smartphone, Globe } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import type { BrandingConfig } from '@/lib/types';
+import { useAuth } from '@/firebase/provider';
 
 export default function BrandingPage() {
     const firestore = useFirestore();
     const storage = useStorage();
+    const auth = useAuth();
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
     
     const [config, setConfig] = useState<BrandingConfig>({
         appName: 'Signature Property CRM',
@@ -70,31 +73,53 @@ export default function BrandingPage() {
         const file = e.target.files?.[0];
         if (!file) return;
 
+        // Ensure user is authenticated for storage rules
+        if (!auth.currentUser) {
+            toast({ title: 'Auth Error', description: 'You must be logged in to upload files.', variant: 'destructive' });
+            return;
+        }
+
         if (file.size > 5 * 1024 * 1024) {
             toast({ title: 'File too large', description: 'Please select an image smaller than 5MB.', variant: 'destructive' });
             return;
         }
 
         setIsUploading(true);
+        setUploadProgress(0);
+        
         try {
             const uniqueName = `pwa-icon-${Date.now()}.png`;
             const path = `system/${uniqueName}`;
             const sRef = storageRef(storage, path);
-            await uploadBytes(sRef, file);
-            const url = await getDownloadURL(sRef);
             
-            setConfig(prev => ({ ...prev, pwaIconUrl: url }));
-            toast({ title: 'Icon Uploaded', description: 'Click Save Branding to apply changes.' });
+            const uploadTask = uploadBytesResumable(sRef, file);
+
+            uploadTask.on('state_changed', 
+                (snapshot) => {
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    setUploadProgress(Math.round(progress));
+                }, 
+                (error) => {
+                    console.error("Upload task error:", error);
+                    toast({ title: 'Upload Failed', description: error.message, variant: 'destructive' });
+                    setIsUploading(false);
+                }, 
+                async () => {
+                    const url = await getDownloadURL(uploadTask.snapshot.ref);
+                    setConfig(prev => ({ ...prev, pwaIconUrl: url }));
+                    setIsUploading(false);
+                    toast({ title: 'Icon Uploaded', description: 'Click Save Branding to apply changes.' });
+                }
+            );
         } catch (error: any) {
-            console.error("Upload error:", error);
-            toast({ title: 'Upload Failed', description: error.message || 'Check storage permissions.', variant: 'destructive' });
-        } finally {
+            console.error("Initiation error:", error);
+            toast({ title: 'Error', description: error.message, variant: 'destructive' });
             setIsUploading(false);
         }
     };
 
     if (isLoading) {
-        return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin" /></div>;
+        return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-primary h-10 w-10" /></div>;
     }
 
     return (
@@ -106,7 +131,7 @@ export default function BrandingPage() {
                     </h1>
                     <p className="text-muted-foreground font-medium">Customize the platform identity and installation icons.</p>
                 </div>
-                <Button className="rounded-full glowing-btn px-8" onClick={handleSaveConfig} disabled={isSaving}>
+                <Button className="rounded-full glowing-btn px-8" onClick={handleSaveConfig} disabled={isSaving || isUploading}>
                     {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                     Save Branding
                 </Button>
@@ -168,8 +193,9 @@ export default function BrandingPage() {
                                             <ImageIcon className="h-16 w-16 text-muted-foreground/30" />
                                         )}
                                         {isUploading && (
-                                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                                                <Loader2 className="text-white animate-spin" />
+                                            <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center text-white p-4">
+                                                <Loader2 className="h-8 w-8 animate-spin mb-2" />
+                                                <span className="text-xs font-bold uppercase tracking-widest">Uploading {uploadProgress}%</span>
                                             </div>
                                         )}
                                     </div>
