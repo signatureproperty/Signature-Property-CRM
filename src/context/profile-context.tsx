@@ -2,7 +2,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { UserRole } from '@/lib/types';
+import { UserRole, PlanName } from '@/lib/types';
 import { doc, Timestamp } from 'firebase/firestore';
 import { useUser } from '@/firebase/auth/use-user';
 import { useFirestore } from '@/firebase/provider';
@@ -96,6 +96,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         let name = userProfile.name || user.displayName || 'User';
         let phone = userProfile.phone || '';
         let avatar = teamMemberProfile?.avatar || agencyProfile?.avatar || userProfile.avatar || user.photoURL || '';
+        let agencyName = agencyProfile?.agencyName || 'My Agency';
 
         if (role === 'Agent' && agentProfile) {
             name = agentProfile.name || name;
@@ -106,6 +107,9 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         } else if (role === 'Video Recorder' && teamMemberProfile) {
              name = teamMemberProfile.name || name;
              phone = teamMemberProfile.phone || phone;
+        } else if (role === 'Super Admin') {
+             agencyName = "Platform Master Control";
+             name = userProfile.name || user.displayName || 'System Admin';
         }
 
 
@@ -128,7 +132,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
         const newProfileData: ProfileData = {
             name: name,
-            agencyName: agencyProfile?.agencyName || 'My Agency',
+            agencyName: agencyName,
             phone: phone,
             role: role, 
             avatar: avatar,

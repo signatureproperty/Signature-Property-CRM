@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -8,8 +9,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import { CurrencyProvider } from '@/context/currency-context';
 import { ProfileProvider, useProfile } from '@/context/profile-context';
 import { useUser } from '@/firebase/auth/use-user';
-import { Loader2, MailWarning, Send, AlertTriangle } from 'lucide-react';
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Loader2, MailWarning, Send, AlertTriangle, ShieldAlert } from 'lucide-react';
+import { Card, CardDescription, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { AppLoader } from '@/components/ui/loader';
 import { useToast } from '@/hooks/use-toast';
 import { sendEmailVerification } from 'firebase/auth';
@@ -82,6 +83,14 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // --- Role Based Access Control (RBAC) ---
+  
+  // Super Admin can access everything
+  if (profile.role === 'Super Admin') {
+      return <>{children}</>;
+  }
+
+  // Define forbidden paths for each role
   const agentForbiddenPaths = ['/team', '/documents', '/analytics', '/reports', '/finance', '/super-admin'];
   const recorderForbiddenPaths = ['/team', '/upgrade', '/buyers', '/analytics', '/reports', '/tools', '/follow-ups', '/appointments', '/activities', '/trash', '/settings', '/support', '/properties', '/documents', '/finance', '/inbox', '/super-admin'];
   const adminForbiddenPaths = ['/super-admin'];
@@ -89,10 +98,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   let isAllowed = true;
   let message = "This page is not accessible with your current role.";
 
-  if (profile.role === 'Super Admin') {
-      // Super Admin can see everything essentially, but we can limit if needed
-      isAllowed = true;
-  } else if (profile.role === 'Agent' && agentForbiddenPaths.some(path => pathname.startsWith(path))) {
+  if (profile.role === 'Agent' && agentForbiddenPaths.some(path => pathname.startsWith(path))) {
       isAllowed = false;
   } else if (profile.role === 'Video Recorder' && recorderForbiddenPaths.some(path => pathname.startsWith(path))) {
       isAllowed = false;
@@ -100,17 +106,24 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
       isAllowed = false;
   }
 
-
   if (!isAllowed) {
       return (
-         <div className="flex h-screen w-full items-center justify-center p-4">
-            <Card className="max-w-md text-center border-destructive">
-                <CardHeader>
-                    <CardTitle className="flex items-center justify-center gap-2 text-destructive"><AlertTriangle/>Access Denied</CardTitle>
-                    <CardDescription>
+         <div className="flex h-screen w-full items-center justify-center p-4 bg-slate-50 dark:bg-slate-950">
+            <Card className="max-w-md w-full border-destructive shadow-2xl">
+                <CardHeader className="text-center pb-2">
+                    <div className="mx-auto bg-destructive/10 w-12 h-12 rounded-full flex items-center justify-center mb-4">
+                        <ShieldAlert className="text-destructive h-6 w-6" />
+                    </div>
+                    <CardTitle className="text-xl font-bold font-headline">Access Denied</CardTitle>
+                    <CardDescription className="text-sm font-medium">
                         {message}
                     </CardDescription>
                 </CardHeader>
+                <CardContent className="text-center pt-4">
+                    <Button variant="outline" className="rounded-full px-8" onClick={() => router.push('/overview')}>
+                        Return to Dashboard
+                    </Button>
+                </CardContent>
             </Card>
         </div>
       )
@@ -187,8 +200,6 @@ export default function ProtectedLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // FirebaseClientProvider is already present in src/app/providers.tsx (RootLayout).
-  // Removing it from here avoids double-initialization and potential ChunkLoadErrors/Hydration issues.
   return (
     <ProfileProvider>
         <CurrencyProvider>
