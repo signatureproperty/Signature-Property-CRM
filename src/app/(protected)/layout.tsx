@@ -86,7 +86,8 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   }
 
   // Define restricted paths for each role
-  const agentForbiddenPaths = ['/team', '/documents', '/analytics', '/reports', '/finance', '/inbox'];
+  // REMOVED /inbox from forbidden paths for Agents as requested
+  const agentForbiddenPaths = ['/team', '/documents', '/analytics', '/reports', '/finance'];
   const recorderForbiddenPaths = ['/team', '/upgrade', '/buyers', '/analytics', '/reports', '/tools', '/follow-ups', '/appointments', '/activities', '/trash', '/settings', '/support', '/properties', '/documents', '/finance', '/inbox'];
 
   let isAllowed = true;

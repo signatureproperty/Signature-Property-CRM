@@ -1,46 +1,58 @@
 rules_version = '2';
 
 function isAgencyMember(agencyId) {
-    return exists(/databases/$(database)/documents/agencies/$(agencyId)/teamMembers/$(request.auth.uid));
+    return request.auth != null && exists(/databases/$(database)/documents/agencies/$(agencyId)/teamMembers/$(request.auth.uid));
 }
 
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Generic fallback for development
-    match /{document=**} {
-      allow read, write: if request.auth != null;
-    }
-
+    // Global Access Control: All data is agency-scoped or user-scoped.
+    
+    // 1. Agencies collection:
     match /agencies/{agencyId} {
+       // Agency details are readable by its members or the owner (admin)
        allow read: if request.auth.uid == agencyId || isAgencyMember(agencyId);
+       // Only the owner (Admin) can write/update agency root details
        allow write: if request.auth.uid == agencyId;
-    }
-    
-    match /agencies/{agencyId}/{subcollection}/{documentId} {
-      allow read, write: if isAgencyMember(agencyId) || request.auth.uid == agencyId;
-    }
-    
-    match /agencies/{agencyId}/inboxMessages/{messageId} {
-      allow read, update, delete: if request.auth.uid == agencyId;
-      allow create: if isAgencyMember(agencyId);
+       
+       // 2. Subcollections (properties, buyers, teamMembers, appointments, followUps, etc.)
+       match /{subcollection}/{documentId} {
+          // Read/Write restricted to agency members or the admin
+          allow read, write: if request.auth.uid == agencyId || isAgencyMember(agencyId);
+       }
+       
+       // 3. Inbox Messages specifically:
+       match /inboxMessages/{messageId} {
+          // Admins can read/delete any message in their inbox
+          allow read, update, delete: if request.auth.uid == agencyId;
+          // Members (Agents) can create messages to the admin
+          // Members can also read messages they sent
+          allow create: if isAgencyMember(agencyId);
+          allow read: if isAgencyMember(agencyId) && resource.data.fromUserId == request.auth.uid;
+       }
     }
 
+    // User personal profiles
     match /users/{userId} {
       allow read, write: if request.auth.uid == userId;
     }
 
+    // Personal Agent records (outside specific agency)
     match /agents/{agentId} {
        allow read, write: if request.auth.uid == agentId;
     }
 
+    // Invitation handling
     match /invitations/{inviteId} {
-      // Allow creation by any authenticated user (Agency Admin)
+      // Admins create invitations
       allow create: if request.auth != null;
-      // Allow READ/UPDATE/DELETE if the 'toEmail' field matches the logged-in user's email
-      allow read, update, delete: if request.auth != null && (resource.data.toEmail == request.auth.token.email || request.auth.uid == resource.data.fromAgencyId);
+      // Readable/Deletable by target user or sender admin
+      allow read, update, delete: if request.auth != null && 
+        (resource.data.toEmail == request.auth.token.email || request.auth.uid == resource.data.fromAgencyId);
     }
 
+    // Payment/Upgrade requests
     match /upgradeRequests/{requestId} {
       allow create: if request.auth != null;
       allow read: if request.auth != null && resource.data.userId == request.auth.uid;

@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useFirestore } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, orderBy, doc, updateDoc, deleteDoc, arrayUnion } from 'firebase/firestore';
+import { collection, query, orderBy, doc, updateDoc, deleteDoc, arrayUnion, where } from 'firebase/firestore';
 import { useProfile } from '@/context/profile-context';
 import { useMemoFirebase } from '@/firebase/hooks';
 import type { InboxMessage, Property, Buyer } from '@/lib/types';
@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { PropertyDetailsDialog } from '@/components/property-details-dialog';
 import { BuyerDetailsDialog } from '@/components/buyer-details-dialog';
+import { Badge } from '@/components/ui/badge';
 
 
 const MessageItem = ({ message, onMessageClick, isDemo = false }: { message: InboxMessage, onMessageClick: (message: InboxMessage) => void, isDemo?: boolean }) => {
@@ -48,11 +49,12 @@ const MessageItem = ({ message, onMessageClick, isDemo = false }: { message: Inb
                     <div>
                         <div className="flex items-center gap-2">
                              <p className="font-semibold">{message.fromUserName}</p>
-                             {message.buyerSerial && <Badge variant="outline" className="text-[10px]">{message.buyerSerial}</Badge>}
+                             {message.buyerSerial && <Badge variant="outline" className="text-[10px] font-mono">{message.buyerSerial}</Badge>}
+                             {message.propertySerial && <Badge variant="outline" className="text-[10px] font-mono">{message.propertySerial}</Badge>}
                         </div>
                         <p className="text-sm text-muted-foreground line-clamp-2">{message.message}</p>
                     </div>
-                     <p className="text-xs text-muted-foreground whitespace-nowrap">{formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}</p>
+                     <p className="text-xs text-muted-foreground whitespace-nowrap ml-4">{formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}</p>
                 </div>
             </div>
         </div>
@@ -76,10 +78,24 @@ export default function InboxPage() {
 
 
     const inboxQuery = useMemoFirebase(
-        () => profile.agency_id 
-            ? query(collection(firestore, 'agencies', profile.agency_id, 'inboxMessages'), orderBy('createdAt', 'desc')) 
-            : null,
-        [profile.agency_id, firestore]
+        () => {
+            if (!profile.agency_id) return null;
+            const messagesRef = collection(firestore, 'agencies', profile.agency_id, 'inboxMessages');
+            
+            // If Agent, only see messages they sent (updates they posted)
+            // In a fuller chat system, we'd add direct addressing, but for now we focus on lead notifications.
+            if (profile.role === 'Agent') {
+                return query(
+                    messagesRef, 
+                    where('fromUserId', '==', profile.user_id),
+                    orderBy('createdAt', 'desc')
+                );
+            }
+            
+            // Admins see everything sent in their agency
+            return query(messagesRef, orderBy('createdAt', 'desc'));
+        },
+        [profile.agency_id, profile.user_id, profile.role, firestore]
     );
     const { data: messages, isLoading } = useCollection<InboxMessage>(inboxQuery);
     
@@ -181,20 +197,24 @@ export default function InboxPage() {
                         <Mail/> Inbox
                     </h1>
                     <p className="text-muted-foreground">
-                        Internal notifications and messages from your team.
+                        {profile.role === 'Admin' ? 'Notifications and messages from your agency team.' : 'History of messages and updates you have sent.'}
                     </p>
                 </div>
 
                 <Card>
                     <CardHeader>
-                        <CardTitle>Team Notifications</CardTitle>
+                        <CardTitle>Communication History</CardTitle>
                     </CardHeader>
                     <CardContent className="p-0">
                         <Tabs defaultValue="lead_update">
                             <TabsList className="px-6 border-b w-full justify-start rounded-none h-12">
-                                <TabsTrigger value="lead_update" className="gap-2">Lead Updates <Badge variant="secondary" className="h-5 px-1.5">{unreadLeadUpdates}</Badge></TabsTrigger>
-                                <TabsTrigger value="cannot_record" className="gap-2">Cannot Record <Badge variant="secondary" className="h-5 px-1.5">{unreadCannotRecord}</Badge></TabsTrigger>
-                                <TabsTrigger value="payments" className="gap-2">Payments <Badge variant="secondary" className="h-5 px-1.5">{unreadPayments}</Badge></TabsTrigger>
+                                <TabsTrigger value="lead_update" className="gap-2">Messages <Badge variant="secondary" className="h-5 px-1.5">{unreadLeadUpdates}</Badge></TabsTrigger>
+                                {profile.role === 'Admin' && (
+                                    <>
+                                        <TabsTrigger value="cannot_record" className="gap-2">Cannot Record <Badge variant="secondary" className="h-5 px-1.5">{unreadCannotRecord}</Badge></TabsTrigger>
+                                        <TabsTrigger value="payments" className="gap-2">Payments <Badge variant="secondary" className="h-5 px-1.5">{unreadPayments}</Badge></TabsTrigger>
+                                    </>
+                                )}
                             </TabsList>
                             
                             <TabsContent value="lead_update">
@@ -202,30 +222,34 @@ export default function InboxPage() {
                                 leadUpdateMessages.length > 0 ? (
                                     leadUpdateMessages.map(msg => <MessageItem key={msg.id} message={msg} onMessageClick={handleMessageClick} />)
                                 ) : (
-                                    <p className="p-10 text-center text-muted-foreground">No lead updates found.</p>
+                                    <p className="p-10 text-center text-muted-foreground">No message updates found.</p>
                                 )
                                 }
                             </TabsContent>
 
-                            <TabsContent value="cannot_record">
-                                {isLoading ? <p className="p-6 text-muted-foreground">Loading messages...</p> : 
-                                cannotRecordMessages.length > 0 ? (
-                                    cannotRecordMessages.map(msg => <MessageItem key={msg.id} message={msg} onMessageClick={handleMessageClick} />)
-                                ) : (
-                                    <p className="p-10 text-center text-muted-foreground">No "Cannot Record" notifications found.</p>
-                                )
-                                }
-                            </TabsContent>
-                            
-                            <TabsContent value="payments">
-                            {isLoading ? <p className="p-6 text-muted-foreground">Loading messages...</p> : 
-                                paymentMessages.length > 0 ? (
-                                    paymentMessages.map(msg => <MessageItem key={msg.id} message={msg} onMessageClick={handleMessageClick}/>)
-                                ) : (
-                                    <p className="p-10 text-center text-muted-foreground">No payment confirmation notifications found.</p>
-                                )
-                                }
-                            </TabsContent>
+                            {profile.role === 'Admin' && (
+                                <>
+                                    <TabsContent value="cannot_record">
+                                        {isLoading ? <p className="p-6 text-muted-foreground">Loading messages...</p> : 
+                                        cannotRecordMessages.length > 0 ? (
+                                            cannotRecordMessages.map(msg => <MessageItem key={msg.id} message={msg} onMessageClick={handleMessageClick} />)
+                                        ) : (
+                                            <p className="p-10 text-center text-muted-foreground">No "Cannot Record" notifications found.</p>
+                                        )
+                                        }
+                                    </TabsContent>
+                                    
+                                    <TabsContent value="payments">
+                                    {isLoading ? <p className="p-6 text-muted-foreground">Loading messages...</p> : 
+                                        paymentMessages.length > 0 ? (
+                                            paymentMessages.map(msg => <MessageItem key={msg.id} message={msg} onMessageClick={handleMessageClick}/>)
+                                        ) : (
+                                            <p className="p-10 text-center text-muted-foreground">No payment confirmation notifications found.</p>
+                                        )
+                                        }
+                                    </TabsContent>
+                                </>
+                            )}
                         </Tabs>
                     </CardContent>
                 </Card>
@@ -250,7 +274,7 @@ export default function InboxPage() {
                                     <Eye className="h-4 w-4 sm:mr-2" />
                                     <span>View {selectedMessage.buyerId ? 'Lead' : 'Property'}</span>
                                 </Button>
-                                {selectedMessage.type === 'cannot_record' && (
+                                {profile.role === 'Admin' && selectedMessage.type === 'cannot_record' && (
                                      <Button variant="outline" size="sm" onClick={handleReassign}>
                                         <RotateCcw className="h-4 w-4 mr-2"/>
                                         <span>Re-assign</span>
@@ -301,15 +325,3 @@ export default function InboxPage() {
     );
 }
 
-const Badge = ({ children, variant = "default", className }: { children: React.ReactNode, variant?: "default" | "outline" | "secondary", className?: string }) => {
-    const variants = {
-        default: "bg-primary text-primary-foreground",
-        outline: "border border-border text-muted-foreground",
-        secondary: "bg-muted text-muted-foreground"
-    };
-    return (
-        <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-medium", variants[variant], className)}>
-            {children}
-        </span>
-    );
-}

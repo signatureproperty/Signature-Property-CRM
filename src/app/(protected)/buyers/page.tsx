@@ -473,7 +473,7 @@ function BuyersPageContent() {
                                         <DropdownMenuTrigger asChild><Button size="icon" variant="ghost"><MoreHorizontal /></Button></DropdownMenuTrigger>
                                         <DropdownMenuContent align="end" className="glass-card w-48">
                                             <DropdownMenuItem onSelect={() => handleDetailsClick(buyer)}><Eye /> View Details</DropdownMenuItem>
-                                            <DropdownMenuItem onSelect={() => handleNotesClick(buyer)}><MessageSquareText /> Lead Updates</DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={() => handleNotesClick(buyer)}><MessageSquareText /> Message</DropdownMenuItem>
                                             <DropdownMenuItem onSelect={() => handleRecommendProperties(buyer)}><Sparkles /> Recommended Properties</DropdownMenuItem>
                                             <DropdownMenuItem onSelect={() => handleManageTags(buyer)}><TagIcon /> Edit Tags</DropdownMenuItem>
                                             <DropdownMenuItem onSelect={(e) => handleWhatsAppChat(e, buyer)}><MessageSquare /> WhatsApp Chat</DropdownMenuItem>
@@ -569,7 +569,7 @@ function BuyersPageContent() {
                     <CardFooter className="p-2 bg-muted/20 border-t justify-between items-center">
                         <Button variant="ghost" size="sm" className="h-8 gap-2 text-[10px] font-bold" onClick={() => handleNotesClick(buyer)}>
                             <MessageSquareText className="h-3.5 w-3.5" />
-                            Lead Updates
+                            Message
                         </Button>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
