@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -35,6 +34,7 @@ import {
   Mail,
   Plus,
   DollarSign,
+  ShieldAlert,
   Building
 } from 'lucide-react';
 import {
@@ -65,7 +65,8 @@ import { useRouter } from 'next/navigation';
 import { signOut } from 'firebase/auth';
 
 const allMenuItems = [
-  { href: '/overview', label: 'Dashboard', icon: <LayoutDashboard />, roles: ['Admin', 'Agent', 'Video Recorder'] },
+  { href: '/overview', label: 'Dashboard', icon: <LayoutDashboard />, roles: ['Admin', 'Agent', 'Video Recorder', 'Super Admin'] },
+  { href: '/super-admin', label: 'Admin Control', icon: <ShieldAlert />, roles: ['Super Admin'] },
   { href: '/properties', label: 'Properties', icon: <Building2 />, roles: ['Admin', 'Agent'] },
   { href: '/buyers', label: 'Buyers', icon: <Users />, roles: ['Admin', 'Agent'] },
   { href: '/finance', label: 'Finance', icon: <DollarSign />, roles: ['Admin'] },
@@ -85,7 +86,7 @@ const videoMenuItems = [
 ];
 
 const bottomMenuItems = [
-  { href: '/settings', label: 'Settings', icon: <Settings />, roles: ['Admin', 'Agent'] },
+  { href: '/settings', label: 'Settings', icon: <Settings />, roles: ['Admin', 'Agent', 'Super Admin'] },
   { href: '/support', label: 'Support', icon: <MessageSquare />, roles: ['Admin', 'Agent'] },
 ];
 
@@ -196,9 +197,9 @@ export function AppSidebar() {
     const mobileNavItems = [
         { href: '/tools', label: 'Tools', icon: <Rocket />, roles: ['Admin', 'Agent'] },
         { href: '/properties', label: 'Properties', icon: <Building2 />, roles: ['Admin', 'Agent'] },
-        { href: '/overview', label: 'Dashboard', icon: <LayoutDashboard />, isCenter: true, roles: ['Admin', 'Agent', 'Video Recorder'] },
+        { href: '/overview', label: 'Dashboard', icon: <LayoutDashboard />, isCenter: true, roles: ['Admin', 'Agent', 'Video Recorder', 'Super Admin'] },
         { href: '/buyers', label: 'Buyers', icon: <Users />, roles: ['Admin', 'Agent'] },
-        { href: '#', label: 'More', icon: <MoreHorizontal />, isSheet: true, roles: ['Admin', 'Agent'] },
+        { href: '#', label: 'More', icon: <MoreHorizontal />, isSheet: true, roles: ['Admin', 'Agent', 'Super Admin'] },
     ];
     return (
         <>

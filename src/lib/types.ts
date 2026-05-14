@@ -1,6 +1,6 @@
 'use client';
 
-export type UserRole = 'Admin' | 'Agent' | 'Video Recorder';
+export type UserRole = 'Admin' | 'Agent' | 'Video Recorder' | 'Super Admin';
 export type PlanName = 'Basic' | 'Standard' | 'Premium';
 
 export type User = {
@@ -338,4 +338,16 @@ export interface InboxMessage {
     isRead: boolean;
     createdAt: string;
     agency_id: string;
+};
+
+export type Agency = {
+    id: string;
+    agencyName: string;
+    ownerId: string;
+    name: string;
+    createdAt: any;
+    avatar?: string;
+    planName: PlanName;
+    phone?: string;
+    planStartDate?: any;
 };
