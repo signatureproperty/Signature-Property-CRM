@@ -158,6 +158,14 @@ export type BuyerStatus =
   | 'Deal Closed'
   | 'Deal Lost';
 
+export type LeadNote = {
+    id: string;
+    text: string;
+    authorId: string;
+    authorName: string;
+    authorRole: UserRole;
+    timestamp: string;
+};
 
 export type Buyer = {
     id: string;
@@ -181,6 +189,7 @@ export type Buyer = {
     size_max_value?: number;
     size_max_unit?: SizeUnit;
     notes?: string;
+    timeline_notes?: LeadNote[];
     created_at: string;
     created_by: string;
     agency_id: string;

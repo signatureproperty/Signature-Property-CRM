@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -28,7 +27,9 @@ import {
   Briefcase,
   MapPin,
   Clock,
-  User
+  User,
+  MessageSquareText,
+  Calendar
 } from 'lucide-react';
 import { useCurrency } from '@/context/currency-context';
 import { formatCurrency, formatUnit } from '@/lib/formatters';
@@ -49,6 +50,7 @@ import { useFirestore } from '@/firebase/provider';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
 
 interface BuyerDetailsDialogProps {
   buyer: Buyer;
@@ -186,14 +188,46 @@ export function BuyerDetailsDialog({
                 </div>
             </div>
 
-            <div className="space-y-3">
-                <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                  <FileText className="h-3.5 w-3.5" /> Additional Notes
-                </h3>
-                <div className="p-4 rounded-xl bg-muted/5 border border-border/20 text-sm">
-                  {buyer.notes || 'No extra requirements specified.'}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                    <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                    <FileText className="h-3.5 w-3.5" /> Requirements Note
+                    </h3>
+                    <div className="p-4 rounded-xl bg-muted/5 border border-border/20 text-sm">
+                    {buyer.notes || 'No extra requirements specified.'}
+                    </div>
+                </div>
+
+                <div className="space-y-3">
+                    <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                    <MessageSquareText className="h-3.5 w-3.5" /> Latest Update
+                    </h3>
+                    <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 text-sm italic">
+                    {buyer.timeline_notes && buyer.timeline_notes.length > 0 
+                        ? buyer.timeline_notes[buyer.timeline_notes.length - 1].text 
+                        : 'No lead updates yet.'}
+                    </div>
                 </div>
             </div>
+
+            {buyer.timeline_notes && buyer.timeline_notes.length > 0 && (
+                 <div className="space-y-3">
+                    <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                      <History className="h-3.5 w-3.5" /> Lead Timeline
+                    </h3>
+                    <div className="space-y-3">
+                        {buyer.timeline_notes.slice().reverse().map((note) => (
+                            <div key={note.id} className="p-3 rounded-lg border bg-card/50">
+                                <div className="flex items-center justify-between gap-2 mb-1">
+                                    <span className="font-bold text-xs">{note.authorName} ({note.authorRole})</span>
+                                    <span className="text-[10px] text-muted-foreground">{format(new Date(note.timestamp), 'MMM d, p')}</span>
+                                </div>
+                                <p className="text-sm">{note.text}</p>
+                            </div>
+                        ))}
+                    </div>
+                 </div>
+            )}
 
             {buyer.sharedProperties && buyer.sharedProperties.length > 0 && (
               <div className="space-y-3">

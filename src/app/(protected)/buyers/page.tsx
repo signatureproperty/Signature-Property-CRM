@@ -15,7 +15,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { buyerStatuses } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
-import { Edit, MoreHorizontal, PlusCircle, Trash2, Phone, Home, Filter, Wallet, Ruler, Eye, MessageSquare, ChevronLeft, ChevronRight, ArrowUpDown, Tag as TagIcon, Search, MapPin, Building, ChevronDown, UserPlus, CalendarPlus, Sparkles } from 'lucide-react';
+import { Edit, MoreHorizontal, PlusCircle, Trash2, Phone, Home, Filter, Wallet, Ruler, Eye, MessageSquare, ChevronLeft, ChevronRight, ArrowUpDown, Tag as TagIcon, Search, MapPin, Building, ChevronDown, UserPlus, CalendarPlus, Sparkles, MessageSquareText } from 'lucide-react';
 import { useState, useMemo, useEffect, Suspense } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useIsMobile } from '@/hooks/use-is-mobile';
@@ -44,6 +44,7 @@ import { ManageTagsDialog } from '@/components/manage-tags-dialog';
 import { EditBuyerTagsDialog } from '@/components/edit-buyer-tags-dialog';
 import { SetAppointmentDialog } from '@/components/set-appointment-dialog';
 import { PropertyRecommenderDialog } from '@/components/property-recommender-dialog';
+import { BuyerNotesDialog } from '@/components/buyer-notes-dialog';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const ITEMS_PER_PAGE = 50;
@@ -128,6 +129,7 @@ function BuyersPageContent() {
     const [isEditTagsOpen, setIsEditTagsOpen] = useState(false);
     const [isAppointmentOpen, setIsAppointmentOpen] = useState(false);
     const [isRecommenderOpen, setIsRecommenderOpen] = useState(false);
+    const [isNotesOpen, setIsNotesOpen] = useState(false);
 
     const [buyerToEdit, setBuyerToEdit] = useState<Buyer | null>(null);
     const [selectedBuyers, setSelectedBuyers] = useState<string[]>([]);
@@ -202,6 +204,11 @@ function BuyersPageContent() {
     const handleDetailsClick = (buyer: Buyer) => {
         setSelectedBuyerForDetails(buyer);
         setIsDetailsOpen(true);
+    };
+
+    const handleNotesClick = (buyer: Buyer) => {
+        setSelectedBuyerForDetails(buyer);
+        setIsNotesOpen(true);
     };
 
     const handleManageTags = (buyer: Buyer) => {
@@ -427,12 +434,17 @@ function BuyersPageContent() {
                         const displayedAreas = areas.length > 2 
                             ? areas.slice(0, 2).join(', ') + '...' 
                             : areas.join(', ') || 'N/A';
+                        
+                        const hasRecentNotes = (buyer.timeline_notes?.length || 0) > 0;
                             
                         return (
                             <TableRow key={buyer.id} className="cursor-pointer hover:bg-accent/50" onClick={() => handleDetailsClick(buyer)}>
                                 <TableCell onClick={e => e.stopPropagation()}><Checkbox checked={selectedBuyers.includes(buyer.id)} onCheckedChange={(c) => setSelectedBuyers(p => c ? [...p, buyer.id] : p.filter(id => id !== buyer.id))} /></TableCell>
                                 <TableCell>
-                                    <div className="font-bold text-base font-headline">{buyer.name}</div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="font-bold text-base font-headline">{buyer.name}</div>
+                                        {hasRecentNotes && <MessageSquareText className="h-3.5 w-3.5 text-primary animate-pulse" />}
+                                    </div>
                                     <div className="flex gap-1 mt-1">
                                         <Badge variant="outline" className={cn("text-[10px] border-primary/20", buyer.serial_no.startsWith('RB') ? "bg-emerald-100 text-emerald-700" : "bg-primary/10 text-primary")}>{buyer.serial_no}</Badge>
                                         <span className="text-[10px] text-muted-foreground">{buyer.phone}</span>
@@ -461,6 +473,7 @@ function BuyersPageContent() {
                                         <DropdownMenuTrigger asChild><Button size="icon" variant="ghost"><MoreHorizontal /></Button></DropdownMenuTrigger>
                                         <DropdownMenuContent align="end" className="glass-card w-48">
                                             <DropdownMenuItem onSelect={() => handleDetailsClick(buyer)}><Eye /> View Details</DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={() => handleNotesClick(buyer)}><MessageSquareText /> Lead Updates</DropdownMenuItem>
                                             <DropdownMenuItem onSelect={() => handleRecommendProperties(buyer)}><Sparkles /> Recommended Properties</DropdownMenuItem>
                                             <DropdownMenuItem onSelect={() => handleManageTags(buyer)}><TagIcon /> Edit Tags</DropdownMenuItem>
                                             <DropdownMenuItem onSelect={(e) => handleWhatsAppChat(e, buyer)}><MessageSquare /> WhatsApp Chat</DropdownMenuItem>
@@ -482,7 +495,9 @@ function BuyersPageContent() {
                                                     </DropdownMenuSub>
                                                 </>
                                             )}
-                                            <DropdownMenuItem onSelect={() => handleEdit(buyer)}><Edit /> Edit Details</DropdownMenuItem>
+                                            {profile.role === 'Admin' && (
+                                                <DropdownMenuItem onSelect={() => handleEdit(buyer)}><Edit /> Edit Details</DropdownMenuItem>
+                                            )}
                                             {profile.role === 'Admin' && (
                                                 <DropdownMenuItem onSelect={() => handleDelete(buyer)} className="text-destructive"><Trash2 /> Delete Buyer</DropdownMenuItem>
                                             )}
@@ -499,7 +514,10 @@ function BuyersPageContent() {
 
     const renderCards = (buyers: Buyer[]) => (
         <div className="space-y-4">
-            {buyers.map(buyer => (
+            {buyers.map(buyer => {
+                const hasRecentNotes = (buyer.timeline_notes?.length || 0) > 0;
+
+                return (
                 <Card key={buyer.id} className="overflow-hidden border-l-4 border-l-primary/40">
                     <CardHeader className="p-4 pb-2 flex flex-row items-start justify-between space-y-0">
                         <div className="flex gap-3">
@@ -509,7 +527,10 @@ function BuyersPageContent() {
                                 onCheckedChange={(c) => setSelectedBuyers(p => c ? [...p, buyer.id] : p.filter(id => id !== buyer.id))} 
                             />
                             <div onClick={() => handleDetailsClick(buyer)} className="cursor-pointer">
-                                <CardTitle className="text-base font-bold font-headline">{buyer.name}</CardTitle>
+                                <div className="flex items-center gap-2">
+                                    <CardTitle className="text-base font-bold font-headline">{buyer.name}</CardTitle>
+                                    {hasRecentNotes && <MessageSquareText className="h-3.5 w-3.5 text-primary" />}
+                                </div>
                                 <div className="flex items-center gap-2 mt-1">
                                     <Badge variant="outline" className="text-[10px] bg-background font-mono">{buyer.serial_no}</Badge>
                                     <span className="text-[10px] text-muted-foreground">{buyer.phone}</span>
@@ -545,7 +566,11 @@ function BuyersPageContent() {
                             ))}
                         </div>
                     </CardContent>
-                    <CardFooter className="p-2 bg-muted/20 border-t justify-end">
+                    <CardFooter className="p-2 bg-muted/20 border-t justify-between items-center">
+                        <Button variant="ghost" size="sm" className="h-8 gap-2 text-[10px] font-bold" onClick={() => handleNotesClick(buyer)}>
+                            <MessageSquareText className="h-3.5 w-3.5" />
+                            Lead Updates
+                        </Button>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="sm" className="h-8 w-8 rounded-full p-0">
@@ -575,7 +600,9 @@ function BuyersPageContent() {
                                         </DropdownMenuSub>
                                     </>
                                 )}
-                                <DropdownMenuItem onSelect={() => handleEdit(buyer)}><Edit /> Edit Details</DropdownMenuItem>
+                                {profile.role === 'Admin' && (
+                                    <DropdownMenuItem onSelect={() => handleEdit(buyer)}><Edit /> Edit Details</DropdownMenuItem>
+                                )}
                                 {profile.role === 'Admin' && (
                                     <DropdownMenuItem onSelect={() => handleDelete(buyer)} className="text-destructive"><Trash2 /> Delete Buyer</DropdownMenuItem>
                                 )}
@@ -583,7 +610,8 @@ function BuyersPageContent() {
                         </DropdownMenu>
                     </CardFooter>
                 </Card>
-            ))}
+                );
+            })}
         </div>
     );
 
@@ -799,6 +827,7 @@ function BuyersPageContent() {
             {selectedBuyerForDetails && (
                 <>
                     <BuyerDetailsDialog buyer={selectedBuyerForDetails} isOpen={isDetailsOpen} setIsOpen={setIsDetailsOpen} />
+                    <BuyerNotesDialog buyer={selectedBuyerForDetails} isOpen={isNotesOpen} setIsOpen={setIsNotesOpen} />
                     <EditBuyerTagsDialog buyer={selectedBuyerForDetails} isOpen={isEditTagsOpen} setIsOpen={setIsEditTagsOpen} />
                     <SetAppointmentDialog 
                         isOpen={isAppointmentOpen}
