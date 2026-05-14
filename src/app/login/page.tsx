@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Home, Loader2, Eye, EyeOff, Download, Share, X, Moon, Sun } from 'lucide-react';
+import { Home, Loader2, Eye, EyeOff, Download, Share, X, Moon, Sun, Plus } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -71,6 +71,15 @@ function LoginPageContent() {
   const [isIos, setIsIos] = useState(false);
   const [showIosInstall, setShowIosInstall] = useState(false);
   const { setTheme, theme } = useTheme();
+
+  const form = useForm<LoginFormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+      remember: false,
+    },
+  });
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
