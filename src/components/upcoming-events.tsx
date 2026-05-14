@@ -1,18 +1,16 @@
-
 'use client';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Appointment, AppointmentStatus } from "@/lib/types";
-import { Calendar, Clock, Briefcase, Building, Plus, CalendarPlus, ChevronDown, MoreHorizontal, Edit, Trash2, CheckCircle, XCircle, Users, ChevronLeft, ChevronRight } from "lucide-react";
-import { useState } from "react";
-import { DayPicker } from "react-day-picker";
-import { isToday, isTomorrow, format, parseISO, addDays, subDays } from "date-fns";
-import { useMemo } from "react";
+import { Calendar as CalendarIcon, Clock, Briefcase, Building, Plus, CalendarPlus, MoreHorizontal, CheckCircle, XCircle, Users, Check, Trash2 } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Calendar } from "@/components/ui/calendar";
+import { format, parseISO, isSameDay } from "date-fns";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import Link from "next/link";
 import { Skeleton } from "./ui/skeleton";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { Separator } from "./ui/separator";
+import { cn } from "@/lib/utils";
 
 interface UpcomingEventsProps {
     appointments: Appointment[];
@@ -35,132 +33,171 @@ export function UpcomingEvents({
     onAddToCalendar,
     onAllEventsClick,
 }: UpcomingEventsProps) {
-    const [selectedDay, setSelectedDay] = useState<Date>(new Date());
+    const [selectedDay, setSelectedDay] = useState<Date | undefined>(new Date());
     
-    const eventsByDate = useMemo(() => {
-        const map = new Map<string, Appointment[]>();
-        if (appointments) {
-            for (const appt of appointments) {
-                if (appt.status !== 'Scheduled') continue;
-                const dateKey = format(parseISO(appt.date), 'yyyy-MM-dd');
-                if (!map.has(dateKey)) {
-                    map.set(dateKey, []);
-                }
-                map.get(dateKey)!.push(appt);
-                map.get(dateKey)!.sort((a,b) => new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime());
-            }
-        }
-        return map;
+    const eventDates = useMemo(() => {
+        return (appointments || [])
+            .filter(a => a.status === 'Scheduled')
+            .map(a => parseISO(a.date));
     }, [appointments]);
 
-    const selectedDayEvents = eventsByDate.get(format(selectedDay, 'yyyy-MM-dd')) || [];
-    
-    const handlePreviousDay = () => {
-        setSelectedDay(prev => subDays(prev, 1));
-    };
+    const selectedDayEvents = useMemo(() => {
+        if (!selectedDay) return [];
+        return (appointments || [])
+            .filter(a => isSameDay(parseISO(a.date), selectedDay))
+            .sort((a, b) => new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime());
+    }, [appointments, selectedDay]);
 
-    const handleNextDay = () => {
-        setSelectedDay(prev => addDays(prev, 1));
-    };
-    
     if (isLoading) {
         return (
-             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <Card className="lg:col-span-3"><CardHeader><Skeleton className="h-6 w-32" /></CardHeader><CardContent className="space-y-4"><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></CardContent></Card>
-            </div>
+            <Card className="border-none shadow-sm bg-card/60 backdrop-blur-sm rounded-2xl overflow-hidden">
+                <CardHeader><Skeleton className="h-6 w-32" /></CardHeader>
+                <CardContent className="space-y-4">
+                    <Skeleton className="h-[280px] w-full rounded-xl" />
+                    <Skeleton className="h-16 w-full rounded-xl" />
+                </CardContent>
+            </Card>
         )
     }
 
     const getIcon = (appt: Appointment) => {
-        if (appt.contactType === 'Buyer') return <Briefcase className="h-5 w-5" />;
-        if (appt.contactType === 'Owner' && appt.contactSerialNo) return <Building className="h-5 w-5" />;
-        return <Users className="h-5 w-5" />; // Generic event
+        if (appt.contactType === 'Buyer') return <Briefcase className="h-4 w-4" />;
+        if (appt.contactType === 'Owner' && appt.contactSerialNo) return <Building className="h-4 w-4" />;
+        return <Users className="h-4 w-4" />;
     };
 
-    const getIconBgColor = (appt: Appointment) => {
-        if (appt.contactType === 'Buyer') return 'bg-sky-100 dark:bg-sky-900 text-sky-600 dark:text-sky-300';
-        if (appt.contactType === 'Owner' && appt.contactSerialNo) return 'bg-sky-100 dark:bg-sky-900 text-sky-600 dark:text-sky-300';
-        return 'bg-emerald-100 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-300'; // Generic event
-    }
-
-
     return (
-        <div className="grid grid-cols-1 gap-6 items-start">
-            <Card className="bg-card/70 w-full">
-                <CardHeader className="flex flex-row items-center justify-between">
-                     <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="icon" onClick={handlePreviousDay}><ChevronLeft /></Button>
-                        <CardTitle className="font-headline">{format(selectedDay, "EEEE, MMMM d")}</CardTitle>
-                        <Button variant="ghost" size="icon" onClick={handleNextDay}><ChevronRight /></Button>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="sm" onClick={onAllEventsClick}>
-                            View All
-                        </Button>
+        <div className="space-y-6">
+            <Card className="border-none shadow-sm bg-card/60 backdrop-blur-sm rounded-2xl overflow-hidden">
+                <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle className="text-sm font-black uppercase tracking-wider flex items-center gap-2">
+                                <CalendarIcon className="h-4 w-4 text-primary" /> Daily Planner
+                            </CardTitle>
+                            <CardDescription className="text-[10px] font-bold">Manage your appointments & tasks</CardDescription>
+                        </div>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button size="sm">
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    Add
+                                <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full">
+                                    <Plus className="h-4 w-4" />
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent>
+                            <DropdownMenuContent align="end" className="glass-card">
                                 <DropdownMenuItem onSelect={onAddAppointment}>
-                                    <Calendar />
-                                    <span className="ml-2">Add Appointment</span>
+                                    <Briefcase className="mr-2 h-4 w-4" /> Add Appointment
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onSelect={onAddEvent}>
-                                    <CalendarPlus />
-                                    <span className="ml-2">Add Event</span>
+                                    <CalendarPlus className="mr-2 h-4 w-4" /> Custom Event
+                                </DropdownMenuItem>
+                                <Separator />
+                                <DropdownMenuItem onSelect={onAllEventsClick}>
+                                    <CalendarIcon className="mr-2 h-4 w-4" /> View Full Calendar
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
                 </CardHeader>
-                 <CardContent>
-                    <div className="space-y-3 h-80 overflow-y-auto pr-2 -mr-2">
-                        {selectedDayEvents.length > 0 ? selectedDayEvents.map(appt => (
-                            <div key={appt.id} className="flex items-start gap-4 p-3 rounded-lg bg-background hover:bg-accent/50 transition-colors group">
-                                <div className={`flex items-center justify-center rounded-full h-10 w-10 flex-shrink-0 ${getIconBgColor(appt)}`}>
-                                    {getIcon(appt)}
-                                </div>
-                                <div className="flex-1">
-                                    <p className="font-semibold">{appt.contactName}</p>
-                                    <p className="text-xs text-muted-foreground">{appt.message}</p>
-                                    <div className="text-xs text-muted-foreground mt-1">Agent: {appt.agentName}</div>
-                                </div>
-                                <div className="flex flex-col items-end gap-1">
-                                    <div className="font-bold flex items-center gap-1.5"><Clock className="h-4 w-4" /> {appt.time}</div>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <MoreHorizontal />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent>
-                                            <DropdownMenuItem onSelect={(e) => onAddToCalendar(e, appt)}>
-                                                <CalendarPlus className="mr-2 h-4 w-4" /> Add to Calendar
-                                            </DropdownMenuItem>
-                                            <Separator />
-                                             <DropdownMenuItem onSelect={() => onUpdateStatus(appt, 'Completed')}>
-                                                <CheckCircle className="mr-2 h-4 w-4"/> Mark as Completed
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem onSelect={() => onUpdateStatus(appt, 'Cancelled')}>
-                                                <XCircle className="mr-2 h-4 w-4"/> Mark as Cancelled
-                                            </DropdownMenuItem>
-                                            <Separator />
-                                            <DropdownMenuItem onSelect={() => onDelete(appt)} className="text-destructive">
-                                                <Trash2 className="mr-2 h-4 w-4"/> Delete
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </div>
+                <CardContent className="p-0">
+                    <div className="flex flex-col">
+                        <div className="px-4 pb-2 border-b border-border/30">
+                            <Calendar
+                                mode="single"
+                                selected={selectedDay}
+                                onSelect={setSelectedDay}
+                                className="p-0 rounded-md"
+                                modifiers={{ hasEvent: eventDates }}
+                                modifiersStyles={{
+                                    hasEvent: { 
+                                        fontWeight: 'bold', 
+                                        textDecoration: 'underline',
+                                        color: 'hsl(var(--primary))'
+                                    }
+                                }}
+                            />
+                        </div>
+
+                        <div className="p-4 bg-muted/10 min-h-[200px]">
+                            <div className="flex items-center justify-between mb-4">
+                                <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                    {selectedDay ? format(selectedDay, "MMM d, yyyy") : "Select a day"}
+                                </h4>
+                                <Badge variant="outline" className="text-[9px] font-bold">
+                                    {selectedDayEvents.length} Tasks
+                                </Badge>
                             </div>
-                        )) : (
-                             <div className="flex items-center justify-center h-full">
-                                <p className="text-sm text-muted-foreground text-center py-4">No events for this day.</p>
+
+                            <div className="space-y-3">
+                                {selectedDayEvents.length > 0 ? selectedDayEvents.map(appt => (
+                                    <div 
+                                        key={appt.id} 
+                                        className={cn(
+                                            "group relative flex items-start gap-3 p-3 rounded-xl border border-border/40 transition-all",
+                                            appt.status === 'Completed' ? "bg-emerald-50/30 dark:bg-emerald-500/5 opacity-60" : "bg-card hover:shadow-md hover:border-primary/20"
+                                        )}
+                                    >
+                                        <div className={cn(
+                                            "flex items-center justify-center rounded-lg h-8 w-8 flex-shrink-0 transition-transform group-hover:scale-110",
+                                            appt.contactType === 'Buyer' ? "bg-sky-100 dark:bg-sky-900/40 text-sky-600" : "bg-purple-100 dark:bg-purple-900/40 text-purple-600"
+                                        )}>
+                                            {getIcon(appt)}
+                                        </div>
+                                        
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center justify-between gap-2">
+                                                <p className={cn("text-xs font-bold truncate", appt.status === 'Completed' && "line-through")}>
+                                                    {appt.contactName}
+                                                </p>
+                                                <span className="text-[9px] font-black font-mono text-primary flex items-center gap-1">
+                                                    <Clock className="h-2.5 w-2.5" /> {appt.time}
+                                                </span>
+                                            </div>
+                                            <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5">{appt.message}</p>
+                                        </div>
+
+                                        <div className="flex items-center gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            {appt.status === 'Scheduled' && (
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-6 w-6 text-emerald-600 hover:bg-emerald-50"
+                                                    onClick={() => onUpdateStatus(appt, 'Completed')}
+                                                >
+                                                    <Check className="h-3.5 w-3.5" />
+                                                </Button>
+                                            )}
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="h-6 w-6">
+                                                        <MoreHorizontal className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end" className="glass-card">
+                                                    <DropdownMenuItem onSelect={(e) => onAddToCalendar(e, appt)}>
+                                                        <CalendarPlus className="mr-2 h-4 w-4" /> Sync Calendar
+                                                    </DropdownMenuItem>
+                                                    <Separator />
+                                                    <DropdownMenuItem onSelect={() => onUpdateStatus(appt, 'Cancelled')} className="text-orange-600">
+                                                        <XCircle className="mr-2 h-4 w-4" /> Mark Cancelled
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onSelect={() => onDelete(appt)} className="text-destructive">
+                                                        <Trash2 className="mr-2 h-4 w-4" /> Delete Task
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </div>
+                                    </div>
+                                )) : (
+                                    <div className="flex flex-col items-center justify-center py-10 text-center opacity-40">
+                                        <div className="p-3 bg-muted rounded-full mb-2">
+                                            <CheckCircle className="h-6 w-6" />
+                                        </div>
+                                        <p className="text-[10px] font-bold uppercase tracking-widest">No Tasks Scheduled</p>
+                                        <p className="text-[9px]">Enjoy your free time!</p>
+                                    </div>
+                                )}
                             </div>
-                        )}
+                        </div>
                     </div>
                 </CardContent>
             </Card>

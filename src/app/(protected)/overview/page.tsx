@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -215,7 +214,7 @@ export default function OverviewPage() {
                 </div>
                 <div className="flex items-center gap-2">
                     <Button variant="outline" className="rounded-full" onClick={() => setIsAllEventsOpen(true)}>
-                        <CalendarDays className="mr-2 h-4 w-4" /> Calendar
+                        <CalendarDays className="mr-2 h-4 w-4" /> Full Calendar
                     </Button>
                     <Button className="rounded-full glowing-btn" onClick={() => setIsAppointmentOpen(true)}>
                         <Plus className="mr-2 h-4 w-4" /> New Appt
@@ -250,7 +249,7 @@ export default function OverviewPage() {
                         }}
                         onAddToCalendar={(e, a) => {
                             const start = format(new Date(`${a.date}T${a.time}`), "yyyyMMdd'T'HHmmss");
-                            const end = format(addDays(new Date(`${a.date}T${a.time}`), 0), "yyyyMMdd'T'HHmmss"); // Set specific duration if needed
+                            const end = format(addDays(new Date(`${a.date}T${a.time}`), 0), "yyyyMMdd'T'HHmmss"); 
                             window.open(`https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(a.contactName)}&dates=${start}/${end}&details=${encodeURIComponent(a.message)}`, '_blank');
                         }}
                         onAllEventsClick={() => setIsAllEventsOpen(true)}
