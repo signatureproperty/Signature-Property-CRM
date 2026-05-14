@@ -21,7 +21,7 @@ import { useTheme } from 'next-themes';
 import { format, subDays, subMonths, startOfDay, parseISO, eachDayOfInterval, eachMonthOfInterval, startOfMonth } from 'date-fns';
 import { useCurrency } from '@/context/currency-context';
 import { formatCurrency } from '@/lib/formatters';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 
 type TimeRange = '7d' | '30d' | '6m' | '12m' | 'all';
@@ -124,15 +124,18 @@ export const PerformanceChart = ({ properties }: { properties: Property[] }) => 
               </CardTitle>
               <CardDescription>Revenue from sales and rentals.</CardDescription>
             </div>
-             <Tabs value={timeRange} onValueChange={(value) => setTimeRange(value as TimeRange)}>
-                <TabsList>
-                    <TabsTrigger value="7d">7D</TabsTrigger>
-                    <TabsTrigger value="30d">30D</TabsTrigger>
-                    <TabsTrigger value="6m">6M</TabsTrigger>
-                    <TabsTrigger value="12m">12M</TabsTrigger>
-                    <TabsTrigger value="all">All</TabsTrigger>
-                </TabsList>
-            </Tabs>
+             <Select value={timeRange} onValueChange={(v: TimeRange) => setTimeRange(v)}>
+                <SelectTrigger className="w-[120px] h-8 text-xs font-bold rounded-full bg-muted/50">
+                    <SelectValue placeholder="Range" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="7d">Last 7 Days</SelectItem>
+                    <SelectItem value="30d">Last 30 Days</SelectItem>
+                    <SelectItem value="6m">Last 6 Months</SelectItem>
+                    <SelectItem value="12m">Last Year</SelectItem>
+                    <SelectItem value="all">All Time</SelectItem>
+                </SelectContent>
+            </Select>
         </div>
       </CardHeader>
       <CardContent className="h-[400px] w-full pt-6">
