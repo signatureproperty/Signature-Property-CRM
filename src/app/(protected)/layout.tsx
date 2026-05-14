@@ -7,11 +7,9 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import { usePathname, useRouter } from 'next/navigation';
 import { CurrencyProvider } from '@/context/currency-context';
 import { ProfileProvider, useProfile } from '@/context/profile-context';
-import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { useUser } from '@/firebase/auth/use-user';
 import { Loader2, MailWarning, Send, AlertTriangle } from 'lucide-react';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
 import { AppLoader } from '@/components/ui/loader';
 import { useToast } from '@/hooks/use-toast';
 import { sendEmailVerification } from 'firebase/auth';
@@ -77,7 +75,6 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   }
   
   if (!user || !profile.role) {
-    // This can happen briefly between login and profile hydration
     return (
          <div className="flex h-screen w-full items-center justify-center bg-background">
             <AppLoader />
@@ -85,8 +82,6 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Define restricted paths for each role
-  // REMOVED /inbox from forbidden paths for Agents as requested
   const agentForbiddenPaths = ['/team', '/documents', '/analytics', '/reports', '/finance'];
   const recorderForbiddenPaths = ['/team', '/upgrade', '/buyers', '/analytics', '/reports', '/tools', '/follow-ups', '/appointments', '/activities', '/trash', '/settings', '/support', '/properties', '/documents', '/finance', '/inbox'];
 
@@ -188,15 +183,15 @@ export default function ProtectedLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // FirebaseClientProvider is already present in src/app/providers.tsx (RootLayout).
+  // Removing it from here avoids double-initialization and potential ChunkLoadErrors/Hydration issues.
   return (
-    <FirebaseClientProvider>
-      <ProfileProvider>
+    <ProfileProvider>
         <CurrencyProvider>
               <ProtectedLayoutContent>
                   {children}
               </ProtectedLayoutContent>
         </CurrencyProvider>
-      </ProfileProvider>
-    </FirebaseClientProvider>
+    </ProfileProvider>
   )
 }

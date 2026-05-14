@@ -12,7 +12,7 @@ import { useProfile } from '@/context/profile-context';
 import { useFirestore } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useMemoFirebase } from '@/firebase/hooks';
-import { collection, query, where, Timestamp, addDoc, doc, setDoc, deleteDoc, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, addDoc, doc, setDoc, deleteDoc, orderBy, limit, or } from 'firebase/firestore';
 import type { Property, Buyer, Appointment, User, PriceUnit, AppointmentContactType, AppointmentStatus, Activity, ListingType } from '@/lib/types';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -20,7 +20,6 @@ import { subDays, isWithinInterval, parseISO, format, addDays } from 'date-fns';
 import { useCurrency } from '@/context/currency-context';
 import { formatCurrency, formatUnit } from '@/lib/formatters';
 import { Button } from '@/components/ui/button';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { UpcomingEvents } from '@/components/upcoming-events';
 import { SetAppointmentDialog } from '@/components/set-appointment-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -115,26 +114,47 @@ export default function OverviewPage() {
     const canFetch = !isProfileLoading && profile.agency_id;
     const now = new Date();
     const last30DaysStart = subDays(now, 30);
+    
     const isAgent = profile.role === 'Agent';
+    const isRecorder = profile.role === 'Video Recorder';
 
     // --- Data Fetching ---
     const propertiesQuery = useMemoFirebase(() => {
         if (!canFetch) return null;
         const ref = collection(firestore, 'agencies', profile.agency_id, 'properties');
-        return isAgent ? query(ref, where('created_by', '==', profile.user_id)) : ref;
-    }, [canFetch, firestore, profile.agency_id, isAgent, profile.user_id]);
+        
+        if (isAgent) {
+            return query(ref, or(where('created_by', '==', profile.user_id), where('assignedTo', 'array-contains', profile.user_id)));
+        }
+        
+        if (isRecorder) {
+            return query(ref, where('assignedTo', 'array-contains', profile.user_id));
+        }
+
+        return ref;
+    }, [canFetch, firestore, profile.agency_id, isAgent, isRecorder, profile.user_id]);
     const { data: properties, isLoading: isPropertiesLoading } = useCollection<Property>(propertiesQuery);
     
     const buyersQuery = useMemoFirebase(() => {
         if (!canFetch) return null;
         const ref = collection(firestore, 'agencies', profile.agency_id, 'buyers');
-        return isAgent ? query(ref, where('created_by', '==', profile.user_id)) : ref;
+        
+        if (isAgent) {
+            return query(ref, or(where('created_by', '==', profile.user_id), where('assignedTo', '==', profile.user_id)));
+        }
+
+        return ref;
     }, [canFetch, firestore, profile.agency_id, isAgent, profile.user_id]);
     const { data: buyers, isLoading: isBuyersLoading } = useCollection<Buyer>(buyersQuery);
     
-    const appointmentsQuery = useMemoFirebase(() => 
-        canFetch ? collection(firestore, 'agencies', profile.agency_id, 'appointments') : null, 
-    [canFetch, firestore, profile.agency_id]);
+    const appointmentsQuery = useMemoFirebase(() => {
+        if (!canFetch) return null;
+        const ref = collection(firestore, 'agencies', profile.agency_id, 'appointments');
+        if (isAgent) {
+            return query(ref, where('agentName', '==', profile.name));
+        }
+        return ref;
+    }, [canFetch, firestore, profile.agency_id, isAgent, profile.name]);
     const { data: allAppointments, isLoading: isAppointmentsLoading } = useCollection<Appointment>(appointmentsQuery);
     
     const activitiesQuery = useMemoFirebase(() => {
@@ -171,7 +191,7 @@ export default function OverviewPage() {
             interested: activeBuyers.filter(b => b.status === 'Interested').length,
             upcomingAppts: (allAppointments || []).filter(a => a.status === 'Scheduled' && new Date(a.date) >= now).length
         };
-    }, [properties, buyers, allAppointments, last30DaysStart]);
+    }, [properties, buyers, allAppointments, last30DaysStart, now]);
 
     const statCards: StatCardProps[] = [
         { title: "Sale Properties", value: stats.totalProperties, change: `+${stats.newProps30d} new`, icon: <Home className="h-5 w-5" />, color: "bg-blue-500/10 text-blue-600", href: "/properties", isLoading },
@@ -182,7 +202,7 @@ export default function OverviewPage() {
         { title: "Interested", value: stats.interested, change: "Hot leads", icon: <Star className="h-5 w-5" />, color: "bg-purple-500/10 text-purple-600", href: "/buyers?status=Interested", isLoading },
     ];
 
-    if (profile.role === 'Video Recorder') {
+    if (isRecorder) {
         const assigned = properties || [];
         const recorderStats: StatCardProps[] = [
             { title: "Pending", value: assigned.filter(p => !p.is_recorded).length, icon: <VideoOff className="h-5 w-5" />, color: "bg-red-500/10 text-red-600", isLoading, href: "/recording" },
@@ -216,7 +236,7 @@ export default function OverviewPage() {
                     <Button variant="outline" className="rounded-full" onClick={() => setIsAllEventsOpen(true)}>
                         <CalendarDays className="mr-2 h-4 w-4" /> Full Calendar
                     </Button>
-                    <Button className="rounded-full glowing-btn" onClick={() => setIsAppointmentOpen(true)}>
+                    <Button className="rounded-full glowing-btn" onClick={() => { setAppointmentDetails(null); setIsAppointmentOpen(true); }}>
                         <Plus className="mr-2 h-4 w-4" /> New Appt
                     </Button>
                 </div>
@@ -249,7 +269,7 @@ export default function OverviewPage() {
                         }}
                         onAddToCalendar={(e, a) => {
                             const start = format(new Date(`${a.date}T${a.time}`), "yyyyMMdd'T'HHmmss");
-                            const end = format(addDays(new Date(`${a.date}T${a.time}`), 0), "yyyyMMdd'T'HHmmss"); 
+                            const end = format(new Date(`${a.date}T${a.time}`), "yyyyMMdd'T'HHmmss"); 
                             window.open(`https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(a.contactName)}&dates=${start}/${end}&details=${encodeURIComponent(a.message)}`, '_blank');
                         }}
                         onAllEventsClick={() => setIsAllEventsOpen(true)}
