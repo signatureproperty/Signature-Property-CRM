@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -9,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useFirestore, useStorage } from '@/firebase/provider';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Palette, Upload, Image as ImageIcon, Save, Smartphone, Globe } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -25,7 +24,6 @@ export default function BrandingPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
-    const [uploadProgress, setUploadProgress] = useState(0);
     
     const [config, setConfig] = useState<BrandingConfig>({
         appName: 'Signature Property CRM',
@@ -61,7 +59,7 @@ export default function BrandingPage() {
                 ...config,
                 updatedAt: new Date().toISOString()
             }, { merge: true });
-            toast({ title: 'Branding Updated', description: 'Changes have been saved successfully.' });
+            toast({ title: 'Branding Updated', description: 'Changes have been saved successfully. Icon changes might take a moment to reflect everywhere.' });
         } catch (error) {
             toast({ title: 'Error', description: 'Could not save branding settings.', variant: 'destructive' });
         } finally {
@@ -73,7 +71,6 @@ export default function BrandingPage() {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // Ensure user is authenticated for storage rules
         if (!auth.currentUser) {
             toast({ title: 'Auth Error', description: 'You must be logged in to upload files.', variant: 'destructive' });
             return;
@@ -85,36 +82,24 @@ export default function BrandingPage() {
         }
 
         setIsUploading(true);
-        setUploadProgress(0);
         
         try {
             const uniqueName = `pwa-icon-${Date.now()}.png`;
             const path = `system/${uniqueName}`;
             const sRef = storageRef(storage, path);
             
-            const uploadTask = uploadBytesResumable(sRef, file);
-
-            uploadTask.on('state_changed', 
-                (snapshot) => {
-                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                    setUploadProgress(Math.round(progress));
-                }, 
-                (error) => {
-                    console.error("Upload task error:", error);
-                    toast({ title: 'Upload Failed', description: error.message, variant: 'destructive' });
-                    setIsUploading(false);
-                }, 
-                async () => {
-                    const url = await getDownloadURL(uploadTask.snapshot.ref);
-                    setConfig(prev => ({ ...prev, pwaIconUrl: url }));
-                    setIsUploading(false);
-                    toast({ title: 'Icon Uploaded', description: 'Click Save Branding to apply changes.' });
-                }
-            );
+            // Simpler direct upload for reliability
+            const uploadResult = await uploadBytes(sRef, file);
+            const url = await getDownloadURL(uploadResult.ref);
+            
+            setConfig(prev => ({ ...prev, pwaIconUrl: url }));
+            toast({ title: 'Icon Uploaded', description: 'Success! Now click "Save Branding" to finalize changes.' });
         } catch (error: any) {
-            console.error("Initiation error:", error);
-            toast({ title: 'Error', description: error.message, variant: 'destructive' });
+            console.error("Upload error:", error);
+            toast({ title: 'Upload Failed', description: error.message || 'Check your internet and try again.', variant: 'destructive' });
+        } finally {
             setIsUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
 
@@ -123,7 +108,7 @@ export default function BrandingPage() {
     }
 
     return (
-        <div className="space-y-10 animate-fade-in">
+        <div className="space-y-10 animate-fade-in pb-20">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-black tracking-tight font-headline flex items-center gap-3">
@@ -195,7 +180,7 @@ export default function BrandingPage() {
                                         {isUploading && (
                                             <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center text-white p-4">
                                                 <Loader2 className="h-8 w-8 animate-spin mb-2" />
-                                                <span className="text-xs font-bold uppercase tracking-widest">Uploading {uploadProgress}%</span>
+                                                <span className="text-xs font-bold uppercase tracking-widest text-center">Uploading Image...</span>
                                             </div>
                                         )}
                                     </div>
