@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -138,7 +137,7 @@ export function ManageTagsDialog({ isOpen, setIsOpen }: ManageTagsDialogProps) {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
-        <div className="p-6 pb-2">
+        <div className="p-6 pb-0">
             <DialogHeader>
               <DialogTitle className="font-headline flex items-center gap-2"><TagIcon className="h-5 w-5" /> Manage Agency Tags</DialogTitle>
               <DialogDescription>
@@ -147,14 +146,14 @@ export function ManageTagsDialog({ isOpen, setIsOpen }: ManageTagsDialogProps) {
             </DialogHeader>
 
             <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-2">
                     <div className="flex gap-2 items-end">
                         <FormField
                             control={form.control}
                             name="name"
                             render={({ field }) => (
                                 <FormItem className="flex-1">
-                                    <FormLabel>{editingTag ? 'Update Tag Name' : 'New Tag Name'}</FormLabel>
+                                    <FormLabel className="text-xs">{editingTag ? 'Update Tag Name' : 'New Tag Name'}</FormLabel>
                                     <FormControl>
                                         <Input placeholder="e.g. Interested, Hot Lead, Follow Up" {...field} className="h-9" />
                                     </FormControl>
@@ -192,7 +191,7 @@ export function ManageTagsDialog({ isOpen, setIsOpen }: ManageTagsDialogProps) {
             </Form>
         </div>
 
-        <Separator />
+        <Separator className="mt-4" />
 
         <div className="flex-1 overflow-y-auto px-6 py-4">
             <div className="space-y-3">

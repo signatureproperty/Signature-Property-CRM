@@ -480,9 +480,11 @@ function BuyersPageContent() {
                                                             </DropdownMenuSubContent>
                                                         </DropdownMenuPortal>
                                                     </DropdownMenuSub>
-                                                    <DropdownMenuItem onSelect={() => handleEdit(buyer)}><Edit /> Edit Details</DropdownMenuItem>
-                                                    <DropdownMenuItem onSelect={() => handleDelete(buyer)} className="text-destructive"><Trash2 /> Delete Buyer</DropdownMenuItem>
                                                 </>
+                                            )}
+                                            <DropdownMenuItem onSelect={() => handleEdit(buyer)}><Edit /> Edit Details</DropdownMenuItem>
+                                            {profile.role === 'Admin' && (
+                                                <DropdownMenuItem onSelect={() => handleDelete(buyer)} className="text-destructive"><Trash2 /> Delete Buyer</DropdownMenuItem>
                                             )}
                                         </DropdownMenuContent>
                                     </DropdownMenu>
@@ -571,9 +573,11 @@ function BuyersPageContent() {
                                                 </DropdownMenuSubContent>
                                             </DropdownMenuPortal>
                                         </DropdownMenuSub>
-                                        <DropdownMenuItem onSelect={() => handleEdit(buyer)}><Edit /> Edit Details</DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={() => handleDelete(buyer)} className="text-destructive"><Trash2 /> Delete Buyer</DropdownMenuItem>
                                     </>
+                                )}
+                                <DropdownMenuItem onSelect={() => handleEdit(buyer)}><Edit /> Edit Details</DropdownMenuItem>
+                                {profile.role === 'Admin' && (
+                                    <DropdownMenuItem onSelect={() => handleDelete(buyer)} className="text-destructive"><Trash2 /> Delete Buyer</DropdownMenuItem>
                                 )}
                             </DropdownMenuContent>
                         </DropdownMenu>

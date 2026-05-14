@@ -92,6 +92,10 @@ export function AddSalePropertyForm({
   const { profile } = useProfile();
   const [countryCodePopoverOpen, setCountryCodePopoverOpen] = useState(false);
 
+  const isAgent = profile.role === 'Agent';
+  const isEditing = !!propertyToEdit;
+  const isPhoneRestricted = isAgent && isEditing;
+
   const form = useForm<AddSalePropertyFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -429,10 +433,10 @@ export function AddSalePropertyForm({
                             name="country_code"
                             render={({ field }) => (
                                 <FormItem className="w-24">
-                                    <Popover open={countryCodePopoverOpen} onOpenChange={setCountryCodePopoverOpen}>
+                                    <Popover open={!isPhoneRestricted && countryCodePopoverOpen} onOpenChange={setCountryCodePopoverOpen}>
                                         <PopoverTrigger asChild>
                                         <FormControl>
-                                            <Button variant="outline" role="combobox" className="w-full justify-between h-9">
+                                            <Button variant="outline" role="combobox" className="w-full justify-between h-9" disabled={isPhoneRestricted}>
                                             {field.value || "Code"}
                                             </Button>
                                         </FormControl>
@@ -461,7 +465,7 @@ export function AddSalePropertyForm({
                             name="owner_number"
                             render={({ field }) => (
                                 <FormItem className="flex-1">
-                                <FormControl><Input placeholder="3001234567" {...field} className="h-9" /></FormControl>
+                                <FormControl><Input placeholder="3001234567" {...field} className="h-9" disabled={isPhoneRestricted} /></FormControl>
                                 </FormItem>
                             )}
                             />

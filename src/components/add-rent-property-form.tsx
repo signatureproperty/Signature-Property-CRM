@@ -87,6 +87,10 @@ export function AddRentPropertyForm({
   const { profile } = useProfile();
   const [countryCodePopoverOpen, setCountryCodePopoverOpen] = useState(false);
 
+  const isAgent = profile.role === 'Agent';
+  const isEditing = !!propertyToEdit;
+  const isPhoneRestricted = isAgent && isEditing;
+
   const form = useForm<AddRentPropertyFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -368,14 +372,14 @@ export function AddRentPropertyForm({
                             name="demand_unit"
                             render={({ field }) => (
                                 <FormItem className="self-end">
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                    <FormControl><SelectTrigger className="h-10 border-primary/30"><SelectValue /></SelectTrigger></FormControl>
-                                    <SelectContent>
-                                        <SelectItem value="Thousand">Thousand</SelectItem>
-                                        <SelectItem value="Lacs">Lacs</SelectItem>
-                                        <SelectItem value="Crore">Crore</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                        <FormControl><SelectTrigger className="h-10 border-primary/30"><SelectValue /></SelectTrigger></FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="Thousand">Thousand</SelectItem>
+                                            <SelectItem value="Lacs">Lacs</SelectItem>
+                                            <SelectItem value="Crore">Crore</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </FormItem>
                             )}
                         />
@@ -389,10 +393,10 @@ export function AddRentPropertyForm({
                             name="country_code"
                             render={({ field }) => (
                             <FormItem className="w-24">
-                                <Popover open={countryCodePopoverOpen} onOpenChange={setCountryCodePopoverOpen}>
+                                <Popover open={!isPhoneRestricted && countryCodePopoverOpen} onOpenChange={setCountryCodePopoverOpen}>
                                     <PopoverTrigger asChild>
                                     <FormControl>
-                                        <Button variant="outline" role="combobox" className="w-full justify-between h-9">
+                                        <Button variant="outline" role="combobox" className="w-full justify-between h-9" disabled={isPhoneRestricted}>
                                         {field.value || "Code"}
                                         </Button>
                                     </FormControl>
@@ -421,7 +425,7 @@ export function AddRentPropertyForm({
                             name="owner_number"
                             render={({ field }) => (
                             <FormItem className="flex-1">
-                                <FormControl><Input placeholder="3001234567" {...field} className="h-9" /></FormControl>
+                                <FormControl><Input placeholder="3001234567" {...field} className="h-9" disabled={isPhoneRestricted} /></FormControl>
                             </FormItem>
                             )}
                         />

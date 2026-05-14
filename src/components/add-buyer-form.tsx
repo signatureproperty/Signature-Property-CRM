@@ -86,6 +86,10 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
   const { profile } = useProfile();
   const [countryCodePopoverOpen, setCountryCodePopoverOpen] = useState(false);
   
+  const isAgent = profile.role === 'Agent';
+  const isEditing = !!buyerToEdit;
+  const isPhoneRestricted = isAgent && isEditing;
+
   const form = useForm<AddBuyerFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -202,10 +206,10 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
                             name="country_code"
                             render={({ field }) => (
                                 <FormItem className="w-24">
-                                <Popover open={countryCodePopoverOpen} onOpenChange={setCountryCodePopoverOpen}>
+                                <Popover open={!isPhoneRestricted && countryCodePopoverOpen} onOpenChange={setCountryCodePopoverOpen}>
                                     <PopoverTrigger asChild>
                                     <FormControl>
-                                        <Button variant="outline" role="combobox" className="w-full justify-between h-9 px-2">
+                                        <Button variant="outline" role="combobox" className="w-full justify-between h-9 px-2" disabled={isPhoneRestricted}>
                                         {field.value || "Code"}
                                         </Button>
                                     </FormControl>
@@ -242,7 +246,7 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
                             render={({ field }) => (
                                 <FormItem className="flex-1">
                                     <FormControl>
-                                        <Input {...field} placeholder="3001234567" className="h-9" />
+                                        <Input {...field} placeholder="3001234567" className="h-9" disabled={isPhoneRestricted} />
                                     </FormControl>
                                 </FormItem>
                             )}

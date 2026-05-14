@@ -545,9 +545,11 @@ function PropertiesPageContent() {
                                     </DropdownMenuSubContent>
                                 </DropdownMenuPortal>
                             </DropdownMenuSub>
-                            <DropdownMenuItem onSelect={() => handleEdit(prop)}><Edit />Edit</DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => handleDelete(prop)} className="text-destructive"><Trash2 />Delete</DropdownMenuItem>
                         </>
+                    )}
+                    <DropdownMenuItem onSelect={() => handleEdit(prop)}><Edit />Edit</DropdownMenuItem>
+                    {profile.role === 'Admin' && (
+                        <DropdownMenuItem onSelect={() => handleDelete(prop)} className="text-destructive"><Trash2 />Delete</DropdownMenuItem>
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -647,9 +649,11 @@ function PropertiesPageContent() {
                                     </DropdownMenuSubContent>
                                 </DropdownMenuPortal>
                             </DropdownMenuSub>
-                            <DropdownMenuItem onSelect={() => handleEdit(prop)}><Edit />Edit Details</DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => handleDelete(prop)} className="text-destructive"><Trash2 />Delete Property</DropdownMenuItem>
                         </>
+                    )}
+                    <DropdownMenuItem onSelect={() => handleEdit(prop)}><Edit />Edit Details</DropdownMenuItem>
+                    {profile.role === 'Admin' && (
+                        <DropdownMenuItem onSelect={() => handleDelete(prop)} className="text-destructive"><Trash2 />Delete Property</DropdownMenuItem>
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
