@@ -156,20 +156,15 @@ export default function SettingsPage() {
         const filePath = `avatars/${profile.agency_id}/${user.uid}.jpg`;
         const imageRef = storageRef(storage, filePath);
         
-        // Convert data URL to blob for uploading
         const response = await fetch(dataUrl);
         const blob = await response.blob();
 
-        // Upload the blob
         await uploadBytes(imageRef, blob);
-        
-        // Get the public URL
         const downloadURL = await getDownloadURL(imageRef);
 
         const batch = writeBatch(firestore);
         const isUserAdmin = profile.role === 'Admin';
   
-        // Update Firestore document(s) with the URL
         if (isUserAdmin) {
             if (profile.agency_id) {
                 const agencyDocRef = doc(firestore, 'agencies', profile.agency_id);
@@ -177,7 +172,7 @@ export default function SettingsPage() {
                 const teamMemberRef = doc(firestore, 'agencies', profile.agency_id, 'teamMembers', user.uid);
                 batch.update(teamMemberRef, { avatar: downloadURL });
             }
-        } else { // It's an Agent
+        } else { 
             if (profile.agency_id) {
                 const teamMemberRef = doc(firestore, 'agencies', profile.agency_id, 'teamMembers', user.uid);
                 batch.update(teamMemberRef, { avatar: downloadURL });
@@ -187,10 +182,7 @@ export default function SettingsPage() {
         }
         
         await batch.commit();
-        
-        // Update local context
         setProfile({ ...profile, avatar: downloadURL });
-  
         toast({ title: 'Profile Picture Updated!' });
     } catch (error: any) {
         console.error('Avatar update error:', error);
@@ -226,7 +218,6 @@ export default function SettingsPage() {
     try {
         const batch = writeBatch(firestore);
 
-        // Common updates for all roles
         if (profile.agency_id) {
             const teamMemberRef = doc(firestore, 'agencies', profile.agency_id, 'teamMembers', user.uid);
             batch.update(teamMemberRef, { name: localProfile.name, phone: fullPhoneNumber });
@@ -456,29 +447,55 @@ export default function SettingsPage() {
   }
 
   const handleExportCSV = (type: 'Buyers' | 'Properties') => {
-    const data = type === 'Buyers' ? agencyBuyers : agencyProperties;
-    if (!data || data.length === 0) {
+    const rawData = type === 'Buyers' ? agencyBuyers : agencyProperties;
+    if (!rawData || rawData.length === 0) {
         toast({ title: `No ${type} to export.` });
         return;
     }
 
-    // Numerical sort based on the number part of the serial (e.g., B-1, B-2, B-10)
-    const sortedData = [...data].sort((a, b) => {
-        const numA = parseInt(a.serial_no.split('-')[1] || '0', 10);
-        const numB = parseInt(b.serial_no.split('-')[1] || '0', 10);
-        return numA - numB;
-    });
+    const data = [...rawData]
+        .filter(item => !item.is_deleted)
+        .sort((a, b) => {
+            const numA = parseInt(a.serial_no.split('-')[1] || '0', 10);
+            const numB = parseInt(b.serial_no.split('-')[1] || '0', 10);
+            return numA - numB;
+        });
 
-    let csvContent = "";
+    let csvContent = "\ufeff"; // BOM for Excel UTF-8
+    
     if (type === 'Buyers') {
-        csvContent = "Serial,Name,Phone,Email,Status,Listing,Area,Type,Min Budget,Max Budget,Notes\n";
-        sortedData.forEach((b: any) => {
-            csvContent += `${b.serial_no},"${b.name}","${b.phone}",${b.email || ''},${b.status},${b.listing_type},"${b.area_preference || ''}","${b.property_type_preference || ''}",${b.budget_min_amount || 0},${b.budget_max_amount || 0},"${(b.notes || '').replace(/"/g, '""')}"\n`;
+        csvContent += "Serial,Name,Phone,Email,Status,Listing,Area,Type,Min Budget,Max Budget,Notes\n";
+        data.forEach((b: any) => {
+            const serial = `="${b.serial_no}"`;
+            const name = `"${(b.name || '').replace(/"/g, '""')}"`;
+            const phone = `="${b.phone || ''}"`;
+            const email = `"${b.email || ''}"`;
+            const status = `"${b.status || ''}"`;
+            const listing = `"${b.listing_type || 'For Sale'}"`;
+            const area = `"${(b.area_preference || '').replace(/"/g, '""')}"`;
+            const propType = `"${b.property_type_preference || ''}"`;
+            const minB = b.budget_min_amount || 0;
+            const maxB = b.budget_max_amount || 0;
+            const notes = `"${(b.notes || '').replace(/"/g, '""').replace(/\n/g, ' ')}"`;
+            
+            csvContent += `${serial},${name},${phone},${email},${status},${listing},${area},${propType},${minB},${maxB},${notes}\n`;
         });
     } else {
-        csvContent = "Serial,Title,Owner Phone,Area,Address,Type,Size,Unit,Demand,Demand Unit,Status\n";
-        sortedData.forEach((p: any) => {
-            csvContent += `${p.serial_no},"${p.auto_title}","${p.owner_number}","${p.area}","${p.address}","${p.property_type}",${p.size_value},${p.size_unit},${p.demand_amount},${p.demand_unit},${p.status}\n`;
+        csvContent += "Serial,Title,Owner Phone,Area,Address,Type,Size,Unit,Demand,Demand Unit,Status\n";
+        data.forEach((p: any) => {
+            const serial = `="${p.serial_no}"`;
+            const title = `"${(p.auto_title || '').replace(/"/g, '""')}"`;
+            const phone = `="${p.owner_number || ''}"`;
+            const area = `"${(p.area || '').replace(/"/g, '""')}"`;
+            const address = `"${(p.address || '').replace(/"/g, '""').replace(/\n/g, ' ')}"`;
+            const typeVal = `"${p.property_type || ''}"`;
+            const size = p.size_value || 0;
+            const unit = `"${p.size_unit || ''}"`;
+            const demand = p.demand_amount || 0;
+            const demandUnit = `"${p.demand_unit || ''}"`;
+            const status = `"${p.status || ''}"`;
+
+            csvContent += `${serial},${title},${phone},${area},${address},${typeVal},${size},${unit},${demand},${demandUnit},${status}\n`;
         });
     }
 
@@ -501,7 +518,6 @@ export default function SettingsPage() {
     reader.onload = async (event) => {
         const text = event.target?.result as string;
         const lines = text.split('\n');
-        const headers = lines[0].split(',');
         
         const batch = writeBatch(firestore);
         const collectionRef = collection(firestore, 'agencies', profile.agency_id, type.toLowerCase());
@@ -510,13 +526,22 @@ export default function SettingsPage() {
 
         for (let i = 1; i < lines.length; i++) {
             if (!lines[i].trim()) continue;
-            const values = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/); // Better CSV split that handles quotes
+            const rowValues = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/); 
+            
+            // Cleanup function for Excel-formatted cells
+            const values = rowValues.map(v => {
+                let val = v?.trim() || '';
+                // Check for ="VALUE" format
+                if (val.startsWith('=') && val.includes('"')) {
+                    val = val.split('"')[1] || val;
+                }
+                return val.replace(/"/g, '').trim();
+            });
             
             if (type === 'Buyers') {
-                const [serial, name, phone, email, status, listing, area, propType, minB, maxB, notes] = values.map(v => v?.replace(/"/g, '').trim());
+                const [serial, name, phone, email, status, listing, area, propType, minB, maxB, notes] = values;
                 if (!name || !phone) continue;
                 
-                // Smart number formatting
                 const formattedPhone = formatPhoneNumber(phone);
 
                 const newBuyerRef = doc(collectionRef);
@@ -539,7 +564,7 @@ export default function SettingsPage() {
                     is_deleted: false
                 });
             } else {
-                const [serial, title, phone, area, address, typeVal, size, unit, demand, demandUnit, status] = values.map(v => v?.replace(/"/g, '').trim());
+                const [serial, title, phone, area, address, typeVal, size, unit, demand, demandUnit, status] = values;
                 if (!phone || !area) continue;
 
                 const formattedPhone = formatPhoneNumber(phone);
@@ -1301,7 +1326,6 @@ function DeleteConfirmationDialog({
     setIsLoading(true);
     try {
       await onConfirm(isPasswordRequired ? password : undefined);
-      // On success, the component might unmount due to navigation, but if not:
       setIsOpen(false);
     } catch (e: any) {
        setError(e.message || 'An error occurred during deletion.');
