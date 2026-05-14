@@ -5,60 +5,57 @@
 
 @layer base {
   :root {
-    --background: 220 40% 97%;
-    --foreground: 224 39% 10%;
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
     --card: 0 0% 100%;
-    --card-foreground: 224 39% 10%;
+    --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 224 39% 10%;
-    --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 220 20% 92%;
-    --secondary-foreground: 224 39% 16%;
-    --muted: 220 20% 94%;
-    --muted-foreground: 220 10% 45%;
-    --accent: 220 20% 92%;
-    --accent-foreground: 221 44% 15%;
+    --popover-foreground: 222 47% 11%;
+    
+    /* Striking Blue Theme */
+    --primary: 217 91% 60%;      /* Bright Blue */
+    --primary-foreground: 210 40% 98%;
+    
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222 47% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 217 91% 92%;       /* Soft Blue */
+    --accent-foreground: 222 47% 11.2%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 220 20% 90%;
-    --input: 220 20% 92%;
-    --ring: 217 91% 70%;
-    --radius: 1rem;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 1.25rem;
 
-    --chart-1: 220 20% 92%;
-    --chart-2: 217 91% 90%;
-    --chart-3: 142.1 76.2% 36.3%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 349.8 79.9% 50.8%;
+    --chart-1: 221.2 83.2% 53.3%;
+    --chart-2: 212 95% 68%;
+    --chart-3: 217 91% 60%;
+    --chart-4: 215 20% 65%;
+    --chart-5: 224 76% 48%;
   }
 
   .dark {
-    --background: 0 0% 9%;
+    --background: 222 47% 4%;    /* Deep Navy */
     --foreground: 210 40% 98%;
-    --card: 0 0% 15%;
+    --card: 222 47% 6%;
     --card-foreground: 210 40% 98%;
-    --popover: 0 0% 15%;
+    --popover: 222 47% 6%;
     --popover-foreground: 210 40% 98%;
     --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 220 15% 25%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 217.2 32.6% 12%;
     --secondary-foreground: 210 40% 98%;
-    --muted: 220 15% 25%;
-    --muted-foreground: 210 20% 65%;
-    --accent: 220 15% 25%;
+    --muted: 217.2 32.6% 12%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 18%;
     --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 220 15% 25%;
-    --input: 220 15% 25%;
-    --ring: 217 91% 70%;
-    
-    --chart-1: 220 15% 25%;
-    --chart-2: 217 91% 70%;
-    --chart-3: 142.1 76.2% 36.3%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 349.8 79.9% 50.8%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 14%;
+    --input: 217.2 32.6% 14%;
+    --ring: 224.3 76.3% 48%;
   }
 }
 
@@ -68,115 +65,53 @@
   }
   body {
     @apply bg-background text-foreground;
-    background-image: linear-gradient(120deg, hsl(220, 50%, 95%), hsl(221, 50%, 98%));
+    /* Bright Blue to Deep Blue Linear Gradient */
+    background: linear-gradient(135deg, hsl(210 40% 98%) 0%, hsl(217 91% 94%) 50%, hsl(217 91% 88%) 100%);
+    background-attachment: fixed;
     min-height: 100vh;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
     -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    scroll-behavior: smooth;
   }
 
   .dark body {
-    background-image: none;
+    background: linear-gradient(135deg, hsl(222 47% 4%) 0%, hsl(222 47% 8%) 50%, hsl(222 47% 12%) 100%);
     background-color: hsl(var(--background));
+    background-attachment: fixed;
   }
 }
-
-@layer utilities {
-    .animate-infinite-scroll {
-        animation: infinite-scroll 40s linear infinite;
-    }
-
-    @keyframes infinite-scroll {
-        from { transform: translateX(0); }
-        to { transform: translateX(-50%); }
-    }
-}
-
 
 @layer components {
   .glass-card {
-    @apply bg-card border rounded-2xl shadow-md transition-all duration-150;
+    @apply bg-card/60 backdrop-blur-xl border border-white/20 dark:border-white/5 rounded-3xl shadow-xl transition-all duration-300;
   }
 
   .glass-modal {
-    @apply bg-card border-2 rounded-2xl shadow-xl;
+    @apply bg-card/95 backdrop-blur-2xl border-2 border-primary/10 rounded-[2.5rem] shadow-2xl;
   }
   
   .glowing-btn {
-    @apply bg-gradient-to-r from-primary to-blue-500 text-white font-bold relative overflow-hidden;
+    @apply bg-gradient-to-br from-blue-500 to-primary text-white font-bold relative overflow-hidden shadow-lg shadow-primary/20 transition-all active:scale-95;
   }
 
   .glowing-btn::before {
     content: '';
     @apply absolute -top-1/2 -left-1/2 w-[200%] h-[200%];
-    background-image: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    background-image: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.4), transparent);
     transform: rotate(20deg);
-    animation: glow-sweep 2s infinite;
-  }
-
-  .app-loader {
-    @apply flex items-center justify-center;
-  }
-  .loader-dot {
-    @apply h-3 w-3 rounded-full bg-primary mx-1;
-    animation: bounce 1.2s infinite ease-in-out both;
-  }
-  .loader-dot:nth-child(1) {
-    animation-delay: -0.32s;
-  }
-  .loader-dot:nth-child(2) {
-    animation-delay: -0.16s;
+    animation: glow-sweep 3s infinite;
   }
 
   .animate-fade-in {
-    animation: fade-in 0.25s ease-out forwards;
+    animation: fade-in 0.3s ease-out forwards;
   }
-  .animate-fade-in-up {
-      animation: fade-in-up 0.3s ease-out forwards;
-      opacity: 0;
-  }
+}
+
+@keyframes glow-sweep {
+  0% { transform: translate(-100%, -25%) rotate(20deg); }
+  100% { transform: translate(100%, 25%) rotate(20deg); }
 }
 
 @keyframes fade-in {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-@keyframes fade-in-up {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-
-@keyframes glow-sweep {
-  0% {
-    transform: translate(-100%, -25%) rotate(20deg);
-  }
-  100% {
-    transform: translate(100%, 25%) rotate(20deg);
-  }
-}
-
-@keyframes bounce {
-  0%, 80%, 100% {
-    transform: scale(0);
-  } 40% {
-    transform: scale(1.0);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
 }

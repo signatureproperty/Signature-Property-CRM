@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -6,20 +7,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useFirestore, useStorage } from '@/firebase/provider';
+import { useFirestore } from '@/firebase/provider';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Palette, Upload, Image as ImageIcon, Save, Smartphone, Globe } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import type { BrandingConfig } from '@/lib/types';
-import { useAuth } from '@/firebase/provider';
+import { uploadToR2 } from '@/lib/r2-client';
 
 export default function BrandingPage() {
     const firestore = useFirestore();
-    const storage = useStorage();
-    const auth = useAuth();
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
@@ -59,7 +57,7 @@ export default function BrandingPage() {
                 ...config,
                 updatedAt: new Date().toISOString()
             }, { merge: true });
-            toast({ title: 'Branding Updated', description: 'Changes have been saved successfully. Icon changes might take a moment to reflect everywhere.' });
+            toast({ title: 'Branding Updated', description: 'Changes have been saved successfully.' });
         } catch (error) {
             toast({ title: 'Error', description: 'Could not save branding settings.', variant: 'destructive' });
         } finally {
@@ -71,11 +69,6 @@ export default function BrandingPage() {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        if (!auth.currentUser) {
-            toast({ title: 'Auth Error', description: 'You must be logged in to upload files.', variant: 'destructive' });
-            return;
-        }
-
         if (file.size > 5 * 1024 * 1024) {
             toast({ title: 'File too large', description: 'Please select an image smaller than 5MB.', variant: 'destructive' });
             return;
@@ -84,19 +77,17 @@ export default function BrandingPage() {
         setIsUploading(true);
         
         try {
-            const uniqueName = `pwa-icon-${Date.now()}.png`;
-            const path = `system/${uniqueName}`;
-            const sRef = storageRef(storage, path);
+            const fileName = `pwa-icon-${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+            const path = `system/${fileName}`;
             
-            // Simpler direct upload for reliability
-            const uploadResult = await uploadBytes(sRef, file);
-            const url = await getDownloadURL(uploadResult.ref);
+            // Upload to Cloudflare R2 using our S3 logic
+            const url = await uploadToR2(file, path);
             
             setConfig(prev => ({ ...prev, pwaIconUrl: url }));
-            toast({ title: 'Icon Uploaded', description: 'Success! Now click "Save Branding" to finalize changes.' });
+            toast({ title: 'Icon Uploaded to R2', description: 'Click "Save Branding" to finalize changes.' });
         } catch (error: any) {
-            console.error("Upload error:", error);
-            toast({ title: 'Upload Failed', description: error.message || 'Check your internet and try again.', variant: 'destructive' });
+            console.error("R2 Upload error:", error);
+            toast({ title: 'Upload Failed', description: error.message || 'Check your internet and R2 CORS settings.', variant: 'destructive' });
         } finally {
             setIsUploading(false);
             if (fileInputRef.current) fileInputRef.current.value = '';
@@ -114,7 +105,7 @@ export default function BrandingPage() {
                     <h1 className="text-3xl font-black tracking-tight font-headline flex items-center gap-3">
                         <Palette className="h-8 w-8 text-primary" /> App Branding
                     </h1>
-                    <p className="text-muted-foreground font-medium">Customize the platform identity and installation icons.</p>
+                    <p className="text-muted-foreground font-medium">Customize platform identity via Cloudflare R2 Storage.</p>
                 </div>
                 <Button className="rounded-full glowing-btn px-8" onClick={handleSaveConfig} disabled={isSaving || isUploading}>
                     {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
@@ -129,7 +120,7 @@ export default function BrandingPage() {
                             <CardTitle className="text-xl font-bold flex items-center gap-2">
                                 <Globe className="h-5 w-5 text-primary" /> General Identity
                             </CardTitle>
-                            <CardDescription>This information will appear in the browser tab and app header.</CardDescription>
+                            <CardDescription>Updates are stored in Firestore, icons in Cloudflare R2.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
                             <div className="space-y-2">
@@ -158,10 +149,10 @@ export default function BrandingPage() {
                     <Card className="border-none shadow-xl overflow-hidden">
                         <CardHeader>
                             <CardTitle className="text-xl font-bold flex items-center gap-2">
-                                <Smartphone className="h-5 w-5 text-primary" /> PWA & App Icon
+                                <Smartphone className="h-5 w-5 text-primary" /> PWA & App Icon (R2)
                             </CardTitle>
                             <CardDescription>
-                                This icon is shown on mobile home screens when users install the app.
+                                This icon is fetched directly from your Cloudflare R2 bucket.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-8">
@@ -180,7 +171,7 @@ export default function BrandingPage() {
                                         {isUploading && (
                                             <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center text-white p-4">
                                                 <Loader2 className="h-8 w-8 animate-spin mb-2" />
-                                                <span className="text-xs font-bold uppercase tracking-widest text-center">Uploading Image...</span>
+                                                <span className="text-xs font-bold uppercase tracking-widest text-center">Uploading to R2...</span>
                                             </div>
                                         )}
                                     </div>
@@ -213,7 +204,7 @@ export default function BrandingPage() {
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10">
-                                    <h5 className="text-xs font-black uppercase tracking-wider text-primary mb-2">Browser Preview</h5>
+                                    <h5 className="text-xs font-black uppercase tracking-wider text-primary mb-2">Live Preview</h5>
                                     <div className="flex items-center gap-3 bg-card border rounded-lg p-2 shadow-sm">
                                         <div className="w-4 h-4 bg-muted rounded flex items-center justify-center overflow-hidden">
                                             {config.pwaIconUrl && <img src={config.pwaIconUrl} alt="fav" className="w-full h-full object-cover" />}
@@ -222,14 +213,14 @@ export default function BrandingPage() {
                                     </div>
                                 </div>
                                 <div className="p-4 rounded-2xl bg-muted/30 border">
-                                    <h5 className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-2">Installation ID</h5>
-                                    <p className="text-[10px] font-mono break-all opacity-60">signature-crm-v1-production</p>
+                                    <h5 className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-2">Storage Node</h5>
+                                    <p className="text-[10px] font-mono break-all opacity-60">cloudflare-r2-signature-crm-assets</p>
                                 </div>
                             </div>
                         </CardContent>
                         <CardFooter className="bg-muted/50 p-4">
                             <p className="text-[10px] text-muted-foreground font-medium italic text-center w-full">
-                                Note: PWA updates might take a few hours to propagate to existing installed devices.
+                                Note: Ensure CORS is enabled on R2 for browser uploads to work.
                             </p>
                         </CardFooter>
                     </Card>
@@ -238,12 +229,12 @@ export default function BrandingPage() {
                 <div className="space-y-6">
                     <Card className="border-none shadow-xl bg-gradient-to-br from-primary to-blue-700 text-primary-foreground">
                         <CardHeader>
-                            <CardTitle className="text-lg font-black tracking-tight">Real-time Sync</CardTitle>
+                            <CardTitle className="text-lg font-black tracking-tight">Cloudflare R2 Advantage</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <p className="text-sm opacity-90 leading-relaxed">
-                                When you save these settings, the platform's metadata and icons are updated globally. 
-                                This ensures a consistent brand experience for all your agency clients and agents.
+                                By using Cloudflare R2, you get high-speed asset delivery with zero egress fees. 
+                                Your app icons and documents will load instantly across the globe.
                             </p>
                             <div className="pt-4 flex items-center justify-center">
                                 <div className="p-4 bg-white/10 rounded-full animate-pulse">
@@ -255,13 +246,13 @@ export default function BrandingPage() {
 
                     <Card className="border-none shadow-md">
                         <CardHeader>
-                            <CardTitle className="text-sm font-bold">Guidelines</CardTitle>
+                            <CardTitle className="text-sm font-bold">R2 Credentials Active</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <ul className="text-xs space-y-3 text-muted-foreground">
-                                <li className="flex gap-2"><div className="w-1 h-1 rounded-full bg-primary mt-1.5 shrink-0" /> Icons must be square.</li>
-                                <li className="flex gap-2"><div className="w-1 h-1 rounded-full bg-primary mt-1.5 shrink-0" /> Use PNG for transparency support.</li>
-                                <li className="flex gap-2"><div className="w-1 h-1 rounded-full bg-primary mt-1.5 shrink-0" /> Keep the logo centered for circle/squircle masks.</li>
+                                <li className="flex gap-2"><div className="w-1 h-1 rounded-full bg-primary mt-1.5 shrink-0" /> Bucket: signature-crm-assets</li>
+                                <li className="flex gap-2"><div className="w-1 h-1 rounded-full bg-primary mt-1.5 shrink-0" /> S3 Client: @aws-sdk/client-s3</li>
+                                <li className="flex gap-2"><div className="w-1 h-1 rounded-full bg-primary mt-1.5 shrink-0" /> Region: auto</li>
                                 <li className="flex gap-2"><div className="w-1 h-1 rounded-full bg-primary mt-1.5 shrink-0" /> Max file size: 5MB.</li>
                             </ul>
                         </CardContent>
