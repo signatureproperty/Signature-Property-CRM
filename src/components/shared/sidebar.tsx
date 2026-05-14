@@ -35,7 +35,8 @@ import {
   Plus,
   DollarSign,
   ShieldAlert,
-  Building
+  Building,
+  Palette
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -67,6 +68,7 @@ import { signOut } from 'firebase/auth';
 const allMenuItems = [
   { href: '/overview', label: 'Dashboard', icon: <LayoutDashboard />, roles: ['Admin', 'Agent', 'Video Recorder', 'Super Admin'] },
   { href: '/super-admin', label: 'Admin Control', icon: <ShieldAlert />, roles: ['Super Admin'] },
+  { href: '/super-admin/branding', label: 'App Branding', icon: <Palette />, roles: ['Super Admin'] },
   { href: '/properties', label: 'Properties', icon: <Building2 />, roles: ['Admin', 'Agent'] },
   { href: '/buyers', label: 'Buyers', icon: <Users />, roles: ['Admin', 'Agent'] },
   { href: '/finance', label: 'Finance', icon: <DollarSign />, roles: ['Admin'] },

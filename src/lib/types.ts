@@ -24,6 +24,13 @@ export type User = {
   user_id?: string; // Actual Auth UID
 };
 
+export type BrandingConfig = {
+  appName: string;
+  appDescription: string;
+  pwaIconUrl: string;
+  updatedAt: string;
+};
+
 export type Tag = {
   id: string;
   name: string;
