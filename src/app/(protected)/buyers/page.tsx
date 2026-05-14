@@ -1,3 +1,4 @@
+
 'use client';
 
 import { AddBuyerDialog } from '@/components/add-buyer-dialog';
@@ -139,7 +140,6 @@ function BuyersPageContent() {
     const [currentPage, setCurrentPage] = useState(1);
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
-    // Filter expansion states
     const [isTypesExpanded, setIsTypesExpanded] = useState(false);
     const [isStatusExpanded, setIsStatusExpanded] = useState(false);
     const [isTagsExpanded, setIsTagsExpanded] = useState(false);
@@ -282,7 +282,7 @@ function BuyersPageContent() {
         const agent = activeAgents.find(a => a.id === agentDocId);
         if(!agent) return;
 
-        const actualAgentUid = agent.user_id || agent.id; // Use UID for invited agents
+        const actualAgentUid = agent.user_id || agent.id;
         const batch = writeBatch(firestore);
         const buyerNames: string[] = [];
         
@@ -348,7 +348,6 @@ function BuyersPageContent() {
     const getTagColor = (tagName: string) => {
         const tagObj = agencyTags?.find(t => t.name === tagName);
         if (tagObj) return tagObj.color;
-        // Fallback to status colors if not found in custom tags
         return statusVariant[tagName as keyof typeof statusVariant] || 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700';
     };
 
@@ -360,7 +359,6 @@ function BuyersPageContent() {
             buyers = buyers.filter(b => (b.listing_type || 'For Sale') === activeListingType);
         }
         if (activeStatus !== 'All') {
-            // Modified: Show if main status matches OR if it's in the tags array
             buyers = buyers.filter(b => b.status === activeStatus || b.tags?.includes(activeStatus));
         }
         if (activeCustomTags.length > 0) {
@@ -728,6 +726,7 @@ function BuyersPageContent() {
                                             initial={{ opacity: 0, x: -10 }} 
                                             animate={{ opacity: 1, x: 0 }} 
                                             exit={{ opacity: 0, x: -10 }}
+                                            transition={{ duration: 0.15 }}
                                             className="flex items-center gap-2"
                                         >
                                             <Badge variant={activeListingType === 'For Sale' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800", activeListingType === 'For Sale' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Sale')}>For Sale</Badge>
@@ -753,6 +752,7 @@ function BuyersPageContent() {
                                             initial={{ opacity: 0, x: -10 }} 
                                             animate={{ opacity: 1, x: 0 }} 
                                             exit={{ opacity: 0, x: -10 }}
+                                            transition={{ duration: 0.15 }}
                                             className="flex items-center gap-2"
                                         >
                                             {buyerStatuses.map(status => (
@@ -790,6 +790,7 @@ function BuyersPageContent() {
                                             initial={{ opacity: 0, x: -10 }} 
                                             animate={{ opacity: 1, x: 0 }} 
                                             exit={{ opacity: 0, x: -10 }}
+                                            transition={{ duration: 0.15 }}
                                             className="flex items-center gap-2"
                                         >
                                             {agencyTags?.map(tag => (

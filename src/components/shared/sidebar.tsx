@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -117,7 +118,6 @@ export function AppSidebar() {
   const { data: allBuyers } = useCollection<Buyer>(agencyBuyersQuery);
 
   const renderMenuItem = (item: any) => {
-    // Role check
     if (!item.roles.includes(profile.role)) {
       return null;
     }
@@ -131,7 +131,7 @@ export function AppSidebar() {
             <Link href={item.href}>
               <SidebarMenuButton
                 isActive={isActive}
-                className={cn("transition-all duration-200")}
+                className={cn("transition-all duration-150")}
               >
                 {item.icon}
                 <span className="flex-1 truncate">{item.label}</span>
@@ -156,7 +156,7 @@ export function AppSidebar() {
         { href: '/editing', label: 'Editing', icon: <Edit />, roles: [], isCenter: false },
       ];
       return (
-        <div className="fixed bottom-0 left-0 z-50 w-full h-20 border-t bg-transparent backdrop-blur-md">
+        <div className="fixed bottom-0 left-0 z-50 w-full h-20 border-t bg-background/95 backdrop-blur-sm">
           <div className="grid h-full grid-cols-3 relative">
             {recorderNavItems.map(item => {
               const isActive = pathname.startsWith(item.href);
@@ -165,7 +165,7 @@ export function AppSidebar() {
                   <div key={item.href} className="relative flex items-center justify-center">
                     <Link href={item.href}>
                       <div className={cn(
-                        'absolute -top-6 flex h-16 w-16 items-center justify-center rounded-full text-white shadow-lg transition-all duration-300 left-1/2 -translate-x-1/2',
+                        'absolute -top-6 flex h-16 w-16 items-center justify-center rounded-full text-white shadow-lg transition-all duration-200 left-1/2 -translate-x-1/2',
                         'bg-gradient-to-br from-primary to-blue-500',
                         isActive && 'ring-4 ring-primary/30'
                       )}>
@@ -180,7 +180,7 @@ export function AppSidebar() {
                     key={item.href}
                     href={item.href}
                     className={cn(
-                        'flex flex-col items-center justify-center gap-1 text-xs font-medium transition-colors',
+                        'flex flex-col items-center justify-center gap-1 text-xs font-medium transition-colors duration-150',
                         isActive ? 'text-primary' : 'text-muted-foreground hover:text-primary'
                     )}
                 >
@@ -202,7 +202,7 @@ export function AppSidebar() {
     ];
     return (
         <>
-            <div className="fixed bottom-0 left-0 z-50 w-full h-20 border-t bg-transparent backdrop-blur-md">
+            <div className="fixed bottom-0 left-0 z-50 w-full h-20 border-t bg-background/95 backdrop-blur-sm">
                 <div className="grid h-full grid-cols-5 relative">
                     {mobileNavItems.map(item => {
                         if (item.roles.length > 0 && !item.roles.includes(profile.role)) return null;
@@ -214,7 +214,7 @@ export function AppSidebar() {
                                 <div key={item.href} className="relative flex items-center justify-center">
                                     <Link href={item.href}>
                                         <div className={cn(
-                                            'absolute -top-6 flex h-16 w-16 items-center justify-center rounded-full text-white shadow-lg transition-all duration-300 left-1/2 -translate-x-1/2',
+                                            'absolute -top-6 flex h-16 w-16 items-center justify-center rounded-full text-white shadow-lg transition-all duration-200 left-1/2 -translate-x-1/2',
                                             'bg-gradient-to-br from-primary to-blue-500',
                                             isActive && 'ring-4 ring-primary/30'
                                         )}>
@@ -226,7 +226,7 @@ export function AppSidebar() {
                         }
                         if (item.isSheet) {
                              return (
-                                <button key={item.label} onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)} className="flex flex-col items-center justify-center gap-1 text-xs font-medium text-muted-foreground">
+                                <button key={item.label} onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)} className="flex flex-col items-center justify-center gap-1 text-xs font-medium text-muted-foreground outline-none">
                                     {isMoreMenuOpen ? <X className="h-5 w-5 text-primary" /> : <MoreHorizontal className="h-5 w-5" />}
                                     <span>{item.label}</span>
                                 </button>
@@ -237,7 +237,7 @@ export function AppSidebar() {
                                 key={item.href}
                                 href={item.href}
                                 className={cn(
-                                    'flex flex-col items-center justify-center gap-1 text-xs font-medium transition-colors',
+                                    'flex flex-col items-center justify-center gap-1 text-xs font-medium transition-colors duration-150',
                                     isActive ? 'text-primary' : 'text-muted-foreground hover:text-primary'
                                 )}
                             >
@@ -257,7 +257,8 @@ export function AppSidebar() {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     onClick={() => setIsMoreMenuOpen(false)}
-                    className="fixed inset-0 z-40 bg-black/60"
+                    className="fixed inset-0 z-40 bg-black/40"
+                    transition={{ duration: 0.15 }}
                 />
                 <div className="fixed bottom-24 right-4 z-40 flex flex-col items-end gap-3">
                     {allMobileMenuItems
@@ -269,18 +270,18 @@ export function AppSidebar() {
                         .map((item, index) => (
                         <motion.div
                             key={item.href}
-                            initial={{ opacity: 0, y: 50 }}
+                            initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 20 }}
+                            exit={{ opacity: 0, y: 10 }}
                             transition={{
                                 type: 'tween',
                                 ease: 'easeOut',
-                                duration: 0.3,
-                                delay: index * 0.05,
+                                duration: 0.15,
+                                delay: index * 0.03,
                             }}
                             className="flex items-center gap-3"
                         >
-                            <span className="bg-card text-card-foreground px-3 py-1.5 rounded-lg text-sm font-semibold shadow-lg">
+                            <span className="bg-card text-card-foreground px-3 py-1.5 rounded-lg text-sm font-semibold shadow-md">
                                 {item.label}
                             </span>
                             <Link href={item.href} onClick={() => setIsMoreMenuOpen(false)}>
@@ -303,7 +304,7 @@ export function AppSidebar() {
     <TooltipProvider>
       <Sidebar
         collapsible="icon"
-        className="hidden md:flex flex-col bg-card dark:bg-neutral-900"
+        className="hidden md:flex flex-col bg-card dark:bg-neutral-900 border-r"
       >
         <SidebarHeader className="p-6">
             <div className="flex items-center gap-2">
@@ -327,7 +328,7 @@ export function AppSidebar() {
               <Tooltip>
                   <TooltipTrigger asChild>
                       <Link href="/upgrade">
-                          <SidebarMenuButton className="bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary justify-center">
+                          <SidebarMenuButton className="bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary justify-center transition-all duration-150">
                               <Gem />
                               <span className="flex-1 truncate">Upgrade Plan</span>
                           </SidebarMenuButton>

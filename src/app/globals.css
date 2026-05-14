@@ -73,10 +73,12 @@
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
   }
 
   .dark body {
-    background-image: linear-gradient(120deg, hsl(var(--background)), hsl(var(--background)));
+    background-image: none;
+    background-color: hsl(var(--background));
   }
 }
 
@@ -94,11 +96,11 @@
 
 @layer components {
   .glass-card {
-    @apply bg-card/80 backdrop-blur-md border rounded-2xl shadow-lg transition-all duration-300;
+    @apply bg-card border rounded-2xl shadow-md transition-all duration-150;
   }
 
   .glass-modal {
-    @apply bg-card backdrop-blur-xl border-2 rounded-2xl shadow-2xl;
+    @apply bg-card border-2 rounded-2xl shadow-xl;
   }
   
   .glowing-btn {
@@ -108,9 +110,9 @@
   .glowing-btn::before {
     content: '';
     @apply absolute -top-1/2 -left-1/2 w-[200%] h-[200%];
-    background-image: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+    background-image: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.3), transparent);
     transform: rotate(20deg);
-    animation: glow-sweep 1.5s infinite;
+    animation: glow-sweep 2s infinite;
   }
 
   .app-loader {
@@ -118,7 +120,7 @@
   }
   .loader-dot {
     @apply h-3 w-3 rounded-full bg-primary mx-1;
-    animation: bounce 1.4s infinite ease-in-out both;
+    animation: bounce 1.2s infinite ease-in-out both;
   }
   .loader-dot:nth-child(1) {
     animation-delay: -0.32s;
@@ -128,10 +130,10 @@
   }
 
   .animate-fade-in {
-    animation: fade-in 0.5s ease-out forwards;
+    animation: fade-in 0.25s ease-out forwards;
   }
   .animate-fade-in-up {
-      animation: fade-in-up 0.6s ease-out forwards;
+      animation: fade-in-up 0.3s ease-out forwards;
       opacity: 0;
   }
 }
@@ -144,7 +146,7 @@
 @keyframes fade-in-up {
     from {
         opacity: 0;
-        transform: translateY(20px);
+        transform: translateY(10px);
     }
     to {
         opacity: 1;
@@ -167,5 +169,14 @@
     transform: scale(0);
   } 40% {
     transform: scale(1.0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

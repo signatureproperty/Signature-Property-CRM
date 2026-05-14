@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -172,7 +173,6 @@ function PropertiesPageContent() {
   const [activeStatus, setActiveStatus] = useState<string>('All');
   const [activeCustomTags, setActiveCustomTags] = useState<string[]>([]);
 
-  // Filter expansion states
   const [isTypesExpanded, setIsTypesExpanded] = useState(false);
   const [isStatusExpanded, setIsStatusExpanded] = useState(false);
   const [isTagsExpanded, setIsTagsExpanded] = useState(false);
@@ -250,7 +250,6 @@ function PropertiesPageContent() {
         baseProperties = baseProperties.filter(p => p.listing_type === activeListingType);
     }
     if (activeStatus !== 'All') {
-        // Modified: Show if main status matches OR if it's in the tags array
         baseProperties = baseProperties.filter(p => p.status === activeStatus || p.tags?.includes(activeStatus));
     }
     if (activeCustomTags.length > 0) {
@@ -503,7 +502,7 @@ function PropertiesPageContent() {
           {properties.map((prop, index) => {
             const hasRecentNotes = (prop.timeline_notes?.length || 0) > 0;
             return (
-            <motion.tr key={prop.id} className="hover:bg-accent/50 transition-colors cursor-pointer" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: index * 0.05 }} >
+            <motion.tr key={prop.id} className="hover:bg-accent/50 transition-colors cursor-pointer" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, delay: index * 0.02 }} >
               <TableCell onClick={(e) => e.stopPropagation()}><Checkbox checked={selectedProperties.includes(prop.id)} onCheckedChange={(checked) => setSelectedProperties(prev => checked ? [...prev, prop.id] : prev.filter(id => id !== prop.id))} /></TableCell>
               <TableCell onClick={() => handleRowClick(prop)}>
                 <div className="flex items-center gap-2 font-bold font-headline text-base">
@@ -582,7 +581,7 @@ function PropertiesPageContent() {
         {properties.map((prop, index) => {
           const hasRecentNotes = (prop.timeline_notes?.length || 0) > 0;
           return (
-          <motion.div key={prop.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: index * 0.05 }}>
+          <motion.div key={prop.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, delay: index * 0.02 }}>
             <Card className="overflow-hidden border-l-4 border-l-primary/40">
               <CardHeader className="p-4 pb-2 flex flex-row items-start justify-between space-y-0">
                 <div className="flex gap-3">
@@ -837,6 +836,7 @@ function PropertiesPageContent() {
                                         initial={{ opacity: 0, x: -10 }} 
                                         animate={{ opacity: 1, x: 0 }} 
                                         exit={{ opacity: 0, x: -10 }}
+                                        transition={{ duration: 0.15 }}
                                         className="flex items-center gap-2"
                                     >
                                         <Badge variant={activeListingType === 'For Sale' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800", activeListingType === 'For Sale' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Sale')}>For Sale</Badge>
@@ -863,6 +863,7 @@ function PropertiesPageContent() {
                                         initial={{ opacity: 0, x: -10 }} 
                                         animate={{ opacity: 1, x: 0 }} 
                                         exit={{ opacity: 0, x: -10 }}
+                                        transition={{ duration: 0.15 }}
                                         className="flex items-center gap-2"
                                     >
                                         {statusOptions.filter(opt => activeListingType === 'All' || opt.listing === 'All' || opt.listing === activeListingType).map(opt => (
@@ -895,6 +896,7 @@ function PropertiesPageContent() {
                                         initial={{ opacity: 0, x: -10 }} 
                                         animate={{ opacity: 1, x: 0 }} 
                                         exit={{ opacity: 0, x: -10 }}
+                                        transition={{ duration: 0.15 }}
                                         className="flex items-center gap-2"
                                     >
                                         {agencyTags?.filter(tag => activeListingType === 'All' || !tag.listingType || tag.listingType === 'All' || tag.listingType === activeListingType).map(tag => (
