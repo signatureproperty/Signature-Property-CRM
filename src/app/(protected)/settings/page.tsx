@@ -129,7 +129,7 @@ export default function SettingsPage() {
             setCountryCode(selectedCountry.dial_code);
             setLocalProfile({ ...profile, phone: phone.substring(selectedCountry.dial_code.length) });
         } else {
-            const code = phone.substring(0, phone.search(/\\d{10}$/));
+            const code = phone.substring(0, phone.search(/\d{10}$/));
             setCountryCode(code || '+92');
             setLocalProfile({ ...profile, phone: phone.substring(code.length) });
         }
@@ -210,7 +210,7 @@ export default function SettingsPage() {
     e.preventDefault();
     if (!user) return;
 
-    const fullPhoneNumber = localProfile.phone ? `${countryCode}${localProfile.phone.replace(/\\D/g, '')}` : '';
+    const fullPhoneNumber = localProfile.phone ? `${countryCode}${localProfile.phone.replace(/\D/g, '')}` : '';
 
     if (
         localProfile.name === profile.name &&
@@ -462,15 +462,22 @@ export default function SettingsPage() {
         return;
     }
 
+    // Numerical sort based on the number part of the serial (e.g., B-1, B-2, B-10)
+    const sortedData = [...data].sort((a, b) => {
+        const numA = parseInt(a.serial_no.split('-')[1] || '0', 10);
+        const numB = parseInt(b.serial_no.split('-')[1] || '0', 10);
+        return numA - numB;
+    });
+
     let csvContent = "";
     if (type === 'Buyers') {
         csvContent = "Serial,Name,Phone,Email,Status,Listing,Area,Type,Min Budget,Max Budget,Notes\n";
-        data.forEach((b: any) => {
+        sortedData.forEach((b: any) => {
             csvContent += `${b.serial_no},"${b.name}","${b.phone}",${b.email || ''},${b.status},${b.listing_type},"${b.area_preference || ''}","${b.property_type_preference || ''}",${b.budget_min_amount || 0},${b.budget_max_amount || 0},"${(b.notes || '').replace(/"/g, '""')}"\n`;
         });
     } else {
         csvContent = "Serial,Title,Owner Phone,Area,Address,Type,Size,Unit,Demand,Demand Unit,Status\n";
-        data.forEach((p: any) => {
+        sortedData.forEach((p: any) => {
             csvContent += `${p.serial_no},"${p.auto_title}","${p.owner_number}","${p.area}","${p.address}","${p.property_type}",${p.size_value},${p.size_unit},${p.demand_amount},${p.demand_unit},${p.status}\n`;
         });
     }
