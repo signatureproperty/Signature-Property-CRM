@@ -16,6 +16,7 @@ import { Shield, User as UserIcon, Camera, PlayCircle, CheckCheck, VideoOff, Sig
 import { useMemo } from 'react';
 import { Card, CardContent } from './ui/card';
 import { Separator } from './ui/separator';
+import { cn } from '@/lib/utils';
 
 interface TeamMemberDetailsDialogProps {
   member: User;
