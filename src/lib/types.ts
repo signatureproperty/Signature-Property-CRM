@@ -168,6 +168,7 @@ export type LeadNote = {
     authorName: string;
     authorRole: UserRole;
     timestamp: string;
+    readBy?: string[]; // Track who has seen this message
 };
 
 export type Buyer = {
@@ -258,7 +259,7 @@ export type Activity = {
     assignedToName?: string | null;
 };
 
-export type NotificationType = 'invitation' | 'appointment' | 'followup' | 'activity';
+export type NotificationType = 'invitation' | 'appointment' | 'followup' | 'activity' | 'message';
 
 export interface BaseNotification {
     id: string;
@@ -296,7 +297,14 @@ export interface ActivityNotification extends BaseNotification {
     activity: Activity;
 }
 
-export type Notification = InvitationNotification | AppointmentNotification | FollowUpNotification | ActivityNotification;
+export interface MessageNotification extends BaseNotification {
+    type: 'message';
+    leadId: string;
+    leadSerial: string;
+    authorName: string;
+}
+
+export type Notification = InvitationNotification | AppointmentNotification | FollowUpNotification | ActivityNotification | MessageNotification;
 
 export type UpgradeRequest = {
     id: string;

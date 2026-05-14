@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -72,15 +71,6 @@ function LoginPageContent() {
   const [isIos, setIsIos] = useState(false);
   const [showIosInstall, setShowIosInstall] = useState(false);
   const { setTheme, theme } = useTheme();
-
-  const form = useForm<LoginFormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-      remember: false,
-    },
-  });
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
@@ -350,13 +340,12 @@ function LoginPageContent() {
                       </DialogHeader>
                       <div className="py-4 text-center space-y-4">
                         <p>To install the app on your device, tap the 'Share' icon in Safari and then select 'Add to Home Screen'.</p>
-                        <div className="flex justify-center">
+                        <div className="flex justify-center items-center gap-2">
                             <Share className="h-8 w-8 text-primary" />
-                            <span className="mx-2">→</span>
-                            <Home className="h-8 w-8 text-primary" />
-                        </div>
-                        <div className="relative w-full aspect-[9/16] max-w-xs mx-auto mt-4 rounded-lg overflow-hidden border">
-                          <Image src="/images/add-to-home-screen-ios.png" alt="Add to Home Screen instruction for iOS" layout="fill" objectFit="contain" />
+                            <span className="mx-2 text-2xl">→</span>
+                            <div className="p-2 border rounded-xl">
+                                <Plus className="h-6 w-6" />
+                            </div>
                         </div>
                       </div>
                     </DialogContent>

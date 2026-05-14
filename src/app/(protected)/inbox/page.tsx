@@ -4,13 +4,13 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { useFirestore } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, orderBy, doc, updateDoc, addDoc, arrayUnion } from 'firebase/firestore';
+import { collection, doc, updateDoc, arrayUnion, writeBatch } from 'firebase/firestore';
 import { useProfile } from '@/context/profile-context';
 import { useMemoFirebase } from '@/firebase/hooks';
 import type { InboxMessage, Property, Buyer, LeadNote } from '@/lib/types';
 import { formatDistanceToNow, format } from 'date-fns';
 import { Button } from '@/components/ui/button';
-import { Mail, Send, User, Search, MessageSquare, ArrowLeft, Building2, Briefcase, Eye } from 'lucide-react';
+import { Mail, Send, User, Search, MessageSquare, ArrowLeft, Building2, Briefcase, Eye, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,17 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { PropertyDetailsDialog } from '@/components/property-details-dialog';
 import { BuyerDetailsDialog } from '@/components/buyer-details-dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface ChatLead {
     id: string;
@@ -36,7 +47,7 @@ export default function InboxPage() {
     const { toast } = useToast();
     const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
     const [replyText, setReplyText] = useState('');
-    const [isSending, setIsSaving] = useState(false);
+    const [isSending, setIsSending] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -64,7 +75,7 @@ export default function InboxPage() {
                     serial: b.serial_no,
                     lastMessage: last.text,
                     lastTimestamp: last.timestamp,
-                    isUnread: b.timeline_notes.some(n => n.authorId !== profile.user_id && !n.id.includes('read_')) // Simple unread check
+                    isUnread: b.timeline_notes.some(n => !n.readBy?.includes(profile.user_id))
                 });
             }
         });
@@ -79,6 +90,7 @@ export default function InboxPage() {
                     serial: p.serial_no,
                     lastMessage: last.text,
                     lastTimestamp: last.timestamp,
+                    isUnread: p.timeline_notes.some(n => !n.readBy?.includes(profile.user_id))
                 });
             }
         });
@@ -98,6 +110,25 @@ export default function InboxPage() {
         return [...(activeLead.timeline_notes || [])].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
     }, [activeLead]);
 
+    // Handle marking messages as read
+    useEffect(() => {
+        if (selectedLeadId && activeLead && profile.agency_id) {
+            const unreadNotes = activeLead.timeline_notes?.filter(n => !n.readBy?.includes(profile.user_id));
+            if (unreadNotes && unreadNotes.length > 0) {
+                const updatedNotes = activeLead.timeline_notes?.map(n => ({
+                    ...n,
+                    readBy: Array.from(new Set([...(n.readBy || []), profile.user_id]))
+                }));
+
+                const isBuyer = 'serial_no' in activeLead && activeLead.serial_no.startsWith('B');
+                const colName = isBuyer ? 'buyers' : 'properties';
+                const leadRef = doc(firestore, 'agencies', profile.agency_id, colName, selectedLeadId);
+                
+                updateDoc(leadRef, { timeline_notes: updatedNotes });
+            }
+        }
+    }, [selectedLeadId, activeLead, profile.user_id, profile.agency_id, firestore]);
+
     useEffect(() => {
         if (scrollRef.current) {
             scrollRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -107,7 +138,7 @@ export default function InboxPage() {
     const handleSendMessage = async () => {
         if (!replyText.trim() || !profile.agency_id || !selectedLeadId || !activeLead) return;
 
-        setIsSaving(true);
+        setIsSending(true);
         try {
             const note: LeadNote = {
                 id: crypto.randomUUID(),
@@ -116,6 +147,7 @@ export default function InboxPage() {
                 authorName: profile.name,
                 authorRole: profile.role,
                 timestamp: new Date().toISOString(),
+                readBy: [profile.user_id]
             };
 
             const isBuyer = 'serial_no' in activeLead && activeLead.serial_no.startsWith('B');
@@ -131,7 +163,23 @@ export default function InboxPage() {
             console.error("Chat error:", error);
             toast({ title: "Failed to send", variant: "destructive" });
         } finally {
-            setIsSaving(false);
+            setIsSending(false);
+        }
+    };
+
+    const handleDeleteChat = async () => {
+        if (!selectedLeadId || !activeLead || !profile.agency_id) return;
+        
+        try {
+            const isBuyer = 'serial_no' in activeLead && activeLead.serial_no.startsWith('B');
+            const colName = isBuyer ? 'buyers' : 'properties';
+            const leadRef = doc(firestore, 'agencies', profile.agency_id, colName, selectedLeadId);
+            
+            await updateDoc(leadRef, { timeline_notes: [] });
+            toast({ title: "Conversation Cleared" });
+            setSelectedLeadId(null);
+        } catch (error) {
+            toast({ title: "Delete Failed", variant: "destructive" });
         }
     };
 
@@ -167,22 +215,25 @@ export default function InboxPage() {
                                 <div 
                                     key={lead.id} 
                                     className={cn(
-                                        "p-4 cursor-pointer transition-colors hover:bg-accent/50 group",
+                                        "p-4 cursor-pointer transition-colors hover:bg-accent/50 group relative",
                                         selectedLeadId === lead.id ? "bg-primary/5 border-l-4 border-l-primary" : "border-l-4 border-l-transparent"
                                     )}
                                     onClick={() => setSelectedLeadId(lead.id)}
                                 >
+                                    {lead.isUnread && (
+                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-primary rounded-full ring-2 ring-background" />
+                                    )}
                                     <div className="flex justify-between items-start mb-1">
                                         <div className="flex items-center gap-2">
                                             {lead.type === 'Buyer' ? <Briefcase className="h-3 w-3 text-emerald-500" /> : <Building2 className="h-3 w-3 text-sky-500" />}
-                                            <span className="font-bold text-sm truncate max-w-[120px]">{lead.name}</span>
+                                            <span className={cn("font-bold text-sm truncate max-w-[120px]", lead.isUnread && "text-primary")}>{lead.name}</span>
                                         </div>
                                         <span className="text-[10px] text-muted-foreground whitespace-nowrap">
                                             {lead.lastTimestamp ? formatDistanceToNow(new Date(lead.lastTimestamp), { addSuffix: true }) : ''}
                                         </span>
                                     </div>
                                     <div className="flex justify-between items-center">
-                                        <p className="text-xs text-muted-foreground line-clamp-1 flex-1 pr-2">
+                                        <p className={cn("text-xs text-muted-foreground line-clamp-1 flex-1 pr-2", lead.isUnread && "font-bold text-foreground")}>
                                             {lead.lastMessage}
                                         </p>
                                         <Badge variant="outline" className="text-[9px] font-mono h-4 px-1">{lead.serial}</Badge>
@@ -219,9 +270,30 @@ export default function InboxPage() {
                                     </p>
                                 </div>
                             </div>
-                            <Button variant="outline" size="sm" className="rounded-full h-8 px-4 text-xs font-bold gap-2" onClick={handleViewDetails}>
-                                <Eye className="h-3.5 w-3.5" /> View Detail
-                            </Button>
+                            <div className="flex items-center gap-2">
+                                <Button variant="outline" size="sm" className="rounded-full h-8 px-4 text-xs font-bold gap-2" onClick={handleViewDetails}>
+                                    <Eye className="h-3.5 w-3.5" /> Detail
+                                </Button>
+                                {profile.role === 'Admin' && (
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button variant="ghost" size="sm" className="rounded-full h-8 w-8 p-0 text-destructive hover:bg-destructive/10">
+                                                <Trash2 className="h-3.5 w-3.5" />
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Delete Chat History?</AlertDialogTitle>
+                                                <AlertDialogDescription>This will clear all messages for this lead. This action cannot be undone.</AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction onClick={handleDeleteChat} className="bg-destructive text-white">Delete</AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                )}
+                            </div>
                         </div>
 
                         <ScrollArea className="flex-1 p-4 bg-muted/5">
@@ -272,7 +344,7 @@ export default function InboxPage() {
                     <div className="flex-1 flex flex-col items-center justify-center text-center p-8 opacity-40">
                         <MessageSquare className="h-16 w-16 mb-4 text-muted-foreground" />
                         <h3 className="text-xl font-bold">Select a conversation</h3>
-                        <p className="max-w-xs text-sm mt-2">Grouped real-time chat with your agents about specific leads.</p>
+                        <p className="max-w-xs text-sm mt-2">Real-time messenger grouped by client context.</p>
                     </div>
                 )}
             </Card>

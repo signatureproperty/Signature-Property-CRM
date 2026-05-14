@@ -6,7 +6,7 @@ import { collection, query, where, doc, writeBatch, orderBy, limit } from 'fireb
 import { useUser } from '@/firebase/auth/use-user';
 import { useProfile } from '@/context/profile-context';
 import { useMemoFirebase } from '@/firebase/hooks';
-import type { Notification, InvitationNotification, AppointmentNotification, Activity, ActivityNotification, Appointment, UserRole } from '@/lib/types';
+import type { Notification, InvitationNotification, AppointmentNotification, Activity, ActivityNotification, Appointment, UserRole, Buyer, Property, MessageNotification } from '@/lib/types';
 import { isBefore, sub } from 'date-fns';
 import { useCollection } from '@/firebase/firestore/use-collection';
 
@@ -50,6 +50,12 @@ export const useNotifications = () => {
         );
     }, [canFetchAgencyData, firestore, profile.agency_id, refreshKey]);
     const { data: activitiesData, isLoading: isActivitiesLoading } = useCollection<Activity>(activitiesQuery);
+
+    // 4. Messages (Unread checks)
+    const buyersQuery = useMemoFirebase(() => canFetchAgencyData ? collection(firestore, 'agencies', profile.agency_id, 'buyers') : null, [canFetchAgencyData, firestore, profile.agency_id]);
+    const { data: buyersData } = useCollection<Buyer>(buyersQuery);
+    const propertiesQuery = useMemoFirebase(() => canFetchAgencyData ? collection(firestore, 'agencies', profile.agency_id, 'properties') : null, [canFetchAgencyData, firestore, profile.agency_id]);
+    const { data: propertiesData } = useCollection<Property>(propertiesQuery);
 
 
     const getStoredIds = (key: string): string[] => {
@@ -123,6 +129,26 @@ export const useNotifications = () => {
             allNotifications.push(...activityNotifications);
         }
 
+        // Message unread notifications
+        const unreadBuyers = buyersData?.filter(b => b.timeline_notes?.some(n => !n.readBy?.includes(profile.user_id))) || [];
+        const unreadProps = propertiesData?.filter(p => p.timeline_notes?.some(n => !n.readBy?.includes(profile.user_id))) || [];
+
+        const messageNotifications: MessageNotification[] = [...unreadBuyers, ...unreadProps].map(lead => {
+            const lastMsg = lead.timeline_notes![lead.timeline_notes!.length - 1];
+            return {
+                id: `msg_${lead.id}`,
+                type: 'message',
+                title: 'New Message',
+                description: `${lastMsg.authorName}: ${lastMsg.text.substring(0, 30)}${lastMsg.text.length > 30 ? '...' : ''}`,
+                timestamp: new Date(lastMsg.timestamp),
+                isRead: false,
+                leadId: lead.id,
+                leadSerial: lead.serial_no,
+                authorName: lastMsg.authorName
+            };
+        });
+        allNotifications.push(...messageNotifications);
+
         allNotifications = allNotifications
             .filter(n => !deletedIds.includes(n.id))
             .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
@@ -130,7 +156,7 @@ export const useNotifications = () => {
         setNotifications(allNotifications);
         setIsLoading(false);
 
-    }, [invitationsData, appointmentsData, activitiesData, isInvitesLoading, isAppointmentsLoading, isActivitiesLoading, profile.name, profile.role, user?.uid, refreshKey]);
+    }, [invitationsData, appointmentsData, activitiesData, buyersData, propertiesData, isInvitesLoading, isAppointmentsLoading, isActivitiesLoading, profile.name, profile.role, user?.uid, profile.user_id, refreshKey]);
 
     const markAsRead = (id: string) => {
         const readIds = getStoredIds(NOTIFICATION_READ_STATUS_KEY);
