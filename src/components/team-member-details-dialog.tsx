@@ -17,6 +17,7 @@ import { useMemo } from 'react';
 import { Card, CardContent } from './ui/card';
 import { Separator } from './ui/separator';
 import { cn } from '@/lib/utils';
+import { ScrollArea } from './ui/scroll-area';
 
 interface TeamMemberDetailsDialogProps {
   member: User;
