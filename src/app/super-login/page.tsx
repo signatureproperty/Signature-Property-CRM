@@ -72,7 +72,7 @@ function SuperLoginPageContent() {
           user = userCredential.user;
       } catch (loginError: any) {
           // 2. If user doesn't exist and it's the master email, auto-create it (Provisioning)
-          if (loginError.code === 'auth/user-not-found' && isMasterEmail) {
+          if ((loginError.code === 'auth/user-not-found' || loginError.code === 'auth/invalid-credential') && isMasterEmail) {
               const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
               user = userCredential.user;
               await updateProfile(user, { displayName: 'Usman Sagheer' });
