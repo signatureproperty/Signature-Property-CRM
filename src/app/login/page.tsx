@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -32,7 +33,6 @@ import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { ProfileProvider } from '@/context/profile-context';
 import { Separator } from '@/components/ui/separator';
 import { doc, getDoc } from 'firebase/firestore';
-import Image from 'next/image';
 import {
   Dialog,
   DialogContent,
@@ -107,9 +107,7 @@ function LoginPageContent() {
       installPromptEvent.prompt();
       installPromptEvent.userChoice.then(choiceResult => {
         if (choiceResult.outcome === 'accepted') {
-          console.log('User accepted the install prompt');
-        } else {
-          console.log('User dismissed the install prompt');
+          toast({ title: "App installing...", description: "Check your home screen shortly." });
         }
         setInstallPromptEvent(null);
       });
@@ -149,15 +147,12 @@ function LoginPageContent() {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
-      // After successful sign-in, check if user exists in our Firestore 'users' collection
       const userDocRef = doc(firestore, 'users', user.uid);
       const userDocSnap = await getDoc(userDocRef);
 
       if (userDocSnap.exists()) {
-        // User exists, proceed to dashboard
         router.push('/overview');
       } else {
-        // User does not exist in our DB, sign them out and show an error
         await auth.signOut();
         toast({
           variant: 'destructive',
@@ -167,7 +162,6 @@ function LoginPageContent() {
       }
     } catch (error: any) {
       console.error('Google Sign-In Error:', error);
-      // Don't sign out here, as the initial popup might have been closed by the user
       if (error.code !== 'auth/popup-closed-by-user') {
           toast({
             variant: 'destructive',
@@ -181,9 +175,9 @@ function LoginPageContent() {
   };
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-violet-100 via-white to-blue-100 dark:from-slate-900 dark:via-slate-800 dark:to-violet-900 p-4 font-body">
+    <div className="flex min-h-screen w-full items-center justify-center p-4 font-body">
       <div className="absolute top-4 right-4">
-        <Button variant="ghost" size="icon" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} className="rounded-full">
+        <Button variant="ghost" size="icon" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} className="rounded-full text-white">
             <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
             <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
             <span className="sr-only">Toggle theme</span>
@@ -192,19 +186,18 @@ function LoginPageContent() {
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
           <div className="flex justify-center items-center gap-3 mb-4">
-            
-            <h1 className="text-3xl font-extrabold text-foreground font-headline tracking-tight">
-              Signature Property CRM
+            <h1 className="text-3xl font-black text-white font-headline tracking-tighter uppercase">
+              Signature CRM
             </h1>
           </div>
-          <p className="text-muted-foreground">
+          <p className="text-blue-100 font-medium">
             Welcome back! Please sign in to continue.
           </p>
         </div>
 
-        <Card className="glass-card shadow-2xl hover:shadow-primary/20">
+        <Card className="glass-card shadow-2xl border-white/20 bg-white/10">
           <CardHeader>
-            <CardTitle>Login</CardTitle>
+            <CardTitle className="text-white">Login</CardTitle>
           </CardHeader>
           <CardContent>
             <Form {...form}>
@@ -212,7 +205,7 @@ function LoginPageContent() {
                 <Button
                   type="button"
                   variant="outline"
-                  className="w-full h-11"
+                  className="w-full h-11 bg-white/5 text-white hover:bg-white/10"
                   onClick={handleGoogleSignIn}
                   disabled={isGoogleLoading || isLoading}
                 >
@@ -240,10 +233,10 @@ function LoginPageContent() {
 
                 <div className="relative my-4">
                     <div className="absolute inset-0 flex items-center">
-                        <span className="w-full border-t" />
+                        <span className="w-full border-t border-white/10" />
                     </div>
                     <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
+                        <span className="bg-transparent px-2 text-blue-200">Or continue with</span>
                     </div>
                 </div>
 
@@ -252,12 +245,12 @@ function LoginPageContent() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <Label>Email</Label>
+                      <Label className="text-blue-100">Email</Label>
                       <FormControl>
                         <Input
                           type="email"
                           placeholder="m@example.com"
-                          className="bg-input/80"
+                          className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
                           {...field}
                         />
                       </FormControl>
@@ -270,12 +263,12 @@ function LoginPageContent() {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <Label>Password</Label>
+                      <Label className="text-blue-100">Password</Label>
                       <div className="relative">
                         <FormControl>
                           <Input
                             type={showPassword ? 'text' : 'password'}
-                            className="bg-input/80 pr-10"
+                            className="bg-white/5 border-white/10 text-white placeholder:text-white/40 pr-10"
                             {...field}
                             placeholder="••••••••"
                           />
@@ -284,7 +277,7 @@ function LoginPageContent() {
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="absolute inset-y-0 right-0 h-full px-3 text-muted-foreground"
+                          className="absolute inset-y-0 right-0 h-full px-3 text-white/60 hover:text-white"
                           onClick={() => setShowPassword(!showPassword)}
                         >
                           {showPassword ? <EyeOff /> : <Eye />}
@@ -294,30 +287,6 @@ function LoginPageContent() {
                     </FormItem>
                   )}
                 />
-
-                <div className="flex items-center justify-between text-sm">
-                  <FormField
-                    control={form.control}
-                    name="remember"
-                    render={({ field }) => (
-                      <FormItem className="flex items-center gap-2 space-y-0">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                        <Label className="font-normal">Remember me</Label>
-                      </FormItem>
-                    )}
-                  />
-                  <Link
-                    href="#"
-                    className="font-medium text-primary hover:text-primary/80 transition-colors"
-                  >
-                    Forgot Password?
-                  </Link>
-                </div>
 
                 <Button
                   type="submit"
@@ -334,7 +303,7 @@ function LoginPageContent() {
                   <Button
                     type="button"
                     variant="outline"
-                    className="w-full h-12 text-base font-bold glowing-btn bg-emerald-500 hover:bg-emerald-600 text-white"
+                    className="w-full h-12 text-base font-bold bg-emerald-500 hover:bg-emerald-600 border-none text-white shadow-xl shadow-emerald-500/20"
                     onClick={handleInstallClick}
                   >
                     <Download className="mr-2 h-4 w-4" />
@@ -343,12 +312,12 @@ function LoginPageContent() {
                 )}
                 
                 <Dialog open={showIosInstall} onOpenChange={setShowIosInstall}>
-                    <DialogContent>
+                    <DialogContent className="glass-modal">
                       <DialogHeader>
-                        <DialogTitle>Install on iPhone/iPad</DialogTitle>
+                        <DialogTitle className="text-foreground">Install on iPhone/iPad</DialogTitle>
                       </DialogHeader>
                       <div className="py-4 text-center space-y-4">
-                        <p>To install the app on your device, tap the 'Share' icon in Safari and then select 'Add to Home Screen'.</p>
+                        <p className="text-sm">To install the app on your device, tap the 'Share' icon in Safari and then select 'Add to Home Screen'.</p>
                         <div className="flex justify-center items-center gap-2">
                             <Share className="h-8 w-8 text-primary" />
                             <span className="mx-2 text-2xl">→</span>
@@ -361,14 +330,11 @@ function LoginPageContent() {
                 </Dialog>
 
 
-                <Separator className="my-4" />
+                <Separator className="my-4 border-white/10" />
                 <div className="space-y-2 text-center">
-                  <p className="text-sm text-muted-foreground">Don't have an account?</p>
-                  <Button variant="outline" className="w-full" asChild>
+                  <p className="text-sm text-blue-200">Don't have an account?</p>
+                  <Button variant="outline" className="w-full bg-transparent border-white/20 text-white hover:bg-white/10" asChild>
                     <Link href="/signup">Create Agency Account</Link>
-                  </Button>
-                  <Button variant="outline" className="w-full" asChild>
-                    <Link href="/agent/signup">Create Agent Account</Link>
                   </Button>
                 </div>
               </form>

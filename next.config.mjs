@@ -1,39 +1,5 @@
-import withPWAInit from 'next-pwa';
 
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'placehold.co',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'picsum.photos',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'firebasestorage.googleapis.com',
-        port: '',
-        pathname: '/**',
-      }
-    ],
-  },
-};
+import withPWAInit from 'next-pwa';
 
 const withPWA = withPWAInit({
   dest: 'public',
@@ -41,5 +7,26 @@ const withPWA = withPWAInit({
   skipWaiting: true,
   disable: process.env.NODE_ENV === 'development',
 });
+
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  reactStrictMode: true,
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'picsum.photos',
+      },
+      {
+        protocol: 'https',
+        hostname: '889826ecda9570b1a561c1722b044e1d.r2.cloudflarestorage.com',
+      }
+    ],
+  },
+};
 
 export default withPWA(nextConfig);

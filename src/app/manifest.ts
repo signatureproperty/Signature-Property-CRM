@@ -1,3 +1,4 @@
+
 import { MetadataRoute } from 'next';
 import { initializeFirebase } from '@/firebase';
 import { doc, getDoc } from 'firebase/firestore';
@@ -29,17 +30,19 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     start_url: '/',
     display: 'standalone',
     background_color: '#ffffff',
-    theme_color: '#3b82f6',
+    theme_color: '#2563eb',
     icons: [
       {
         src: iconUrl,
         sizes: '192x192',
         type: 'image/png',
+        purpose: 'any',
       },
       {
         src: iconUrl,
         sizes: '512x512',
         type: 'image/png',
+        purpose: 'maskable',
       },
     ],
   };
