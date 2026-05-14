@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
@@ -43,6 +42,8 @@ const defaultProfile: ProfileData = {
     agency_id: '',
     planName: 'Basic',
 };
+
+const MASTER_ADMIN_EMAIL = 'usmansagheer444@gmail.com';
 
 export function ProfileProvider({ children }: { children: ReactNode }) {
   const { user, isUserLoading: isAuthLoading } = useUser();
@@ -90,12 +91,13 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         avatar: user.photoURL || prev.avatar,
     }));
 
-    if (!isUserProfileLoading && userProfile) {
-        const role = userProfile.role || 'Agent';
+    if (!isUserProfileLoading) {
+        const isMasterEmail = user.email?.toLowerCase() === MASTER_ADMIN_EMAIL;
+        const role = isMasterEmail ? 'Super Admin' : (userProfile?.role || 'Agent');
         
-        let name = userProfile.name || user.displayName || 'User';
-        let phone = userProfile.phone || '';
-        let avatar = teamMemberProfile?.avatar || agencyProfile?.avatar || userProfile.avatar || user.photoURL || '';
+        let name = userProfile?.name || user.displayName || 'User';
+        let phone = userProfile?.phone || '';
+        let avatar = teamMemberProfile?.avatar || agencyProfile?.avatar || userProfile?.avatar || user.photoURL || '';
         let agencyName = agencyProfile?.agencyName || 'My Agency';
 
         if (role === 'Agent' && agentProfile) {
@@ -109,7 +111,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
              phone = teamMemberProfile.phone || phone;
         } else if (role === 'Super Admin') {
              agencyName = "Platform Master Control";
-             name = userProfile.name || user.displayName || 'System Admin';
+             name = name || 'System Admin';
         }
 
 
@@ -137,7 +139,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
             role: role, 
             avatar: avatar,
             user_id: user.uid,
-            agency_id: userProfile.agency_id || '',
+            agency_id: userProfile?.agency_id || (isMasterEmail ? 'master_control' : ''),
             trialEndDate,
             daysLeftInTrial,
             planName: agencyProfile?.planName || 'Basic',

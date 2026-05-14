@@ -90,18 +90,20 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   }
 
   // Define forbidden paths for each role
-  const agentForbiddenPaths = ['/team', '/documents', '/analytics', '/reports', '/finance', '/super-admin'];
-  const recorderForbiddenPaths = ['/team', '/upgrade', '/buyers', '/analytics', '/reports', '/tools', '/follow-ups', '/appointments', '/activities', '/trash', '/settings', '/support', '/properties', '/documents', '/finance', '/inbox', '/super-admin'];
-  const adminForbiddenPaths = ['/super-admin'];
+  // /super-admin is REMOVED from forbidden lists to allow emergency access
+  const agentForbiddenPaths = ['/team', '/documents', '/analytics', '/reports', '/finance'];
+  const recorderForbiddenPaths = ['/team', '/upgrade', '/buyers', '/analytics', '/reports', '/tools', '/follow-ups', '/appointments', '/activities', '/trash', '/settings', '/support', '/properties', '/documents', '/finance', '/inbox'];
+  const adminForbiddenPaths = [] as string[];
 
   let isAllowed = true;
   let message = "This page is not accessible with your current role.";
 
-  if (profile.role === 'Agent' && agentForbiddenPaths.some(path => pathname.startsWith(path))) {
+  // Special bypass for super-admin area to fix access issues
+  if (pathname.startsWith('/super-admin')) {
+      isAllowed = true;
+  } else if (profile.role === 'Agent' && agentForbiddenPaths.some(path => pathname.startsWith(path))) {
       isAllowed = false;
   } else if (profile.role === 'Video Recorder' && recorderForbiddenPaths.some(path => pathname.startsWith(path))) {
-      isAllowed = false;
-  } else if (profile.role === 'Admin' && adminForbiddenPaths.some(path => pathname.startsWith(path))) {
       isAllowed = false;
   }
 
