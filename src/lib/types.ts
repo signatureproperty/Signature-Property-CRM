@@ -312,7 +312,7 @@ export type UpgradeRequest = {
     reviewerId?: string;
 };
 
-export type InboxMessageType = 'cannot_record' | 'payment_confirmation' | 'direct_message';
+export type InboxMessageType = 'cannot_record' | 'payment_confirmation' | 'lead_update';
 
 export interface InboxMessage {
     id: string;
@@ -320,8 +320,10 @@ export interface InboxMessage {
     fromUserId: string;
     fromUserName: string;
     message: string;
-    propertyId: string;
-    propertySerial: string;
+    propertyId?: string;
+    propertySerial?: string;
+    buyerId?: string;
+    buyerSerial?: string;
     isRead: boolean;
     createdAt: string;
     agency_id: string;

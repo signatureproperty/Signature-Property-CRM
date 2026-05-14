@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -9,17 +8,16 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, orderBy, doc, updateDoc, deleteDoc, arrayUnion } from 'firebase/firestore';
 import { useProfile } from '@/context/profile-context';
 import { useMemoFirebase } from '@/firebase/hooks';
-import type { InboxMessage, Property } from '@/lib/types';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import type { InboxMessage, Property, Buyer } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from '@/components/ui/button';
-import { Mail, AlertTriangle, Banknote, Check, Trash2, RotateCcw, Eye, X } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { Mail, AlertTriangle, Banknote, Check, Trash2, RotateCcw, Eye, X, MessageSquareText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { PropertyDetailsDialog } from '@/components/property-details-dialog';
+import { BuyerDetailsDialog } from '@/components/buyer-details-dialog';
 
 
 const MessageItem = ({ message, onMessageClick, isDemo = false }: { message: InboxMessage, onMessageClick: (message: InboxMessage) => void, isDemo?: boolean }) => {
@@ -30,6 +28,8 @@ const MessageItem = ({ message, onMessageClick, isDemo = false }: { message: Inb
                 return <AlertTriangle className="h-5 w-5 text-red-500" />;
             case 'payment_confirmation':
                 return <Banknote className="h-5 w-5 text-green-500" />;
+            case 'lead_update':
+                return <MessageSquareText className="h-5 w-5 text-primary" />;
             default:
                 return <Mail className="h-5 w-5 text-muted-foreground" />;
         }
@@ -46,8 +46,11 @@ const MessageItem = ({ message, onMessageClick, isDemo = false }: { message: Inb
             <div className="flex-1">
                 <div className="flex justify-between items-start">
                     <div>
-                        <p className="font-semibold">{message.fromUserName}</p>
-                        <p className="text-sm text-muted-foreground">{message.message}</p>
+                        <div className="flex items-center gap-2">
+                             <p className="font-semibold">{message.fromUserName}</p>
+                             {message.buyerSerial && <Badge variant="outline" className="text-[10px]">{message.buyerSerial}</Badge>}
+                        </div>
+                        <p className="text-sm text-muted-foreground line-clamp-2">{message.message}</p>
                     </div>
                      <p className="text-xs text-muted-foreground whitespace-nowrap">{formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}</p>
                 </div>
@@ -60,13 +63,16 @@ const MessageItem = ({ message, onMessageClick, isDemo = false }: { message: Inb
 export default function InboxPage() {
     const { profile } = useProfile();
     const firestore = useFirestore();
-    const router = useRouter();
     const { toast } = useToast();
 
     const [selectedMessage, setSelectedMessage] = useState<InboxMessage | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    
     const [propertyForDetails, setPropertyForDetails] = useState<Property | null>(null);
-    const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+    const [isPropertyDialogOpen, setIsPropertyDialogOpen] = useState(false);
+
+    const [buyerForDetails, setBuyerForDetails] = useState<Buyer | null>(null);
+    const [isBuyerDialogOpen, setIsBuyerDialogOpen] = useState(false);
 
 
     const inboxQuery = useMemoFirebase(
@@ -83,38 +89,20 @@ export default function InboxPage() {
     );
     const { data: properties } = useCollection<Property>(propertiesQuery);
 
+    const buyersQuery = useMemoFirebase(
+        () => profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'buyers') : null,
+        [profile.agency_id, firestore]
+    );
+    const { data: buyers } = useCollection<Buyer>(buyersQuery);
+
     
     const unreadCannotRecord = useMemo(() => messages?.filter(m => m.type === 'cannot_record' && !m.isRead).length || 0, [messages]);
     const unreadPayments = useMemo(() => messages?.filter(m => m.type === 'payment_confirmation' && !m.isRead).length || 0, [messages]);
+    const unreadLeadUpdates = useMemo(() => messages?.filter(m => m.type === 'lead_update' && !m.isRead).length || 0, [messages]);
     
     const cannotRecordMessages = useMemo(() => messages?.filter(m => m.type === 'cannot_record') || [], [messages]);
     const paymentMessages = useMemo(() => messages?.filter(m => m.type === 'payment_confirmation') || [], [messages]);
-
-    const demoCannotRecordMessage: InboxMessage = {
-        id: 'demo-cr-1',
-        type: 'cannot_record',
-        fromUserId: 'demo-user',
-        fromUserName: 'Zeeshan (Demo)',
-        message: 'Owner was not available at the location for video recording.',
-        propertyId: 'demo-prop-1',
-        propertySerial: 'P-123',
-        isRead: true,
-        createdAt: new Date().toISOString(),
-        agency_id: profile.agency_id,
-    };
-
-    const demoPaymentMessage: InboxMessage = {
-        id: 'demo-pm-1',
-        type: 'payment_confirmation',
-        fromUserId: 'demo-user',
-        fromUserName: 'Zeeshan (Demo)',
-        message: 'Cash payment of PKR 500 received for property P-124.',
-        propertyId: 'demo-prop-2',
-        propertySerial: 'P-124',
-        isRead: true,
-        createdAt: new Date().toISOString(),
-        agency_id: profile.agency_id,
-    };
+    const leadUpdateMessages = useMemo(() => messages?.filter(m => m.type === 'lead_update') || [], [messages]);
 
     const handleMessageClick = async (message: InboxMessage) => {
         setSelectedMessage(message);
@@ -130,7 +118,6 @@ export default function InboxPage() {
         
         try {
             const propRef = doc(firestore, 'agencies', profile.agency_id, 'properties', selectedMessage.propertyId);
-            // Properties use arrayUnion now
             await updateDoc(propRef, { assignedTo: arrayUnion(selectedMessage.fromUserId) });
             
             const msgRef = doc(firestore, 'agencies', profile.agency_id, 'inboxMessages', selectedMessage.id);
@@ -155,20 +142,35 @@ export default function InboxPage() {
         }
     };
     
-    const handleViewProperty = () => {
-        if (!selectedMessage?.propertyId || !properties) {
-            toast({ title: "Property not found", variant: "destructive" });
-            return;
-        }
-        const property = properties.find(p => p.id === selectedMessage.propertyId);
-        if (property) {
-            setPropertyForDetails(property);
-            setIsDetailsDialogOpen(true);
-            setIsDialogOpen(false); // Close the message dialog
+    const handleViewDetails = () => {
+        if (selectedMessage?.propertyId) {
+            const property = properties?.find(p => p.id === selectedMessage.propertyId);
+            if (property) {
+                setPropertyForDetails(property);
+                setIsPropertyDialogOpen(true);
+                setIsDialogOpen(false);
+            }
+        } else if (selectedMessage?.buyerId) {
+            const buyer = buyers?.find(b => b.id === selectedMessage.buyerId);
+            if (buyer) {
+                setBuyerForDetails(buyer);
+                setIsBuyerDialogOpen(true);
+                setIsDialogOpen(false);
+            }
         } else {
-            toast({ title: "Property data not available", variant: "destructive" });
+            toast({ title: "Details not available", variant: "destructive" });
         }
     };
+
+    const getDialogTitle = () => {
+        if (!selectedMessage) return "";
+        switch(selectedMessage.type) {
+            case 'cannot_record': return "Cannot Record Report";
+            case 'payment_confirmation': return "Payment Confirmation";
+            case 'lead_update': return `Lead Update: ${selectedMessage.buyerSerial || ''}`;
+            default: return "Notification";
+        }
+    }
 
 
     return (
@@ -188,21 +190,29 @@ export default function InboxPage() {
                         <CardTitle>Team Notifications</CardTitle>
                     </CardHeader>
                     <CardContent className="p-0">
-                        <Tabs defaultValue="cannot_record">
-                            <TabsList className="px-6 border-b w-full justify-start rounded-none">
-                                <TabsTrigger value="cannot_record">Cannot Record ({unreadCannotRecord})</TabsTrigger>
-                                <TabsTrigger value="payments">Payments ({unreadPayments})</TabsTrigger>
+                        <Tabs defaultValue="lead_update">
+                            <TabsList className="px-6 border-b w-full justify-start rounded-none h-12">
+                                <TabsTrigger value="lead_update" className="gap-2">Lead Updates <Badge variant="secondary" className="h-5 px-1.5">{unreadLeadUpdates}</Badge></TabsTrigger>
+                                <TabsTrigger value="cannot_record" className="gap-2">Cannot Record <Badge variant="secondary" className="h-5 px-1.5">{unreadCannotRecord}</Badge></TabsTrigger>
+                                <TabsTrigger value="payments" className="gap-2">Payments <Badge variant="secondary" className="h-5 px-1.5">{unreadPayments}</Badge></TabsTrigger>
                             </TabsList>
                             
+                            <TabsContent value="lead_update">
+                                {isLoading ? <p className="p-6 text-muted-foreground">Loading messages...</p> : 
+                                leadUpdateMessages.length > 0 ? (
+                                    leadUpdateMessages.map(msg => <MessageItem key={msg.id} message={msg} onMessageClick={handleMessageClick} />)
+                                ) : (
+                                    <p className="p-10 text-center text-muted-foreground">No lead updates found.</p>
+                                )
+                                }
+                            </TabsContent>
+
                             <TabsContent value="cannot_record">
                                 {isLoading ? <p className="p-6 text-muted-foreground">Loading messages...</p> : 
                                 cannotRecordMessages.length > 0 ? (
                                     cannotRecordMessages.map(msg => <MessageItem key={msg.id} message={msg} onMessageClick={handleMessageClick} />)
                                 ) : (
-                                    <div>
-                                        <MessageItem message={demoCannotRecordMessage} onMessageClick={() => {}} isDemo={true} />
-                                        <p className="p-10 text-center text-muted-foreground">No "Cannot Record" notifications found.</p>
-                                    </div>
+                                    <p className="p-10 text-center text-muted-foreground">No "Cannot Record" notifications found.</p>
                                 )
                                 }
                             </TabsContent>
@@ -212,10 +222,7 @@ export default function InboxPage() {
                                 paymentMessages.length > 0 ? (
                                     paymentMessages.map(msg => <MessageItem key={msg.id} message={msg} onMessageClick={handleMessageClick}/>)
                                 ) : (
-                                    <div>
-                                        <MessageItem message={demoPaymentMessage} onMessageClick={() => {}} isDemo={true} />
-                                        <p className="p-10 text-center text-muted-foreground">No payment confirmation notifications found.</p>
-                                    </div>
+                                    <p className="p-10 text-center text-muted-foreground">No payment confirmation notifications found.</p>
                                 )
                                 }
                             </TabsContent>
@@ -228,20 +235,20 @@ export default function InboxPage() {
                  <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>{selectedMessage.type === 'cannot_record' ? 'Cannot Record Report' : 'Payment Confirmation'}</DialogTitle>
+                            <DialogTitle>{getDialogTitle()}</DialogTitle>
                             <DialogDescription>
                                 From: {selectedMessage.fromUserName}
                             </DialogDescription>
                         </DialogHeader>
                         <div className="py-4 space-y-4">
-                            <p><span className="font-semibold">Message:</span> {selectedMessage.message}</p>
+                            <p className="text-sm whitespace-pre-wrap"><span className="font-bold block mb-1">Message:</span> {selectedMessage.message}</p>
                             <p className="text-xs text-muted-foreground pt-2 border-t">{formatDistanceToNow(new Date(selectedMessage.createdAt), { addSuffix: true })}</p>
                         </div>
                         <DialogFooter className="flex-col sm:flex-row sm:justify-end gap-2">
                             <div className="flex w-full sm:w-auto justify-end gap-2">
-                                <Button variant="outline" size="sm" onClick={handleViewProperty}>
+                                <Button variant="outline" size="sm" onClick={handleViewDetails}>
                                     <Eye className="h-4 w-4 sm:mr-2" />
-                                    <span className="hidden sm:inline">View Property</span>
+                                    <span>View {selectedMessage.buyerId ? 'Lead' : 'Property'}</span>
                                 </Button>
                                 {selectedMessage.type === 'cannot_record' && (
                                      <Button variant="outline" size="sm" onClick={handleReassign}>
@@ -279,10 +286,30 @@ export default function InboxPage() {
              {propertyForDetails && (
                 <PropertyDetailsDialog
                     property={propertyForDetails}
-                    isOpen={isDetailsDialogOpen}
-                    setIsOpen={setIsDetailsDialogOpen}
+                    isOpen={isPropertyDialogOpen}
+                    setIsOpen={setIsPropertyDialogOpen}
+                />
+            )}
+            {buyerForDetails && (
+                <BuyerDetailsDialog
+                    buyer={buyerForDetails}
+                    isOpen={isBuyerDialogOpen}
+                    setIsOpen={setIsBuyerDialogOpen}
                 />
             )}
         </>
+    );
+}
+
+const Badge = ({ children, variant = "default", className }: { children: React.ReactNode, variant?: "default" | "outline" | "secondary", className?: string }) => {
+    const variants = {
+        default: "bg-primary text-primary-foreground",
+        outline: "border border-border text-muted-foreground",
+        secondary: "bg-muted text-muted-foreground"
+    };
+    return (
+        <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-medium", variants[variant], className)}>
+            {children}
+        </span>
     );
 }

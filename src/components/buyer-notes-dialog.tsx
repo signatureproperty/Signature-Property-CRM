@@ -12,10 +12,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from './ui/textarea';
 import { ScrollArea } from './ui/scroll-area';
-import { Buyer, LeadNote } from '@/lib/types';
+import { Buyer, LeadNote, InboxMessage } from '@/lib/types';
 import { useProfile } from '@/context/profile-context';
 import { useFirestore } from '@/firebase/provider';
-import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion, collection, addDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { MessageSquareText, Send, User, Clock, Calendar } from 'lucide-react';
@@ -58,8 +58,24 @@ export function BuyerNotesDialog({
             timeline_notes: arrayUnion(note)
         });
 
+        // If an Agent adds a note, notify the Admin via Inbox
+        if (profile.role === 'Agent') {
+            const inboxMessage: Omit<InboxMessage, 'id'> = {
+                type: 'lead_update',
+                fromUserId: profile.user_id,
+                fromUserName: profile.name,
+                message: newNote.trim(),
+                buyerId: buyer.id,
+                buyerSerial: buyer.serial_no,
+                isRead: false,
+                createdAt: new Date().toISOString(),
+                agency_id: profile.agency_id,
+            };
+            await addDoc(collection(firestore, 'agencies', profile.agency_id, 'inboxMessages'), inboxMessage);
+        }
+
         setNewNote('');
-        toast({ title: "Note Added Successfully" });
+        toast({ title: "Note Added & Admin Notified" });
     } catch (error) {
         console.error("Error adding note:", error);
         toast({ title: "Failed to add note", variant: "destructive" });
@@ -161,4 +177,3 @@ export function BuyerNotesDialog({
     </Dialog>
   );
 }
-
