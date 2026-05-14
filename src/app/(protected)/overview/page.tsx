@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { 
     Building2, Users, DollarSign, Home, TrendingUp, Star, CalendarDays, 
     CheckCircle, Briefcase, Info, Video, PlayCircle, Gem, ArrowRight, 
-    VideoOff, Circle, Clock, History, FilePlus, UserPlus, Edit, Check, X, ArrowUpRight
+    VideoOff, Circle, Clock, History, FilePlus, UserPlus, Edit, Check, X, ArrowUpRight,
+    Plus
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useProfile } from '@/context/profile-context';
@@ -16,7 +17,7 @@ import { collection, query, where, Timestamp, addDoc, doc, setDoc, deleteDoc, or
 import type { Property, Buyer, Appointment, User, PriceUnit, AppointmentContactType, AppointmentStatus, Activity, ListingType } from '@/lib/types';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { subDays, isWithinInterval, parseISO, format } from 'date-fns';
+import { subDays, isWithinInterval, parseISO, format, addDays } from 'date-fns';
 import { useCurrency } from '@/context/currency-context';
 import { formatCurrency, formatUnit } from '@/lib/formatters';
 import { Button } from '@/components/ui/button';
@@ -115,7 +116,6 @@ export default function OverviewPage() {
     const canFetch = !isProfileLoading && profile.agency_id;
     const now = new Date();
     const last30DaysStart = subDays(now, 30);
-    const isTrialing = !profile.planStartDate && profile.planName === 'Basic' && (profile.daysLeftInTrial !== undefined && profile.daysLeftInTrial > 0);
     const isAgent = profile.role === 'Agent';
 
     // --- Data Fetching ---
@@ -221,19 +221,6 @@ export default function OverviewPage() {
                 </div>
             </div>
 
-            {isTrialing && profile.trialEndDate && (
-                 <Alert className="max-w-4xl bg-primary/5 border-primary/20 rounded-2xl shadow-sm">
-                    <Info className="h-5 w-5 text-primary" />
-                    <AlertTitle className="font-bold text-primary">
-                        {profile.daysLeftInTrial > 1 ? `${profile.daysLeftInTrial} Days Left in Trial` : 'Your trial ends today!'}
-                    </AlertTitle>
-                    <AlertDescription className="text-sm font-medium">
-                        Enjoy all premium features of the Standard plan for free until {format(new Date(profile.trialEndDate), 'PPP')}.
-                        <Link href="/upgrade" className="text-primary underline ml-2 font-bold">Upgrade Now</Link>
-                    </AlertDescription>
-                </Alert>
-            )}
-
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                 {statCards.map(card => <StatCard key={card.title} {...card} />)}
             </div>
@@ -261,7 +248,7 @@ export default function OverviewPage() {
                         }}
                         onAddToCalendar={(e, a) => {
                             const start = format(new Date(`${a.date}T${a.time}`), "yyyyMMdd'T'HHmmss");
-                            const end = format(addDays(new Date(`${a.date}T${a.time}`), 0.04), "yyyyMMdd'T'HHmmss");
+                            const end = format(addDays(new Date(`${a.date}T${a.time}`), 0), "yyyyMMdd'T'HHmmss"); // Set specific duration if needed
                             window.open(`https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(a.contactName)}&dates=${start}/${end}&details=${encodeURIComponent(a.message)}`, '_blank');
                         }}
                         onAllEventsClick={() => setIsAllEventsOpen(true)}
