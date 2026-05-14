@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -64,38 +63,39 @@ function SuperLoginPageContent() {
       const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
 
-      // Force-check or Set Super Admin role for this specific login attempt
-      // In a production app, you'd check a whitelist or a custom claim.
-      // For this prototype, we'll check the users collection.
+      // Special Check for the specific Super Admin email requested by the user
+      const SUPER_ADMIN_EMAIL = 'usmansagheer444@gmail.com';
+      
       const userDocRef = doc(firestore, 'users', user.uid);
       const userDocSnap = await getDoc(userDocRef);
 
-      if (userDocSnap.exists()) {
-          const userData = userDocSnap.data();
-          if (userData.role !== 'Super Admin') {
-              // If it's a regular user trying to use the back-door, we could either block or elevate
-              // For the prototype, if they know the super-login, we'll allow elevation or check a specific email.
-              // Let's assume only a specific email can be Super Admin.
-              const SUPER_ADMIN_EMAILS = [values.email]; // For now, the one who logs in here
-              
-              await updateDoc(userDocRef, { role: 'Super Admin' });
-          }
-      } else {
-          // Create the user if missing
+      if (values.email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase()) {
+          // Force elevate this specific user to Super Admin in Firestore
           await setDoc(userDocRef, {
               id: user.uid,
               email: user.email,
-              name: user.displayName || 'System Admin',
+              name: user.displayName || 'Usman Sagheer',
               role: 'Super Admin',
-              createdAt: new Date().toISOString()
+              updatedAt: new Date().toISOString()
+          }, { merge: true });
+
+          toast({
+            title: 'Super Admin Access Granted',
+            description: 'Welcome back, Usman. Master Control Panel is now unlocked.',
           });
+      } else {
+          // If a non-authorized email tries to use the super-login, we sign them out
+          if (!userDocSnap.exists() || userDocSnap.data().role !== 'Super Admin') {
+             await auth.signOut();
+             toast({
+                variant: 'destructive',
+                title: 'Unauthorized',
+                description: 'You do not have master control privileges.',
+             });
+             return;
+          }
       }
 
-      toast({
-        title: 'Super Admin Access Granted',
-        description: 'Welcome to the Master Control Panel.',
-      });
-      
       router.push('/super-admin');
     } catch (error: any) {
       console.error('Super Login Error:', error);
@@ -121,15 +121,15 @@ function SuperLoginPageContent() {
           <h1 className="text-3xl font-black text-white font-headline tracking-tighter">
             Master Control
           </h1>
-          <p className="text-slate-400 text-sm font-medium">
-            Authorized Personnel Only
+          <p className="text-slate-400 text-sm font-medium uppercase tracking-[0.15em]">
+            Signature CRM System
           </p>
         </div>
 
         <Card className="border-slate-800 bg-slate-900/50 backdrop-blur-xl shadow-2xl">
           <CardHeader>
-            <CardTitle className="text-white">Secure Login</CardTitle>
-            <CardDescription className="text-slate-400">Enter your master credentials.</CardDescription>
+            <CardTitle className="text-white">Authorized Login</CardTitle>
+            <CardDescription className="text-slate-400">Login to manage the entire platform.</CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>
@@ -139,12 +139,12 @@ function SuperLoginPageContent() {
                   name="email"
                   render={({ field }) => (
                     <FormItem className="space-y-1">
-                      <Label className="text-slate-300 text-xs font-bold uppercase tracking-widest">Admin Email</Label>
+                      <Label className="text-slate-300 text-xs font-bold uppercase tracking-widest">Master Email</Label>
                       <FormControl>
                         <Input
                           type="email"
                           placeholder="admin@platform.com"
-                          className="bg-slate-800/50 border-slate-700 text-white focus:ring-primary/40"
+                          className="bg-slate-800/50 border-slate-700 text-white focus:ring-primary/40 h-12"
                           {...field}
                         />
                       </FormControl>
@@ -157,12 +157,12 @@ function SuperLoginPageContent() {
                   name="password"
                   render={({ field }) => (
                     <FormItem className="space-y-1">
-                      <Label className="text-slate-300 text-xs font-bold uppercase tracking-widest">Access Key</Label>
+                      <Label className="text-slate-300 text-xs font-bold uppercase tracking-widest">Master Key</Label>
                       <div className="relative">
                         <FormControl>
                           <Input
                             type={showPassword ? 'text' : 'password'}
-                            className="bg-slate-800/50 border-slate-700 text-white focus:ring-primary/40 pr-10"
+                            className="bg-slate-800/50 border-slate-700 text-white focus:ring-primary/40 pr-10 h-12"
                             {...field}
                             placeholder="••••••••"
                           />
@@ -200,7 +200,7 @@ function SuperLoginPageContent() {
         </Card>
         
         <p className="text-center text-[10px] text-slate-600 uppercase font-bold tracking-[0.2em]">
-            Signature CRM Platform Infrastructure
+            Authorized Personnel Only
         </p>
       </div>
     </div>
