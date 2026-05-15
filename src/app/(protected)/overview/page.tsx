@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -5,7 +6,7 @@ import {
     Building2, Users, DollarSign, Home, TrendingUp, Star, CalendarDays, 
     CheckCircle, Briefcase, Video, PlayCircle, Gem, ArrowRight, 
     VideoOff, Circle, Clock, History, FilePlus, UserPlus, Edit, ArrowUpRight,
-    Plus, MessageSquareText, Calendar, MapPin, User, MessageSquare
+    Plus, MessageSquareText, Calendar, MapPin, User, MessageSquare, Eye
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useProfile } from '@/context/profile-context';
