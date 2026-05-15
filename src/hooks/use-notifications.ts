@@ -1,8 +1,9 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import { useFirestore } from '@/firebase/provider';
-import { collection, query, where, doc, writeBatch, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, writeBatch, orderBy, limit } from 'firebase/firestore';
 import { useUser } from '@/firebase/auth/use-user';
 import { useProfile } from '@/context/profile-context';
 import { useMemoFirebase } from '@/firebase/hooks';
@@ -134,17 +135,19 @@ export const useNotifications = () => {
         const unreadProps = propertiesData?.filter(p => p.timeline_notes?.some(n => !n.readBy?.includes(profile.user_id))) || [];
 
         const messageNotifications: MessageNotification[] = [...unreadBuyers, ...unreadProps].map(lead => {
+            const isBuyer = lead.serial_no.startsWith('B') || lead.serial_no.startsWith('RB');
             const lastMsg = lead.timeline_notes![lead.timeline_notes!.length - 1];
             return {
                 id: `msg_${lead.id}`,
                 type: 'message',
-                title: 'New Message',
+                title: `New Remark: ${lead.serial_no}`,
                 description: `${lastMsg.authorName}: ${lastMsg.text.substring(0, 30)}${lastMsg.text.length > 30 ? '...' : ''}`,
                 timestamp: new Date(lastMsg.timestamp),
                 isRead: false,
                 leadId: lead.id,
                 leadSerial: lead.serial_no,
-                authorName: lastMsg.authorName
+                authorName: lastMsg.authorName,
+                leadType: isBuyer ? 'Buyer' : 'Property'
             };
         });
         allNotifications.push(...messageNotifications);
@@ -158,7 +161,24 @@ export const useNotifications = () => {
 
     }, [invitationsData, appointmentsData, activitiesData, buyersData, propertiesData, isInvitesLoading, isAppointmentsLoading, isActivitiesLoading, profile.name, profile.role, user?.uid, profile.user_id, refreshKey]);
 
-    const markAsRead = (id: string) => {
+    const markAsRead = async (id: string) => {
+        if (id.startsWith('msg_')) {
+            const leadId = id.replace('msg_', '');
+            const buyer = buyersData?.find(b => b.id === leadId);
+            const prop = propertiesData?.find(p => p.id === leadId);
+            const lead = buyer || prop;
+            const collectionName = buyer ? 'buyers' : 'properties';
+
+            if (lead && lead.timeline_notes && profile.agency_id) {
+                const updatedNotes = lead.timeline_notes.map(n => ({
+                    ...n,
+                    readBy: Array.from(new Set([...(n.readBy || []), profile.user_id]))
+                }));
+                const leadRef = doc(firestore, 'agencies', profile.agency_id, collectionName, lead.id);
+                await updateDoc(leadRef, { timeline_notes: updatedNotes });
+            }
+        }
+        
         const readIds = getStoredIds(NOTIFICATION_READ_STATUS_KEY);
         if (!readIds.includes(id)) {
             const newReadIds = [...readIds, id];
@@ -167,7 +187,25 @@ export const useNotifications = () => {
         }
     };
     
-    const markAllAsRead = () => {
+    const markAllAsRead = async () => {
+        // Mark messages in Firestore
+        if (profile.agency_id) {
+            const unreadLeads = [
+                ...(buyersData?.filter(b => b.timeline_notes?.some(n => !n.readBy?.includes(profile.user_id))) || []),
+                ...(propertiesData?.filter(p => p.timeline_notes?.some(n => !n.readBy?.includes(profile.user_id))) || [])
+            ];
+            
+            for (const lead of unreadLeads) {
+                const isBuyer = lead.serial_no.startsWith('B') || lead.serial_no.startsWith('RB');
+                const updatedNotes = lead.timeline_notes!.map(n => ({
+                    ...n,
+                    readBy: Array.from(new Set([...(n.readBy || []), profile.user_id]))
+                }));
+                const leadRef = doc(firestore, 'agencies', profile.agency_id, isBuyer ? 'buyers' : 'properties', lead.id);
+                await updateDoc(leadRef, { timeline_notes: updatedNotes });
+            }
+        }
+
         const currentIds = notifications.map(n => n.id);
         setStoredIds(NOTIFICATION_READ_STATUS_KEY, currentIds);
         setNotifications(prev => prev.map(n => ({...n, isRead: true})));

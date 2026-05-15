@@ -312,6 +312,7 @@ export interface MessageNotification extends BaseNotification {
     leadId: string;
     leadSerial: string;
     authorName: string;
+    leadType: 'Buyer' | 'Property';
 }
 
 export type Notification = InvitationNotification | AppointmentNotification | FollowUpNotification | ActivityNotification | MessageNotification;

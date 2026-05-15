@@ -1,7 +1,6 @@
 
 'use client';
 import React, { useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
 import {
@@ -22,14 +21,11 @@ import { useAuth, useFirestore } from '@/firebase/provider';
 import { useUser } from '@/firebase/auth/use-user';
 import { signOut } from 'firebase/auth';
 import { useNotifications } from '@/hooks/use-notifications';
-import { doc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-is-mobile';
 import { formatDistanceToNow } from 'date-fns';
-import { AppointmentNotification, FollowUpNotification, Notification, ActivityNotification, InvitationNotification } from '@/lib/types';
+import { AppointmentNotification, FollowUpNotification, Notification, ActivityNotification, InvitationNotification, MessageNotification } from '@/lib/types';
 import { NotificationAppointmentDialog } from '../notification-appointment-dialog';
 import { NotificationFollowupDialog } from '../notification-followup-dialog';
 import { NotificationActivityDialog } from '../notification-activity-dialog';
@@ -45,6 +41,8 @@ const getNotificationIcon = (type: string) => {
             return <Phone className="h-4 w-4 text-purple-500" />;
         case 'activity':
             return <Edit className="h-4 w-4 text-orange-500" />;
+        case 'message':
+            return <MessageSquare className="h-4 w-4 text-primary" />;
         default:
             return <Bell className="h-4 w-4" />;
     }
@@ -61,13 +59,11 @@ export function AppHeader({
 }) {
   const router = useRouter();
   const isMobile = useIsMobile();
-  const firestore = useFirestore();
   const { toast } = useToast();
   const { setTheme, theme } = useTheme();
   const { profile } = useProfile();
   const auth = useAuth();
   const { user } = useUser();
-  const { toggleSidebar } = useSidebar();
   const { notifications, isLoading: areNotificationsLoading, acceptInvitation, rejectInvitation, markAsRead, markAllAsRead, deleteNotification, forceRefresh } = useNotifications();
   const [updatingInvite, setUpdatingInvite] = useState<string | null>(null);
 
@@ -117,7 +113,10 @@ export function AppHeader({
   };
 
   const handleNotificationClick = (notification: Notification) => {
-    if (notification.type !== 'invitation') {
+    if (notification.type === 'message') {
+        const msg = notification as MessageNotification;
+        router.push(msg.leadType === 'Buyer' ? '/buyers' : '/properties');
+    } else if (notification.type !== 'invitation') {
         setSelectedNotification(notification);
         if (notification.type === 'appointment') {
             setIsAppointmentDialogOpen(true);
