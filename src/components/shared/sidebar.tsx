@@ -87,10 +87,10 @@ export function AppSidebar() {
             <Link href={item.href} onClick={() => setOpenMobile(false)}>
               <SidebarMenuButton
                 isActive={isActive}
-                className={cn("transition-all duration-150 py-6 md:py-2")}
+                className={cn("transition-all duration-150 py-2 md:py-2")}
               >
                 {React.cloneElement(item.icon, { className: "h-5 w-5" })}
-                <span className="flex-1 truncate font-medium text-base md:text-sm">{item.label}</span>
+                <span className="flex-1 truncate font-medium text-sm">{item.label}</span>
               </SidebarMenuButton>
             </Link>
           </TooltipTrigger>
@@ -106,35 +106,35 @@ export function AppSidebar() {
         collapsible="icon"
         className="flex flex-col bg-card/60 dark:bg-transparent border-r dark:border-white/10 backdrop-blur-xl"
       >
-        <SidebarHeader className="p-6">
+        <SidebarHeader className="p-4">
             <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center text-white shadow-lg">
+                <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center text-white shadow-lg shrink-0">
                     <Building2 className="h-5 w-5" />
                 </div>
-                <span className="font-bold text-xl font-headline text-foreground tracking-tight group-data-[collapsible=icon]:hidden">
+                <span className="font-bold text-lg font-headline text-foreground tracking-tight group-data-[collapsible=icon]:hidden">
                     Signature CRM
                 </span>
             </div>
         </SidebarHeader>
 
-        <SidebarContent className="flex-1 p-3">
-          <SidebarMenu>
+        <SidebarContent className="flex-1 p-2">
+          <SidebarMenu className="gap-0.5">
             {allMenuItems.map(renderMenuItem)}
             {profile.role === 'Video Recorder' && videoMenuItems.map(renderMenuItem)}
           </SidebarMenu>
         </SidebarContent>
 
-        <SidebarFooter className="p-3 border-t border-border/30">
-           <SidebarMenu>
+        <SidebarFooter className="p-2 border-t border-border/30">
+           <SidebarMenu className="gap-0.5">
             {bottomMenuItems.map(renderMenuItem)}
              {profile.role === 'Admin' && (
                 <SidebarMenuItem>
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <Link href="/upgrade" onClick={() => setOpenMobile(false)}>
-                                <SidebarMenuButton className="bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary justify-center transition-all duration-150 py-6 md:py-2">
+                                <SidebarMenuButton className="bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary justify-center transition-all duration-150 py-2">
                                     <Gem className="h-5 w-5" />
-                                    <span className="flex-1 truncate font-bold group-data-[collapsible=icon]:hidden">Upgrade Plan</span>
+                                    <span className="flex-1 truncate font-bold text-sm group-data-[collapsible=icon]:hidden">Upgrade Plan</span>
                                 </SidebarMenuButton>
                             </Link>
                         </TooltipTrigger>
