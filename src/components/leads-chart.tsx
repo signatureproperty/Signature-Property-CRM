@@ -114,7 +114,7 @@ export const LeadsChart = ({ properties, buyers }: { properties: Property[], buy
             <div>
               <CardTitle className="font-headline text-2xl font-bold flex items-center gap-2">
                 <Users />
-                Monthly Leads Growth
+                Leads Growth
               </CardTitle>
               <CardDescription>New properties and buyers added.</CardDescription>
             </div>
@@ -156,8 +156,20 @@ export const LeadsChart = ({ properties, buyers }: { properties: Property[], buy
             >
                 <defs>
                     <linearGradient id="colorSaleProps" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={theme === 'dark' ? '#3b82f6' : '#60a5fa'} stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor={theme === 'dark' ? '#3b82f6' : '#60a5fa'} stopOpacity={0}/>
+                        <stop offset="5%" stopColor="#60a5fa" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#60a5fa" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="colorRentProps" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#fb923c" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#fb923c" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="colorSaleBuyers" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#a78bfa" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#a78bfa" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="colorRentBuyers" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#2dd4bf" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#2dd4bf" stopOpacity={0}/>
                     </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />

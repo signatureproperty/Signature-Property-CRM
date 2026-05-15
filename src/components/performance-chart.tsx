@@ -164,12 +164,12 @@ export const PerformanceChart = ({ properties }: { properties: Property[] }) => 
             >
               <defs>
                   <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={theme === 'dark' ? '#2563eb' : 'hsl(var(--primary))'} stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor={theme === 'dark' ? '#2563eb' : 'hsl(var(--primary))'} stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#2563eb" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
                   </linearGradient>
                   <linearGradient id="colorRent" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={theme === 'dark' ? '#16a34a' : '#22c55e'} stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor={theme === 'dark' ? '#16a34a' : '#22c55e'} stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#16a34a" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#16a34a" stopOpacity={0}/>
                   </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -183,8 +183,8 @@ export const PerformanceChart = ({ properties }: { properties: Property[] }) => 
               />
               <Tooltip />
               <Legend verticalAlign="bottom" wrapperStyle={{paddingTop: 20}} />
-              <Area type="monotone" dataKey="salesRevenue" name="Sales Revenue" stroke="hsl(var(--primary))" fill="url(#colorSales)" strokeWidth={2} />
-              <Area type="monotone" dataKey="rentRevenue" name="Rent Revenue" stroke="#22c55e" fill="url(#colorRent)" strokeWidth={2} />
+              <Area type="monotone" dataKey="salesRevenue" name="Sales Revenue" stroke="#2563eb" fill="url(#colorSales)" strokeWidth={2} />
+              <Area type="monotone" dataKey="rentRevenue" name="Rent Revenue" stroke="#16a34a" fill="url(#colorRent)" strokeWidth={2} />
             </AreaChart>
           )}
         </ResponsiveContainer>

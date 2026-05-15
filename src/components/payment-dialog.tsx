@@ -55,7 +55,7 @@ export function PaymentDialog({ isOpen, setIsOpen, plan, billingCycle }: Payment
       return null;
   }
   
-  const price = billingCycle === 'yearly' ? priceData.yearly : priceData.monthly;
+  const price = billingCycle === 'yearly' ? (priceData.yearly || 0) : (priceData.monthly || 0);
 
   const handleCopy = (textToCopy: string) => {
     navigator.clipboard.writeText(textToCopy);
@@ -89,7 +89,7 @@ export function PaymentDialog({ isOpen, setIsOpen, plan, billingCycle }: Payment
     
     try {
         const storage = getStorage();
-        const filePath = `upgrade_receipts/${profile.agency_id}/${new Date().toISOString()}_${receiptFile.name}`;
+        const filePath = `upgrade_receipts/${profile.agency_id}/${new Date().getTime()}_${receiptFile.name}`;
         const receiptStorageRef = storageRef(storage, filePath);
         const uploadResult = await uploadBytes(receiptStorageRef, receiptFile);
         const receiptUrl = await getDownloadURL(uploadResult.ref);

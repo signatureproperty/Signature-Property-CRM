@@ -65,7 +65,7 @@ export default function AgentUpgradePage() {
         setIsPaymentDialogOpen(true);
     }
     
-    const currentPlanName = 'Free'; 
+    const currentPlanName = profile.planName || 'Free'; 
 
   return (
     <>
