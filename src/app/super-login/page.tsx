@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -28,7 +27,6 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfi
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { ProfileProvider, useProfile } from '@/context/profile-context';
 
 const formSchema = z.object({
@@ -246,10 +244,8 @@ function SuperLoginPageContent() {
 
 export default function SuperLoginPage() {
   return (
-    <FirebaseClientProvider>
-      <ProfileProvider>
-        <SuperLoginPageContent />
-      </ProfileProvider>
-    </FirebaseClientProvider>
+    <ProfileProvider>
+      <SuperLoginPageContent />
+    </ProfileProvider>
   );
 }

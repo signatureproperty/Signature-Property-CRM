@@ -21,10 +21,10 @@ import {
   FormControl,
   FormField,
   FormItem,
+  FormLabel,
   FormMessage,
 } from '@/components/ui/form';
 import { useAuth, useFirestore } from '@/firebase/provider';
-import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification, GoogleAuthProvider, signInWithPopup, getAdditionalUserInfo } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { useState } from 'react';
@@ -272,10 +272,8 @@ function SignupPageContent() {
 
 export default function SignupPage() {
     return (
-        <FirebaseClientProvider>
-          <ProfileProvider>
-            <SignupPageContent />
-          </ProfileProvider>
-        </FirebaseClientProvider>
+        <ProfileProvider>
+          <SignupPageContent />
+        </ProfileProvider>
     );
 }

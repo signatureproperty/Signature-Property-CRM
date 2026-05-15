@@ -4,7 +4,7 @@ import { useState, useMemo, Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MoreVertical, PlusCircle, Trash2, Edit, User, Shield, Camera, MoreHorizontal, UserCog, Mail, Phone, CalendarDays } from 'lucide-react';
+import { MoreVertical, PlusCircle, Trash2, Edit, User, Shield, Camera, MoreHorizontal, UserCog, Mail, Phone, CalendarDays, ShieldAlert } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AddTeamMemberDialog } from '@/components/add-team-member-dialog';
 import type { User as TeamMember, UserRole, Property, Buyer, PlanName } from '@/lib/types';
@@ -26,6 +26,7 @@ const roleConfig: Record<UserRole, { icon: React.ReactNode, color: string }> = {
     Admin: { icon: <Shield className="h-4 w-4" />, color: 'bg-red-500/10 text-red-500' },
     Agent: { icon: <User className="h-4 w-4" />, color: 'bg-green-500/10 text-green-500' },
     'Video Recorder': { icon: <Camera className="h-4 w-4" />, color: 'bg-orange-500/10 text-orange-500' },
+    'Super Admin': { icon: <ShieldAlert className="h-4 w-4" />, color: 'bg-purple-500/10 text-purple-500' },
 };
 
 const planLimits = {
@@ -83,7 +84,7 @@ function TeamPageContent() {
 
     const sortedTeamMembers = useMemo(() => {
         if (!teamMembers) return [];
-        const roleOrder: Record<string, number> = { Admin: 1, Agent: 2, 'Video Recorder': 3 };
+        const roleOrder: Record<string, number> = { 'Super Admin': 0, Admin: 1, Agent: 2, 'Video Recorder': 3 };
         return [...teamMembers].sort((a, b) => {
             return (roleOrder[a.role] || 4) - (roleOrder[b.role] || 4);
         });
@@ -107,7 +108,7 @@ function TeamPageContent() {
                 {sortedTeamMembers.map(member => {
                     const config = roleConfig[member.role] || roleConfig.Agent;
                     const isOwner = member.id === profile.user_id;
-                    const status = (member.role === 'Admin' || member.status === 'Active') ? 'Active' : 'Pending';
+                    const status = (member.role === 'Admin' || member.role === 'Super Admin' || member.status === 'Active') ? 'Active' : 'Pending';
                     const joinedDate = member.joinedAt?.toDate ? format(member.joinedAt.toDate(), 'PP') : (member.joinedAt ? format(new Date(member.joinedAt), 'PP') : 'N/A');
                     
                     return (
@@ -139,15 +140,15 @@ function TeamPageContent() {
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end" className="glass-card">
-                                        <DropdownMenuItem onSelect={() => handleCardClick(member)}>
+                                        <DropdownMenuItem onSelect={() => handleCardClick(member) as any}>
                                             <MoreHorizontal className="mr-2 h-4 w-4" /> View Stats
                                         </DropdownMenuItem>
                                         {!isOwner && (
                                             <>
-                                                <DropdownMenuItem onSelect={() => handleEdit(member)}>
+                                                <DropdownMenuItem onSelect={() => handleEdit(member) as any}>
                                                     <Edit className="mr-2 h-4 w-4" /> Edit Role
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem onSelect={() => handleDelete(member)} className="text-destructive focus:bg-destructive focus:text-white">
+                                                <DropdownMenuItem onSelect={() => handleDelete(member) as any} className="text-destructive focus:bg-destructive focus:text-white">
                                                     <Trash2 className="mr-2 h-4 w-4" /> Remove Member
                                                 </DropdownMenuItem>
                                             </>
@@ -168,7 +169,7 @@ function TeamPageContent() {
         {sortedTeamMembers.map(member => {
             const config = roleConfig[member.role] || roleConfig.Agent;
             const isOwner = member.id === profile.user_id;
-            const status = (member.role === 'Admin' || member.status === 'Active') ? 'Active' : 'Pending';
+            const status = (member.role === 'Admin' || member.role === 'Super Admin' || member.status === 'Active') ? 'Active' : 'Pending';
 
             return (
                 <Card 
@@ -187,13 +188,13 @@ function TeamPageContent() {
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="glass-card">
-                                 <DropdownMenuItem onSelect={() => handleCardClick(member)}>View Stats</DropdownMenuItem>
+                                 <DropdownMenuItem onSelect={() => handleCardClick(member) as any}>View Stats</DropdownMenuItem>
                                  {!isOwner && (
                                     <>
-                                        <DropdownMenuItem onSelect={() => handleEdit(member)}>
+                                        <DropdownMenuItem onSelect={() => handleEdit(member) as any}>
                                             <Edit className="mr-2 h-4 w-4" /> Edit Role
                                         </DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={() => handleDelete(member)} className="text-destructive">
+                                        <DropdownMenuItem onSelect={() => handleDelete(member) as any} className="text-destructive">
                                             <Trash2 className="mr-2 h-4 w-4" /> Remove Member
                                         </DropdownMenuItem>
                                     </>

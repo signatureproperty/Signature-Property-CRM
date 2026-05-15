@@ -24,7 +24,6 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { useAuth, useFirestore } from '@/firebase/provider';
-import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { useState } from 'react';
@@ -172,10 +171,8 @@ function AgentSignupPageContent() {
 
 export default function AgentSignupPage() {
     return (
-        <FirebaseClientProvider>
-          <ProfileProvider>
-            <AgentSignupPageContent />
-          </ProfileProvider>
-        </FirebaseClientProvider>
+        <ProfileProvider>
+          <AgentSignupPageContent />
+        </ProfileProvider>
     );
 }

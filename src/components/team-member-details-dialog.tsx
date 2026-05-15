@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import type { User, Property, Buyer } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Badge } from './ui/badge';
-import { Shield, User as UserIcon, Camera, PlayCircle, CheckCheck, VideoOff, Sigma, Building2, Users, Wallet, Key, Landmark } from 'lucide-react';
+import { Shield, User as UserIcon, Camera, PlayCircle, CheckCheck, VideoOff, Sigma, Building2, Users, Wallet, Key, Landmark, ShieldAlert } from 'lucide-react';
 import { useMemo } from 'react';
 import { Card, CardContent } from './ui/card';
 import { Separator } from './ui/separator';
@@ -31,6 +31,7 @@ const roleConfig: Record<string, { icon: React.ReactNode, color: string }> = {
     Admin: { icon: <Shield className="h-4 w-4" />, color: 'bg-red-500/10 text-red-500' },
     Agent: { icon: <UserIcon className="h-4 w-4" />, color: 'bg-green-500/10 text-green-500' },
     'Video Recorder': { icon: <Camera className="h-4 w-4" />, color: 'bg-orange-500/10 text-orange-500' },
+    'Super Admin': { icon: <ShieldAlert className="h-4 w-4" />, color: 'bg-purple-500/10 text-purple-500' },
 };
 
 const StatCard = ({ icon, label, value, subLabel, colorClass }: { icon: React.ReactNode, label: string, value: number, subLabel?: string, colorClass?: string }) => (
@@ -91,7 +92,7 @@ export function TeamMemberDetailsDialog({
   if (!member) return null;
 
   const isRecorder = member.role === 'Video Recorder';
-  const isAgentOrAdmin = member.role === 'Agent' || member.role === 'Admin';
+  const isAgentOrAdmin = member.role === 'Agent' || member.role === 'Admin' || member.role === 'Super Admin';
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
