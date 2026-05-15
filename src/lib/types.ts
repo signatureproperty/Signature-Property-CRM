@@ -11,6 +11,7 @@ export type User = {
   role: UserRole;
   avatar?: string;
   agency_id: string; // The ID of the agency admin user
+  agency_name?: string;
   permissions?: Record<string, boolean>;
   stats?: {
       propertiesSold: number;
@@ -19,6 +20,8 @@ export type User = {
   },
   status?: 'Pending' | 'Active'; // New status for invitations
   invitedAt?: any; // Timestamp for pending invites
+  joinedAt?: any; // Timestamp or ISO string for active members
+  updatedAt?: any;
   planName?: PlanName;
   planStartDate?: string;
   user_id?: string; // Actual Auth UID

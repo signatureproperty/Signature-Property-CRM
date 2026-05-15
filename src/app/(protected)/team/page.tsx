@@ -109,7 +109,17 @@ function TeamPageContent() {
                     const config = roleConfig[member.role] || roleConfig.Agent;
                     const isOwner = member.id === profile.user_id;
                     const status = (member.role === 'Admin' || member.role === 'Super Admin' || member.status === 'Active') ? 'Active' : 'Pending';
-                    const joinedDate = member.joinedAt?.toDate ? format(member.joinedAt.toDate(), 'PP') : (member.joinedAt ? format(new Date(member.joinedAt), 'PP') : 'N/A');
+                    
+                    const joinedSource = member.joinedAt || member.invitedAt;
+                    let joinedDateStr = 'N/A';
+                    if (joinedSource) {
+                        try {
+                            const date = joinedSource?.toDate ? joinedSource.toDate() : new Date(joinedSource);
+                            joinedDateStr = format(date, 'PP');
+                        } catch (e) {
+                            joinedDateStr = 'N/A';
+                        }
+                    }
                     
                     return (
                         <TableRow key={member.id || member.email} onClick={() => handleCardClick(member)} className='cursor-pointer hover:bg-accent/50 transition-colors group'>
@@ -131,7 +141,7 @@ function TeamPageContent() {
                             <TableCell>
                                 <Badge variant={status === 'Active' ? 'success' : 'secondary'} className="capitalize">{status}</Badge>
                             </TableCell>
-                            <TableCell className="text-muted-foreground text-sm flex items-center gap-2 py-8"><CalendarDays className="h-4 w-4" /> {joinedDate}</TableCell>
+                            <TableCell className="text-muted-foreground text-sm flex items-center gap-2 py-8"><CalendarDays className="h-4 w-4" /> {joinedDateStr}</TableCell>
                             <TableCell className="text-right py-4 pr-6" onClick={(e) => e.stopPropagation()}>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
@@ -170,6 +180,17 @@ function TeamPageContent() {
             const config = roleConfig[member.role] || roleConfig.Agent;
             const isOwner = member.id === profile.user_id;
             const status = (member.role === 'Admin' || member.role === 'Super Admin' || member.status === 'Active') ? 'Active' : 'Pending';
+
+            const joinedSource = member.joinedAt || member.invitedAt;
+            let joinedDateStr = 'N/A';
+            if (joinedSource) {
+                try {
+                    const date = joinedSource?.toDate ? joinedSource.toDate() : new Date(joinedSource);
+                    joinedDateStr = format(date, 'PP');
+                } catch (e) {
+                    joinedDateStr = 'N/A';
+                }
+            }
 
             return (
                 <Card 
@@ -218,7 +239,7 @@ function TeamPageContent() {
                         <div className="mt-4 flex items-center justify-between">
                            <Badge variant={status === 'Active' ? 'success' : 'secondary'} className="text-[9px] uppercase font-black tracking-widest">{status}</Badge>
                            <div className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
-                               <CalendarDays className="h-3 w-3" /> Joined: {member.joinedAt?.toDate ? format(member.joinedAt.toDate(), 'PP') : (member.joinedAt ? format(new Date(member.joinedAt), 'PP') : 'N/A')}
+                               <CalendarDays className="h-3 w-3" /> Joined: {joinedDateStr}
                            </div>
                         </div>
                     </CardContent>
