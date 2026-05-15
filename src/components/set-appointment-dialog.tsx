@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import {
@@ -32,6 +31,7 @@ import { useFirestore } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/hooks';
+import { cn } from '@/lib/utils';
 
 interface SetAppointmentDialogProps {
   isOpen: boolean;
@@ -98,7 +98,7 @@ export function SetAppointmentDialog({
 
     const serial = watchedSerialNo.toUpperCase();
     
-    if (serial.startsWith('B-')) {
+    if (serial.startsWith('B-') || serial.startsWith('RB-')) {
         const buyer = buyers?.find(b => b.serial_no === serial);
         if (buyer) {
             setValue('contactType', 'Buyer');
@@ -121,7 +121,7 @@ export function SetAppointmentDialog({
             id: appointmentToEdit.id,
             contactType: appointmentToEdit.contactType,
             contactName: appointmentToEdit.contactName,
-            contactSerialNo: appointmentToEdit.contactSerialNo || '',
+            contactSerialNo: appointmentToEdit.contactSerialNo || 'B-',
             message: appointmentToEdit.message,
             agentName: appointmentToEdit.agentName,
             date: appointmentToEdit.date,
@@ -131,7 +131,7 @@ export function SetAppointmentDialog({
         reset({
             contactType: appointmentDetails?.contactType || 'Buyer',
             contactName: appointmentDetails?.contactName || '',
-            contactSerialNo: appointmentDetails?.contactSerialNo || '',
+            contactSerialNo: appointmentDetails?.contactSerialNo || 'B-',
             message: appointmentDetails?.message || '',
             agentName: '',
             date: '',
@@ -144,9 +144,16 @@ export function SetAppointmentDialog({
   const onSubmit = (data: AppointmentFormValues) => {
     const isEditing = !!appointmentToEdit;
     
+    // Cleanup serial no if it's just a prefix or empty
+    let finalSerial = data.contactSerialNo || '';
+    if (finalSerial.endsWith('-')) {
+        finalSerial = '';
+    }
+
     const appointmentData: Appointment = {
       ...data,
-      id: isEditing ? appointmentToEdit.id : new Date().toISOString(), // Keep old ID or generate temporary new one
+      contactSerialNo: finalSerial,
+      id: isEditing ? appointmentToEdit.id : new Date().toISOString(),
       status: 'Scheduled',
       agency_id: profile.agency_id,
     };
@@ -191,15 +198,48 @@ export function SetAppointmentDialog({
                     <FormField
                         control={form.control}
                         name="contactSerialNo"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Contact Serial No.</FormLabel>
-                                <FormControl>
-                                    <Input {...field} value={field.value ?? ''} placeholder="e.g. B-1 or P-1" />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
+                        render={({ field }) => {
+                            const val = field.value || 'B-';
+                            const parts = val.split('-');
+                            const prefix = parts[0];
+                            const num = parts.slice(1).join('-');
+                            
+                            return (
+                                <FormItem>
+                                    <FormLabel>Contact Serial No.</FormLabel>
+                                    <div className="flex gap-1">
+                                        <Select 
+                                            value={prefix || 'B'} 
+                                            onValueChange={(newPrefix) => field.onChange(`${newPrefix}-${num}`)}
+                                        >
+                                            <FormControl>
+                                                <SelectTrigger className="w-[85px] h-10 px-2 font-bold bg-muted/30">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="B">B</SelectItem>
+                                                <SelectItem value="RB">RB</SelectItem>
+                                                <SelectItem value="P">P</SelectItem>
+                                                <SelectItem value="RP">RP</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <div className="flex-1 relative">
+                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">-</span>
+                                            <FormControl>
+                                                <Input 
+                                                    className="pl-6 h-10 font-bold" 
+                                                    placeholder="Number" 
+                                                    value={num}
+                                                    onChange={(e) => field.onChange(`${prefix}-${e.target.value}`)}
+                                                />
+                                            </FormControl>
+                                        </div>
+                                    </div>
+                                    <FormMessage />
+                                </FormItem>
+                            );
+                        }}
                     />
                 </div>
                  <FormField
@@ -291,6 +331,7 @@ export function SetAppointmentDialog({
                     </Button>
                     <Button
                     type="submit"
+                    className="glowing-btn"
                     >
                     Save Appointment
                     </Button>
