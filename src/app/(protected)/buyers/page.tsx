@@ -345,7 +345,7 @@ function BuyersPageContent() {
     const getTagColor = (tagName: string) => {
         const tagObj = agencyTags?.find(t => t.name === tagName);
         if (tagObj) return tagObj.color;
-        return statusVariant[tagName as keyof typeof statusVariant] || 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700';
+        return (statusVariant as any)[tagName] || 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700';
     };
 
     const filteredBuyers = useMemo(() => {
@@ -776,7 +776,7 @@ function BuyersPageContent() {
                                                     variant={activeStatus === status ? 'default' : 'outline'} 
                                                     className={cn(
                                                         "cursor-pointer px-4 py-1.5 rounded-full transition-all", 
-                                                        statusVariant[status as keyof typeof statusVariant],
+                                                        (statusVariant as any)[status],
                                                         activeStatus === status && "ring-2 ring-primary ring-offset-2"
                                                     )} 
                                                     onClick={() => setActiveStatus(status)}

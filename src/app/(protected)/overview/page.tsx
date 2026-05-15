@@ -540,7 +540,7 @@ export default function OverviewPage() {
 
             {isLeadDetailsOpen && selectedLeadForFullDetails && (
                 <>
-                    {'serial_no' in selectedLeadForFullDetails && (selectedLeadForFullDetails.serial_no.startsWith('B') || selectedLeadForFullDetails.serial_no.startsWith('RB')) ? (
+                    { 'serial_no' in selectedLeadForFullDetails && (selectedLeadForFullDetails.serial_no.startsWith('B') || selectedLeadForFullDetails.serial_no.startsWith('RB')) ? (
                         <BuyerDetailsDialog 
                             buyer={selectedLeadForFullDetails as Buyer} 
                             isOpen={isLeadDetailsOpen} 
