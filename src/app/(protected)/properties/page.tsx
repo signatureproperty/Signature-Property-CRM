@@ -198,7 +198,7 @@ function PropertiesPageContent() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   const assignableMembers = useMemo(() => {
-    return teamMembers?.filter(m => m.status === 'Active' && m.role !== 'Admin') || [];
+    return teamMembers?.filter(m => m.status === 'Active' && (m.role === 'Agent' || m.role === 'Admin')) || [];
   }, [teamMembers]);
 
   const handleFilterChange = (key: keyof Filters, value: any) => {
@@ -258,12 +258,12 @@ function PropertiesPageContent() {
     }
 
     if (searchQuery) {
-      const lowercasedQuery = searchQuery.toLowerCase();
+      const lowercoredQuery = searchQuery.toLowerCase();
       baseProperties = baseProperties.filter((prop) =>
-        (prop.auto_title && prop.auto_title.toLowerCase().includes(lowercasedQuery)) ||
-        prop.address.toLowerCase().includes(lowercasedQuery) ||
-        prop.area.toLowerCase().includes(lowercasedQuery) ||
-        prop.serial_no.toLowerCase().includes(lowercasedQuery)
+        (prop.auto_title && prop.auto_title.toLowerCase().includes(lowercoredQuery)) ||
+        prop.address.toLowerCase().includes(lowercoredQuery) ||
+        prop.area.toLowerCase().includes(lowercoredQuery) ||
+        prop.serial_no.toLowerCase().includes(lowercoredQuery)
       );
     }
 
@@ -545,7 +545,7 @@ function PropertiesPageContent() {
                     <DropdownMenuItem onSelect={() => handleNotesClick(prop) as any}><MessageSquareText className="mr-2 h-4 w-4" /> Remarks Update</DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => handleShare(prop) as any}><Share2 className="mr-2 h-4 w-4" />Share Details</DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => handleManageTags(prop) as any}><TagIcon className="mr-2 h-4 w-4" />Edit Tags</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={(e) => handleWhatsAppChat(e, prop) as any}><MessageSquare className="mr-2 h-4 w-4" /> WhatsApp</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={(e: any) => handleWhatsAppChat(e, prop) as any}><MessageSquare className="mr-2 h-4 w-4" /> WhatsApp</DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => handleSetAppointment(prop) as any}><CalendarPlus className="mr-2 h-4 w-4" /> Set Appointment</DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => handleMarkAsSoldOrRent(prop) as any}><Check className="mr-2 h-4 w-4" /> {prop.is_for_rent ? 'Mark as Rent Out' : 'Mark as Sold'}</DropdownMenuItem>
                     
@@ -663,7 +663,7 @@ function PropertiesPageContent() {
                     <DropdownMenuItem onSelect={() => handleRowClick(prop) as any}><Eye className="mr-2 h-4 w-4" />View Details</DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => handleShare(prop) as any}><Share2 className="mr-2 h-4 w-4" />Share Details</DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => handleManageTags(prop) as any}><TagIcon className="mr-2 h-4 w-4" />Edit Tags</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={(e) => handleWhatsAppChat(e as any, prop) as any}><MessageSquare className="mr-2 h-4 w-4" /> WhatsApp Chat</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={(e: any) => handleWhatsAppChat(e as any, prop) as any}><MessageSquare className="mr-2 h-4 w-4" /> WhatsApp Chat</DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => handleSetAppointment(prop) as any}><CalendarPlus className="mr-2 h-4 w-4" /> Set Appointment</DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => handleMarkAsSoldOrRent(prop) as any}><Check className="mr-2 h-4 w-4" /> {prop.is_for_rent ? 'Mark as Rent Out' : 'Mark as Sold'}</DropdownMenuItem>
                     

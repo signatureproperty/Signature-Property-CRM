@@ -288,9 +288,9 @@ function AppointmentsPageContent() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="bg-background">
                         <DropdownMenuItem onSelect={() => handleViewDetails(appt) as any}><Eye className="mr-2 h-4 w-4"/> View Contact Details</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={(e) => handleWhatsAppChat(e, appt) as any}><MessageSquare className="mr-2 h-4 w-4"/> Chat on WhatsApp</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={(e: any) => handleWhatsAppChat(e, appt) as any}><MessageSquare className="mr-2 h-4 w-4"/> Chat on WhatsApp</DropdownMenuItem>
                          {appt.status === 'Scheduled' && (
-                          <DropdownMenuItem onSelect={(e) => handleAddToCalendar(e, appt) as any}><AddToCalendarIcon className="mr-2 h-4 w-4"/> Add to Calendar</DropdownMenuItem>
+                          <DropdownMenuItem onSelect={(e: any) => handleAddToCalendar(e, appt) as any}><AddToCalendarIcon className="mr-2 h-4 w-4"/> Add to Calendar</DropdownMenuItem>
                          )}
                         {appt.status === 'Scheduled' && (
                             <>

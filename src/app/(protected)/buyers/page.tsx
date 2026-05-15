@@ -157,7 +157,7 @@ function BuyersPageContent() {
     });
 
     const activeAgents = useMemo(() => {
-        return teamMembers?.filter(m => m.status === 'Active' && m.role === 'Agent') || [];
+        return teamMembers?.filter(m => m.status === 'Active' && (m.role === 'Agent' || m.role === 'Admin')) || [];
     }, [teamMembers]);
 
     const handleFilterChange = (key: keyof Filters, value: any) => {
@@ -484,7 +484,7 @@ function BuyersPageContent() {
                                             <DropdownMenuItem onSelect={() => handleNotesClick(buyer) as any}><MessageSquareText className="mr-2 h-4 w-4" /> Remarks Update</DropdownMenuItem>
                                             <DropdownMenuItem onSelect={() => handleRecommendProperties(buyer) as any}><Sparkles className="mr-2 h-4 w-4" /> Recommended Properties</DropdownMenuItem>
                                             <DropdownMenuItem onSelect={() => handleManageTags(buyer) as any}><TagIcon className="mr-2 h-4 w-4" /> Edit Tags</DropdownMenuItem>
-                                            <DropdownMenuItem onSelect={(e) => handleWhatsAppChat(e, buyer) as any}><MessageSquare className="mr-2 h-4 w-4" /> WhatsApp Chat</DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={(e: any) => handleWhatsAppChat(e, buyer) as any}><MessageSquare className="mr-2 h-4 w-4" /> WhatsApp Chat</DropdownMenuItem>
                                             <DropdownMenuItem onSelect={() => handleSetAppointment(buyer) as any}><CalendarPlus className="mr-2 h-4 w-4" /> Set Appointment</DropdownMenuItem>
                                             
                                             {profile.role === 'Admin' && (
@@ -594,7 +594,7 @@ function BuyersPageContent() {
                                 <DropdownMenuItem onSelect={() => handleDetailsClick(buyer) as any}><Eye className="mr-2 h-4 w-4" /> View Details</DropdownMenuItem>
                                 <DropdownMenuItem onSelect={() => handleRecommendProperties(buyer) as any}><Sparkles className="mr-2 h-4 w-4" /> Recommended Properties</DropdownMenuItem>
                                 <DropdownMenuItem onSelect={() => handleManageTags(buyer) as any}><TagIcon className="mr-2 h-4 w-4" /> Edit Tags</DropdownMenuItem>
-                                <DropdownMenuItem onSelect={(e) => handleWhatsAppChat(e as any, buyer) as any}><MessageSquare className="mr-2 h-4 w-4" /> WhatsApp Chat</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={(e: any) => handleWhatsAppChat(e as any, buyer) as any}><MessageSquare className="mr-2 h-4 w-4" /> WhatsApp Chat</DropdownMenuItem>
                                 <DropdownMenuItem onSelect={() => handleSetAppointment(buyer) as any}><CalendarPlus className="mr-2 h-4 w-4" /> Set Appointment</DropdownMenuItem>
                                 
                                 {profile.role === 'Admin' && (

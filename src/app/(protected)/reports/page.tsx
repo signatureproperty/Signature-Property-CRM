@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -13,7 +12,7 @@ import { useProfile } from '@/context/profile-context';
 import { useMemoFirebase } from '@/firebase/hooks';
 import { formatCurrency, formatUnit } from '@/lib/formatters';
 import { useCurrency } from '@/context/currency-context';
-import { LineChart, Download, MoreHorizontal, Edit, RotateCcw } from 'lucide-react';
+import { Download, MoreHorizontal, Edit, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import jsPDF from 'jspdf';
@@ -60,8 +59,9 @@ export default function ReportsPage() {
   };
   
   const handleRevertToAvailable = async (prop: Property) => {
+    if (!profile.agency_id) return;
     const isForRent = prop.is_for_rent;
-    let dataToReset: Partial<Property> = { status: 'Available' };
+    let dataToReset: any = { status: 'Available' };
 
     const batch = writeBatch(firestore);
     const propRef = doc(firestore, 'agencies', profile.agency_id, 'properties', prop.id);
@@ -103,7 +103,7 @@ export default function ReportsPage() {
         // Revert buyer's status if they were linked to this sale
         if (prop.buyerId) {
             const buyerRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', prop.buyerId);
-            batch.update(buyerRef, { status: 'Interested' }); // Or 'Follow Up', depending on desired logic
+            batch.update(buyerRef, { status: 'Interested' }); 
         }
     }
     
@@ -127,13 +127,13 @@ export default function ReportsPage() {
         
         const agencyProfit = (p.total_commission || 0) - agentShare;
 
-        totals.soldPrice += p.sold_price || 0;
-        totals.totalCommission += p.total_commission || 0;
+        totals.soldPrice += (p.sold_price || 0);
+        totals.totalCommission += (p.total_commission || 0);
         totals.agentShare += agentShare;
         totals.agencyProfit += agencyProfit;
 
         return { ...p, agentShare, agencyProfit };
-    });
+    }) as any[];
     
     return { rows, totals };
   }, [properties, buyers]);
@@ -159,7 +159,7 @@ export default function ReportsPage() {
         totals.agencyProfit += agencyProfit;
         
         return { ...p, agencyProfit, agentShare, finalRent };
-    });
+    }) as any[];
 
     return { rows, totals };
   }, [properties]);
@@ -219,7 +219,7 @@ export default function ReportsPage() {
     doc.autoTable({
         head: head,
         body: body,
-        didDrawPage: (data) => {
+        didDrawPage: (data: any) => {
             doc.text(title, data.settings.margin.left, 15);
         },
     });
@@ -278,7 +278,7 @@ export default function ReportsPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight font-headline flex items-center gap-2">
-          <LineChart />
+          <MoreHorizontal />
           Reports
         </h1>
         <p className="text-muted-foreground">
@@ -339,9 +339,9 @@ export default function ReportsPage() {
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild><Button size="icon" variant="ghost"><MoreHorizontal /></Button></DropdownMenuTrigger>
                                     <DropdownMenuContent>
-                                        <DropdownMenuItem onSelect={() => handleEdit(p)}><Edit /> Edit Sale Info</DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={() => handleDownloadSinglePdf(p, 'sales')}><Download /> Download PDF</DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={() => handleRevertToAvailable(p)} className="text-destructive"><RotateCcw /> Revert to Available</DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => handleEdit(p) as any}><Edit /> Edit Sale Info</DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => handleDownloadSinglePdf(p, 'sales') as any}><Download /> Download PDF</DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => handleRevertToAvailable(p) as any} className="text-destructive"><RotateCcw /> Revert to Available</DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             </TableCell>
@@ -405,9 +405,9 @@ export default function ReportsPage() {
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild><Button size="icon" variant="ghost"><MoreHorizontal /></Button></DropdownMenuTrigger>
                                     <DropdownMenuContent>
-                                        <DropdownMenuItem onSelect={() => handleEdit(p)}><Edit /> Edit Rent Info</DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={() => handleDownloadSinglePdf(p, 'rental')}><Download /> Download PDF</DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={() => handleRevertToAvailable(p)} className="text-destructive"><RotateCcw /> Revert to Available</DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => handleEdit(p) as any}><Edit /> Edit Rent Info</DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => handleDownloadSinglePdf(p, 'rental') as any}><Download /> Download PDF</DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => handleRevertToAvailable(p) as any} className="text-destructive"><RotateCcw /> Revert to Available</DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             </TableCell>
