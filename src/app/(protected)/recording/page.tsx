@@ -12,7 +12,7 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, doc, updateDoc, query, where, addDoc, arrayRemove } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/hooks';
 import { useProfile } from '@/context/profile-context';
-import { useSearch } from '../layout';
+import { useSearch } from '@/context/layout-context';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { CannotRecordDialog } from '@/components/cannot-record-dialog';
@@ -36,7 +36,7 @@ export default function RecordingPage() {
   const firestore = useFirestore();
   const isMobile = useIsMobile();
   const { profile } = useProfile();
-  const { searchQuery, setSearchQuery } = useSearch();
+  const { searchQuery } = useSearch();
   const [propertyForReason, setPropertyForReason] = useState<Property | null>(null);
   const [propertyForDetails, setPropertyForDetails] = useState<Property | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);

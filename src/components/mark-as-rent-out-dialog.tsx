@@ -32,7 +32,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Separator } from './ui/separator';
 import { ScrollArea } from './ui/scroll-area';
 import { Calculator, Check, ChevronsUpDown } from 'lucide-react';
-import { useCurrency } from '@/context/currency-context';
+import { useCurrency, Currency } from '@/context/currency-context';
 import { Card, CardContent } from './ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command';

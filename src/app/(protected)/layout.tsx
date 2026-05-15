@@ -15,29 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { sendEmailVerification } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { MobileNav } from '@/components/shared/mobile-nav';
-
-// A simple React context to manage global search state
-const SearchContext = React.createContext<{
-  searchQuery: string;
-  setSearchQuery: (query: string) => void;
-}>({
-  searchQuery: '',
-  setSearchQuery: () => {},
-});
-
-export const useSearch = () => React.useContext(SearchContext);
-
-// Context for general UI state that needs to be shared
-const UIContext = React.createContext<{
-  isMoreMenuOpen: boolean;
-  setIsMoreMenuOpen: (isOpen: boolean) => void;
-}>({
-  isMoreMenuOpen: false,
-  setIsMoreMenuOpen: () => {},
-});
-
-export const useUI = () => React.useContext(UIContext);
-
+import { LayoutStateProvider, useSearch } from '@/context/layout-context';
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
@@ -156,8 +134,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 }
 
 function ProtectedLayoutContent({ children }: { children: React.ReactNode }) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const { searchQuery, setSearchQuery } = useSearch();
   const pathname = usePathname();
   const isSearchable = ['/properties', '/buyers', '/recording', '/editing'].some(path => pathname.startsWith(path));
 
@@ -167,32 +144,28 @@ function ProtectedLayoutContent({ children }: { children: React.ReactNode }) {
     if (!isSearchable) {
       setSearchQuery('');
     }
-  }, [isSearchable, pathname]);
+  }, [isSearchable, pathname, setSearchQuery]);
 
 
   return (
-    <SearchContext.Provider value={{ searchQuery, setSearchQuery }}>
-      <UIContext.Provider value={{ isMoreMenuOpen, setIsMoreMenuOpen }}>
-        <SidebarProvider>
-          <AuthGuard>
-            <div className="flex h-screen w-full bg-background">
-            <AppSidebar />
-            <div className="flex flex-col flex-1 overflow-hidden">
-                <AppHeader 
-                searchable={isSearchable}
-                searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
-                />
-                <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 pb-32">
-                    {children}
-                </main>
-                <MobileNav />
-            </div>
-            </div>
-          </AuthGuard>
-        </SidebarProvider>
-      </UIContext.Provider>
-    </SearchContext.Provider>
+    <SidebarProvider>
+      <AuthGuard>
+        <div className="flex h-screen w-full bg-background">
+        <AppSidebar />
+        <div className="flex flex-col flex-1 overflow-hidden">
+            <AppHeader 
+            searchable={isSearchable}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            />
+            <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 pb-32">
+                {children}
+            </main>
+            <MobileNav />
+        </div>
+        </div>
+      </AuthGuard>
+    </SidebarProvider>
   );
 }
 
@@ -205,9 +178,11 @@ export default function ProtectedLayout({
   return (
     <ProfileProvider>
         <CurrencyProvider>
-              <ProtectedLayoutContent>
-                  {children}
-              </ProtectedLayoutContent>
+            <LayoutStateProvider>
+                <ProtectedLayoutContent>
+                    {children}
+                </ProtectedLayoutContent>
+            </LayoutStateProvider>
         </CurrencyProvider>
     </ProfileProvider>
   )

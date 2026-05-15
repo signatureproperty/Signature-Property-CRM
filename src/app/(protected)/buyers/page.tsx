@@ -24,7 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePathname, useRouter } from 'next/navigation';
-import { useSearch } from '../layout';
+import { useSearch } from '@/context/layout-context';
 import { BuyerDetailsDialog } from '@/components/buyer-details-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency, formatUnit, formatPhoneNumberForWhatsApp } from '@/lib/formatters';

@@ -69,7 +69,7 @@ import {
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useIsMobile } from '@/hooks/use-is-mobile';
 import { useRouter } from 'next/navigation';
-import { useSearch } from '../layout';
+import { useSearch } from '@/context/layout-context';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency, formatUnit, formatPhoneNumberForWhatsApp } from '@/lib/formatters';
 import { useCurrency } from '@/context/currency-context';
