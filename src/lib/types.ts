@@ -347,7 +347,7 @@ export interface InboxMessage {
     propertyId?: string;
     propertySerial?: string;
     buyerId?: string;
-    buyerSerial?: string;
+    buyerIdSerial?: string;
     isRead: boolean;
     createdAt: string;
     agency_id: string;
@@ -364,3 +364,24 @@ export type Agency = {
     phone?: string;
     planStartDate?: any;
 };
+
+export interface ProfileData {
+  name: string;
+  agencyName: string;
+  phone: string;
+  role: UserRole;
+  avatar?: string;
+  user_id: string;
+  agency_id: string;
+  trialEndDate?: string;
+  daysLeftInTrial?: number;
+  planName?: PlanName;
+  planStartDate?: string;
+}
+
+export interface EventDetails {
+    title: string;
+    date: string;
+    time: string;
+    description: string;
+}

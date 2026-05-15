@@ -33,8 +33,8 @@ export function SubmitTicketForm() {
   const form = useForm<TicketFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: profile.ownerName,
-      email: 'demo_admin@signaturecrm.test',
+      name: profile.name || '',
+      email: 'contact@signaturecrm.pk',
       subject: '',
       message: '',
     },

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -13,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import type { Property, UploadedDocument } from '@/lib/types';
+import type { Property } from '@/lib/types';
 import { Copy, Share2, Check, Video, FileArchive, Wallet, PlugZap } from 'lucide-react';
 import { Checkbox } from './ui/checkbox';
 import { Label } from './ui/label';
@@ -29,7 +28,9 @@ type VideoLinkPlatform = 'tiktok' | 'youtube' | 'instagram' | 'facebook' | 'othe
 
 const generateShareableText = (
     property: Property,
-    selectedLinks: Record<VideoLinkPlatform, boolean> = {},
+    selectedLinks: Record<VideoLinkPlatform, boolean> = {
+        tiktok: false, youtube: false, instagram: false, facebook: false, other: false
+    },
     includeDocs: boolean = false,
     includeFinancials: boolean = false,
     includeUtilities: boolean = false,
@@ -79,7 +80,7 @@ const generateShareableText = (
     ].filter(Boolean).join('\n') || 'No utilities listed.';
 
     const customerFinancialsSection = includeFinancials ? `\n*Financials:*\n${details.potentialRent}` : '';
-    const agentFinancialsSection = `\n*Financials:*\n${details.potentialRent}`; // Always show for agent
+    const agentFinancialsSection = `\n*Financials:*\n${details.potentialRent}`; 
     const utilitiesSection = includeUtilities ? `\n*Utilities:*\n${utilities}` : '';
 
     const baseCustomerParts = [
@@ -148,7 +149,7 @@ export function SharePropertyDialog({
 
   const availableLinks = useMemo(() => {
     if (!property.is_recorded || !property.video_links) return [];
-    return (Object.keys(property.video_links) as VideoLinkPlatform[]).filter(key => !!property.video_links![key]);
+    return (Object.keys(property.video_links) as VideoLinkPlatform[]).filter(key => !!property.video_links![key as VideoLinkPlatform]);
   }, [property]);
 
   useEffect(() => {
@@ -236,8 +237,8 @@ export function SharePropertyDialog({
                         <div key={platform} className="flex items-center space-x-2">
                             <Checkbox 
                                 id={`link-${platform}`}
-                                checked={selectedLinks[platform]}
-                                onCheckedChange={() => handleLinkSelectionChange(platform)}
+                                checked={selectedLinks[platform as VideoLinkPlatform]}
+                                onCheckedChange={() => handleLinkSelectionChange(platform as VideoLinkPlatform)}
                             />
                             <Label htmlFor={`link-${platform}`} className="text-sm font-normal capitalize cursor-pointer">
                                 {platform}

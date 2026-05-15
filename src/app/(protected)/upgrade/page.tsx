@@ -1,15 +1,13 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
-import { Check, ArrowRight, Star, Info, Users, Briefcase } from 'lucide-react';
+import { Check, ArrowRight, Star, Briefcase } from 'lucide-react';
 import { useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useProfile } from '@/context/profile-context';
-import { format } from 'date-fns';
 import { PaymentDialog } from '@/components/payment-dialog';
 import type { Plan } from '@/components/payment-dialog';
 
@@ -67,8 +65,6 @@ export default function AgentUpgradePage() {
         setIsPaymentDialogOpen(true);
     }
     
-    // For agents, we can assume they are on the "Free" plan by default.
-    // This logic can be expanded if agent plans are stored in the profile.
     const currentPlanName = 'Free'; 
 
   return (
@@ -110,6 +106,8 @@ export default function AgentUpgradePage() {
               buttonText = 'Current Plan';
           }
 
+          const priceData = plan.price as any;
+
           return (
             <Card key={plan.name} className={cn("flex flex-col h-full relative", plan.isPopular && "border-primary border-2 shadow-primary/20", isCurrentPlan && "ring-2 ring-primary")}>
               {plan.isPopular && (
@@ -121,17 +119,17 @@ export default function AgentUpgradePage() {
               <CardHeader className="text-center">
                 <CardTitle className="text-2xl font-bold font-headline">{plan.name}</CardTitle>
                   <div className="text-4xl font-extrabold my-4">
-                      {plan.price.custom ? (
+                      {priceData.custom ? (
                           'Custom'
-                      ) : plan.price.monthly === 0 ? 'Free' : (
+                      ) : priceData.monthly === 0 ? 'Free' : (
                          isYearly ? (
                           <div className="flex items-center justify-center gap-2">
-                             <span>RS {plan.price.yearly.toLocaleString()}</span>
-                             <span className="text-xl font-medium text-muted-foreground line-through">RS {(plan.price.monthly * 12).toLocaleString()}</span>
+                             <span>RS {priceData.yearly.toLocaleString()}</span>
+                             <span className="text-xl font-medium text-muted-foreground line-through">RS {(priceData.monthly * 12).toLocaleString()}</span>
                           </div>
-                         ) : `RS ${plan.price.monthly.toLocaleString()}`
+                         ) : `RS ${priceData.monthly.toLocaleString()}`
                       )}
-                      {!plan.price.custom && plan.price.monthly > 0 && (
+                      {!priceData.custom && priceData.monthly > 0 && (
                            <span className="text-sm font-normal text-muted-foreground">/{isYearly ? 'year' : 'month'}</span>
                       )}
                   </div>

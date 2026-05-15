@@ -21,15 +21,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import type { User, UserRole, Activity } from '@/lib/types';
+import type { User, UserRole } from '@/lib/types';
 import { useEffect, useState } from 'react';
 import { useFirestore, useAuth } from '@/firebase/provider';
-import { doc, setDoc, serverTimestamp, writeBatch, updateDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, writeBatch, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { useProfile } from '@/context/profile-context';
-import { Loader2, Mail, Shield, User as UserIcon, Camera, Lock } from 'lucide-react';
+import { Loader2, Mail, Shield, User as UserIcon, Lock } from 'lucide-react';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-
-const roles: UserRole[] = ['Agent', 'Admin', 'Video Recorder'];
 
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -37,7 +35,6 @@ const formSchema = z.object({
   role: z.enum(['Agent', 'Admin', 'Video Recorder']).default('Agent'),
   password: z.string().optional(),
 }).refine(data => {
-    // Password is only required if the role is 'Video Recorder' and it's not an edit operation
     return data.role !== 'Video Recorder' || (data.password && data.password.length >= 6);
 }, {
     message: "Password must be at least 6 characters for Video Recorder.",
@@ -79,8 +76,8 @@ export function AddTeamMemberForm({ setDialogOpen, memberToEdit, onRoleChange }:
     if (memberToEdit) {
       form.reset({
         name: memberToEdit.name,
-        email: memberToEdit.email,
-        role: memberToEdit.role,
+        email: memberToEdit.email || '',
+        role: (memberToEdit.role === 'Super Admin' ? 'Admin' : memberToEdit.role) as any,
       });
     }
   }, [memberToEdit, form]);
@@ -92,12 +89,10 @@ export function AddTeamMemberForm({ setDialogOpen, memberToEdit, onRoleChange }:
 
     try {
         if (memberToEdit) {
-            // Edit Role
             const memberRef = doc(firestore, 'agencies', profile.agency_id, 'teamMembers', memberToEdit.id);
             await updateDoc(memberRef, { role: values.role, name: values.name });
             toast({ title: 'Role Updated', description: `Details for ${values.name} updated.` });
         } else {
-             // Check if already in team
             const teamMembersRef = collection(firestore, 'agencies', profile.agency_id, 'teamMembers');
             const q = query(teamMembersRef, where("email", "==", values.email));
             const querySnapshot = await getDocs(q);
@@ -109,7 +104,6 @@ export function AddTeamMemberForm({ setDialogOpen, memberToEdit, onRoleChange }:
             }
 
             if (values.role === 'Video Recorder') {
-                // Direct Creation Flow (Recorders don't sign up themselves)
                 if (!values.password) return;
                 
                 const tempAuth = auth;
@@ -117,7 +111,6 @@ export function AddTeamMemberForm({ setDialogOpen, memberToEdit, onRoleChange }:
                 const newUser = userCredential.user;
 
                 const batch = writeBatch(firestore);
-                // 1. App-wide user lookup
                 batch.set(doc(firestore, 'users', newUser.uid), {
                     id: newUser.uid,
                     name: values.name,
@@ -126,7 +119,6 @@ export function AddTeamMemberForm({ setDialogOpen, memberToEdit, onRoleChange }:
                     agency_id: profile.agency_id,
                     createdAt: serverTimestamp()
                 });
-                // 2. Agency team member record
                 batch.set(doc(firestore, 'agencies', profile.agency_id, 'teamMembers', newUser.uid), {
                     id: newUser.uid,
                     user_id: newUser.uid,
@@ -146,11 +138,9 @@ export function AddTeamMemberForm({ setDialogOpen, memberToEdit, onRoleChange }:
                 return;
 
             } else {
-                // Invitation Flow for Agent/Admin
                 const batch = writeBatch(firestore);
                 const newMemberRef = doc(teamMembersRef);
                 
-                // Create pending record in agency
                 batch.set(newMemberRef, {
                     id: newMemberRef.id,
                     name: values.name,
@@ -162,7 +152,6 @@ export function AddTeamMemberForm({ setDialogOpen, memberToEdit, onRoleChange }:
                     invitedAt: serverTimestamp()
                 });
 
-                // Create app-wide invitation record
                 const invitationId = `${values.email}_${profile.agency_id}`;
                 batch.set(doc(firestore, 'invitations', invitationId), {
                     toEmail: values.email,

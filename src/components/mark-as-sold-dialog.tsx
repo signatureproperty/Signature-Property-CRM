@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
@@ -32,7 +31,6 @@ import { useMemoFirebase } from '@/firebase/hooks';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Separator } from './ui/separator';
 import { ScrollArea } from './ui/scroll-area';
-import { Badge } from './ui/badge';
 import { Calculator, Check, ChevronsUpDown } from 'lucide-react';
 import { useCurrency } from '@/context/currency-context';
 import { Card, CardContent } from './ui/card';
@@ -41,18 +39,17 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from '@/lib/utils';
 import { Alert, AlertDescription } from './ui/alert';
 
-const priceUnits: PriceUnit[] = ['Thousand', 'Lacs', 'Crore'];
-
+const priceUnitArray = ['Thousand', 'Lacs', 'Crore'] as const;
 
 const formSchema = z.object({
   sold_price: z.coerce.number().positive("Sold price is required"),
   sold_price_unit: z.enum(['Lacs', 'Crore']),
   commission_from_buyer: z.coerce.number().min(0, "Commission cannot be negative").optional(),
-  commission_from_buyer_unit: z.enum(priceUnits).default('Lacs'),
+  commission_from_buyer_unit: z.enum(['Thousand', 'Lacs', 'Crore']).default('Lacs'),
   commission_from_seller: z.coerce.number().min(0, "Commission cannot be negative").optional(),
-  commission_from_seller_unit: z.enum(priceUnits).default('Lacs'),
+  commission_from_seller_unit: z.enum(['Thousand', 'Lacs', 'Crore']).default('Lacs'),
   agent_commission_amount: z.coerce.number().min(0).optional(),
-  agent_commission_unit: z.enum(priceUnits).default('Lacs'),
+  agent_commission_unit: z.enum(['Thousand', 'Lacs', 'Crore']).default('Lacs'),
   agent_share_percentage: z.coerce.number().min(0).max(100).optional(),
   sale_date: z.string().refine(date => new Date(date).toString() !== 'Invalid Date', { message: 'Please select a valid date' }),
   sold_by_agent_id: z.string().min(1, "You must select the agent who sold the property."),
@@ -90,7 +87,7 @@ export function MarkAsSoldDialog({
     return buyers?.filter(b => 
       b.status !== 'Deal Closed' && 
       !b.is_deleted && 
-      (!b.listing_type || b.listing_type === 'For Sale') // Filter for sale buyers
+      (!b.listing_type || b.listing_type === 'For Sale')
     ) || [];
   }, [buyers]);
 
@@ -112,9 +109,9 @@ export function MarkAsSoldDialog({
 
   const totalCommission = useMemo(() => {
       const buyerCommissionAmount = watchFields.commission_from_buyer || 0;
-      const buyerCommissionUnit = watchFields.commission_from_buyer_unit || 'Lacs';
+      const buyerCommissionUnit = (watchFields.commission_from_buyer_unit as PriceUnit) || 'Lacs';
       const sellerCommissionAmount = watchFields.commission_from_seller || 0;
-      const sellerCommissionUnit = watchFields.commission_from_seller_unit || 'Lacs';
+      const sellerCommissionUnit = (watchFields.commission_from_seller_unit as PriceUnit) || 'Lacs';
 
       const buyerCommissionBase = formatUnit(buyerCommissionAmount, buyerCommissionUnit);
       const sellerCommissionBase = formatUnit(sellerCommissionAmount, sellerCommissionUnit);
@@ -124,7 +121,7 @@ export function MarkAsSoldDialog({
   
    useEffect(() => {
     const agentCommissionAmount = watchFields.agent_commission_amount || 0;
-    const agentCommissionUnit = watchFields.agent_commission_unit || 'Lacs';
+    const agentCommissionUnit = (watchFields.agent_commission_unit as PriceUnit) || 'Lacs';
 
     if (totalCommission > 0 && agentCommissionAmount > 0) {
       const agentCommissionBase = formatUnit(agentCommissionAmount, agentCommissionUnit);
@@ -159,11 +156,9 @@ export function MarkAsSoldDialog({
     if (!profile.agency_id) return;
     const batch = writeBatch(firestore);
 
-    // 1. Update property status
     const propertyRef = doc(firestore, 'agencies', profile.agency_id, 'properties', property.id);
     batch.update(propertyRef, { status: 'Sold (External)', sold_externally_date: new Date().toISOString() });
 
-    // 2. Log activity
     const activityLogRef = doc(collection(firestore, 'agencies', profile.agency_id, 'activityLogs'));
     const newActivity: Omit<Activity, 'id'> = {
       userName: profile.name,
@@ -203,27 +198,23 @@ export function MarkAsSoldDialog({
         buyerName: buyer.name,
         buyerSerialNo: buyer.serial_no,
         commission_from_buyer: values.commission_from_buyer,
-        commission_from_buyer_unit: values.commission_from_buyer_unit,
+        commission_from_buyer_unit: values.commission_from_buyer_unit as PriceUnit,
         commission_from_seller: values.commission_from_seller,
-        commission_from_seller_unit: values.commission_from_seller_unit,
+        commission_from_seller_unit: values.commission_from_seller_unit as PriceUnit,
         total_commission: totalCommission,
         agent_commission_amount: values.agent_commission_amount,
-        agent_commission_unit: values.agent_commission_unit,
+        agent_commission_unit: values.agent_commission_unit as PriceUnit,
         agent_share_percentage: values.agent_share_percentage,
     };
     
-    // Use a batch to update property and buyer atomically
     const batch = writeBatch(firestore);
     
-    // 1. Update Property
     const propertyRef = doc(firestore, 'agencies', property.agency_id, 'properties', property.id);
     batch.set(propertyRef, updatedProperty);
 
-    // 2. Update Buyer status
     const buyerRef = doc(firestore, 'agencies', buyer.agency_id, 'buyers', buyer.id);
     batch.update(buyerRef, { status: 'Deal Closed' });
 
-    // 3. Create activity log
     if (profile.agency_id) {
         const activityLogRef = doc(collection(firestore, 'agencies', profile.agency_id, 'activityLogs'));
         const newActivity = {
@@ -233,15 +224,13 @@ export function MarkAsSoldDialog({
             targetType: 'Property',
             timestamp: new Date().toISOString(),
             agency_id: profile.agency_id,
+            details: null,
         };
         batch.set(activityLogRef, newActivity);
     }
     
     await batch.commit();
     
-    // The onUpdateProperty will be called by the parent listener,
-    // so we don't need to call it here to avoid a double update.
-
     toast({
       title: 'Property Marked as Sold',
       description: `${property.auto_title} has been updated and buyer status is now Deal Closed.`,
@@ -426,7 +415,7 @@ export function MarkAsSoldDialog({
                                 </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                    {priceUnits.map(unit => <SelectItem key={unit} value={unit}>{unit}</SelectItem>)}
+                                    {priceUnitArray.map(unit => <SelectItem key={unit} value={unit}>{unit}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                             <FormMessage />
@@ -451,7 +440,7 @@ export function MarkAsSoldDialog({
                                 </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                    {priceUnits.map(unit => <SelectItem key={unit} value={unit}>{unit}</SelectItem>)}
+                                    {priceUnitArray.map(unit => <SelectItem key={unit} value={unit}>{unit}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                             <FormMessage />
@@ -479,7 +468,7 @@ export function MarkAsSoldDialog({
                                 </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                    {priceUnits.map(unit => <SelectItem key={unit} value={unit}>{unit}</SelectItem>)}
+                                    {priceUnitArray.map(unit => <SelectItem key={unit} value={unit}>{unit}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                             <FormMessage />

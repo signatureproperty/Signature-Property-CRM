@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -24,9 +23,9 @@ import {
 } from '@/components/ui/form';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Buyer, PriceUnit, Property, PropertyType, BuyerStatus, ListingType } from '@/lib/types';
+import { Buyer, PriceUnit, Property, PropertyType, ListingType } from '@/lib/types';
 import { formatCurrency, formatUnit, formatPhoneNumberForWhatsApp } from '@/lib/formatters';
-import { useCurrency } from '@/context/currency-context';
+import { useCurrency, Currency } from '@/context/currency-context';
 import { Download, Share2, Check, Phone, Wallet, Home, DollarSign, FileText, Video, RotateCcw } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
@@ -49,24 +48,22 @@ import { useMemoFirebase } from '@/firebase/hooks';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { ChevronsUpDown } from 'lucide-react';
 import { buyerStatuses } from '@/lib/data';
 
-const propertyTypesForFilter: (PropertyType | 'All')[] = [
-    'All', 'House', 'Flat', 'Farm House', 'Penthouse', 'Plot', 'Residential Plot', 'Commercial Plot', 'Agricultural Land', 'Industrial Land', 'Office', 'Shop', 'Warehouse', 'Factory', 'Building', 'Residential Property', 'Commercial Property', 'Semi Commercial'
+const propertyTypeValues = [
+    'House', 'Flat', 'Farm House', 'Penthouse', 'Plot', 'Residential Plot', 'Commercial Plot', 'Agricultural Land', 'Industrial Land', 'Office', 'Shop', 'Warehouse', 'Factory', 'Building', 'Residential Property', 'Commercial Property', 'Semi Commercial'
 ];
 
-interface FindBuyersByBudgetDialogProps {
-  buyers: Buyer[];
-}
+type VideoLinkPlatform = 'tiktok' | 'youtube' | 'instagram' | 'facebook' | 'other';
+type ShareStatus = 'idle' | 'confirming' | 'shared';
 
 const formSchema = z.object({
   listing_type: z.enum(['For Sale', 'For Rent']).default('For Sale'),
-  minBudget: z.coerce.number().min(0, 'Minimum budget must be positive').optional(),
-  maxBudget: z.coerce.number().min(0, 'Maximum budget must be positive').optional(),
+  minBudget: z.coerce.number().min(0).optional(),
+  maxBudget: z.coerce.number().min(0).optional(),
   budgetUnit: z.enum(['Lacs', 'Crore', 'Thousand']).default('Lacs'),
   area: z.string().optional(),
   status: z.string().optional(),
@@ -74,9 +71,6 @@ const formSchema = z.object({
 });
 
 type FormValues = z.infer<typeof formSchema>;
-type ShareStatus = 'idle' | 'confirming' | 'shared';
-type VideoLinkPlatform = 'tiktok' | 'youtube' | 'instagram' | 'facebook' | 'other';
-
 
 export default function FindByBudgetPage() {
   const [foundBuyers, setFoundBuyers] = useState<Buyer[]>([]);
@@ -92,7 +86,6 @@ export default function FindByBudgetPage() {
 
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
 
-  // Fetch all properties for the new "From Property" tab
   const propertiesQuery = useMemoFirebase(
     () => (profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'properties') : null),
     [profile.agency_id, firestore]
@@ -103,7 +96,7 @@ export default function FindByBudgetPage() {
     () => (profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'buyers') : null),
     [profile.agency_id, firestore]
   );
-  const { data: buyers, isLoading } = useCollection<Buyer>(buyersQuery);
+  const { data: buyers } = useCollection<Buyer>(buyersQuery);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -118,9 +111,8 @@ export default function FindByBudgetPage() {
     },
   });
 
-  // Effect to load saved state from localStorage
     useEffect(() => {
-    if (buyers?.length) { // Wait until buyers are loaded before checking storage
+    if (buyers?.length) {
       try {
         const savedFilters = localStorage.getItem('findByBudgetFilters');
         const savedBuyersJSON = localStorage.getItem('findByBudgetResults');
@@ -134,8 +126,6 @@ export default function FindByBudgetPage() {
         }
       } catch (error) {
         console.error("Failed to load state from localStorage", error);
-        localStorage.removeItem('findByBudgetFilters');
-        localStorage.removeItem('findByBudgetResults');
       }
     }
   }, [buyers, form]);
@@ -148,7 +138,7 @@ export default function FindByBudgetPage() {
       return formatCurrency(minVal, currency);
     }
     const maxVal = formatUnit(buyer.budget_max_amount, buyer.budget_max_unit);
-    return `${''}${formatCurrency(minVal, currency)} - ${formatCurrency(maxVal, currency)}`;
+    return `${formatCurrency(minVal, currency)} - ${formatCurrency(maxVal, currency)}`;
   }
 
   function onSubmit(values: FormValues) {
@@ -173,7 +163,6 @@ export default function FindByBudgetPage() {
             } else {
                 const buyerMin = formatUnit(buyer.budget_min_amount, buyer.budget_min_unit);
                 const buyerMax = formatUnit(buyer.budget_max_amount, buyer.budget_max_unit);
-                // Check for range overlap
                 budgetMatch = Math.max(searchMin, buyerMin) <= Math.min(searchMax, buyerMax);
             }
         }
@@ -278,34 +267,34 @@ export default function FindByBudgetPage() {
         {foundBuyers.map((buyer, index) => (
           <Card key={buyer.id}>
             <CardHeader>
-              <CardTitle className="flex justify-between items-start">
+              <CardTitle className="flex justify-between items-start text-sm">
                 <span>{index + 1}. {buyer.name}</span>
                 <Badge variant="outline">{buyer.serial_no}</Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <div className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground" /> {buyer.phone}</div>
-              <div className="flex items-center gap-2"><Wallet className="h-4 w-4 text-muted-foreground" /> {formatBuyerBudget(buyer)}</div>
-              <div className="flex items-center gap-2"><Home className="h-4 w-4 text-muted-foreground" /> {buyer.area_preference || 'N/A'}</div>
-              <div className="flex items-start gap-2"><FileText className="h-4 w-4 text-muted-foreground mt-1" /> <p className="whitespace-pre-wrap">{buyer.notes || 'No notes.'}</p></div>
+            <CardContent className="space-y-2 text-xs">
+              <div className="flex items-center gap-2"><Phone className="h-3 w-3 text-muted-foreground" /> {buyer.phone}</div>
+              <div className="flex items-center gap-2"><Wallet className="h-3 w-3 text-muted-foreground" /> {formatBuyerBudget(buyer)}</div>
+              <div className="flex items-center gap-2"><Home className="h-3 w-3 text-muted-foreground" /> {buyer.area_preference || 'N/A'}</div>
+              <div className="flex items-start gap-2"><FileText className="h-3 w-3 text-muted-foreground mt-1" /> <p className="whitespace-pre-wrap">{buyer.notes || 'No notes.'}</p></div>
             </CardContent>
             {isShareMode && (
-              <CardFooter className="justify-end">
+              <CardFooter className="justify-end pt-0">
                 {shareStatus[buyer.id] === 'idle' && (
-                  <Button size="sm" onClick={() => handleShareToBuyer(buyer)}>
-                    <Share2 className="mr-2 h-4 w-4" /> Share
+                  <Button size="sm" className="h-7 text-[10px]" onClick={() => handleShareToBuyer(buyer)}>
+                    <Share2 className="mr-1 h-3 w-3" /> Share
                   </Button>
                 )}
                  {shareStatus[buyer.id] === 'confirming' && (
                   <div className="flex gap-2 justify-end">
-                    <span className="text-sm text-muted-foreground">Shared?</span>
-                    <Button size="sm" variant="destructive" onClick={() => handleConfirmShare(buyer.id, false)}>No</Button>
-                    <Button size="sm" variant="default" className="bg-green-600 hover:bg-green-700" onClick={() => handleConfirmShare(buyer.id, true)}>Yes</Button>
+                    <span className="text-[10px] text-muted-foreground self-center">Shared?</span>
+                    <Button size="sm" variant="destructive" className="h-7 px-2 text-[10px]" onClick={() => handleConfirmShare(buyer.id, false)}>No</Button>
+                    <Button size="sm" variant="default" className="bg-green-600 hover:bg-green-700 h-7 px-2 text-[10px]" onClick={() => handleConfirmShare(buyer.id, true)}>Yes</Button>
                   </div>
                 )}
                 {shareStatus[buyer.id] === 'shared' && (
-                  <div className="flex items-center justify-end gap-2 text-green-600 font-bold">
-                    <Check className="h-5 w-5" /> Shared
+                  <div className="flex items-center justify-end gap-1 text-green-600 font-bold text-[10px]">
+                    <Check className="h-3 w-3" /> Shared
                   </div>
                 )}
               </CardFooter>
@@ -499,7 +488,7 @@ export default function FindByBudgetPage() {
                                         <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                                         <SelectContent>
                                             <SelectItem value="All">All Types</SelectItem>
-                                            {propertyTypesForFilter.map(type => (
+                                            {propertyTypeValues.map(type => (
                                                 <SelectItem key={type} value={type}>{type}</SelectItem>
                                             ))}
                                         </SelectContent>
@@ -548,14 +537,13 @@ export default function FindByBudgetPage() {
   );
 }
 
-// Share Dialog Component
 interface ShareDetailsDialogProps {
     isOpen: boolean;
     setIsOpen: (open: boolean) => void;
     onSetMessage: (message: string, property: Property | null) => void;
     startSharing: () => void;
     allProperties: Property[];
-    currency: string;
+    currency: Currency;
 }
 
 function ShareDetailsDialog({ isOpen, setIsOpen, onSetMessage, startSharing, allProperties, currency }: ShareDetailsDialogProps) {
@@ -564,7 +552,9 @@ function ShareDetailsDialog({ isOpen, setIsOpen, onSetMessage, startSharing, all
     const [propertySearch, setPropertySearch] = useState('');
     const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
     const [generatedMessage, setGeneratedMessage] = useState('');
-    const [selectedLinks, setSelectedLinks] = useState<Record<VideoLinkPlatform, boolean>>({});
+    const [selectedLinks, setSelectedLinks] = useState<Record<VideoLinkPlatform, boolean>>({
+        tiktok: false, youtube: false, instagram: false, facebook: false, other: false
+    });
 
     const filteredProperties = useMemo(() => {
         if (!propertySearch) return [];
@@ -578,16 +568,21 @@ function ShareDetailsDialog({ isOpen, setIsOpen, onSetMessage, startSharing, all
     
     const availableLinks = useMemo(() => {
         if (!selectedProperty?.is_recorded || !selectedProperty.video_links) return [];
-        return (Object.keys(selectedProperty.video_links) as VideoLinkPlatform[]).filter(key => !!selectedProperty.video_links![key]);
+        return (Object.keys(selectedProperty.video_links) as VideoLinkPlatform[]).filter(key => !!selectedProperty.video_links![key as VideoLinkPlatform]);
     }, [selectedProperty]);
 
     useEffect(() => {
         if (selectedProperty) {
-            const initialSelected: Record<VideoLinkPlatform, boolean> = {};
-            availableLinks.forEach(link => initialSelected[link] = true);
+            const initialSelected: Record<VideoLinkPlatform, boolean> = {
+                tiktok: !!selectedProperty.video_links?.tiktok,
+                youtube: !!selectedProperty.video_links?.youtube,
+                instagram: !!selectedProperty.video_links?.instagram,
+                facebook: !!selectedProperty.video_links?.facebook,
+                other: !!selectedProperty.video_links?.other
+            };
             setSelectedLinks(initialSelected);
         }
-    }, [selectedProperty, availableLinks]);
+    }, [selectedProperty]);
 
     useEffect(() => {
         if (selectedProperty) {
@@ -623,7 +618,7 @@ ${utilities || 'N/A'}${videoLinksSection}`;
                 setGeneratedMessage(rentDetails);
             } else {
                  const rentInBaseUnit = formatUnit(selectedProperty.potential_rent_amount || 0, selectedProperty.potential_rent_unit || 'Thousand');
-                const potentialRent = selectedProperty.potential_rent_amount ? `Rs. ${formatCurrency(rentInBaseUnit, currency)}` : 'N/A';
+                const potentialRent = selectedProperty.potential_rent_amount ? `Rs. ${formatCurrency(rentInBaseUnit, currency as Currency)}` : 'N/A';
                 
                 const saleDetails = `*PROPERTY DETAILS* 🏡
 Serial No: ${selectedProperty.serial_no}
@@ -689,24 +684,25 @@ ${utilities || 'N/A'}
                         </div>
                         {propertySearch && (
                             <ScrollArea className="h-40 border rounded-md">
-                                <Command>
-                                    <CommandList>
-                                        <CommandEmpty>No properties found.</CommandEmpty>
-                                        <CommandGroup>
-                                            {filteredProperties.map(prop => (
-                                                <CommandItem
-                                                    key={prop.id}
-                                                    onSelect={() => {
-                                                        setSelectedProperty(prop);
-                                                        setPropertySearch('');
-                                                    }}
-                                                >
-                                                    <span>{prop.auto_title} ({prop.serial_no})</span>
-                                                </CommandItem>
-                                            ))}
-                                        </CommandGroup>
-                                    </CommandList>
-                                </Command>
+                                <div className="p-2 space-y-1">
+                                    {filteredProperties.length > 0 ? (
+                                        filteredProperties.map(prop => (
+                                            <Button
+                                                key={prop.id}
+                                                variant="ghost"
+                                                className="w-full justify-start text-xs h-8"
+                                                onClick={() => {
+                                                    setSelectedProperty(prop);
+                                                    setPropertySearch('');
+                                                }}
+                                            >
+                                                <span>{prop.auto_title} ({prop.serial_no})</span>
+                                            </Button>
+                                        ))
+                                    ) : (
+                                        <p className="text-center text-xs text-muted-foreground p-4">No properties found.</p>
+                                    )}
+                                </div>
                             </ScrollArea>
                         )}
                         {selectedProperty && (
@@ -719,11 +715,11 @@ ${utilities || 'N/A'}
                                             {availableLinks.map(platform => (
                                                 <div key={platform} className="flex items-center space-x-2">
                                                     <Checkbox 
-                                                        id={`share-${''}${platform}`}
-                                                        checked={selectedLinks[platform]}
-                                                        onCheckedChange={() => handleLinkSelectionChange(platform)}
+                                                        id={`share-${platform}`}
+                                                        checked={selectedLinks[platform as VideoLinkPlatform]}
+                                                        onCheckedChange={() => handleLinkSelectionChange(platform as VideoLinkPlatform)}
                                                     />
-                                                    <Label htmlFor={`share-${''}${platform}`} className="text-sm font-normal capitalize cursor-pointer">
+                                                    <Label htmlFor={`share-${platform}`} className="text-sm font-normal capitalize cursor-pointer">
                                                         {platform}
                                                     </Label>
                                                 </div>
@@ -744,9 +740,3 @@ ${utilities || 'N/A'}
         </Dialog>
     );
 }
-
-    
-
-    
-
-    

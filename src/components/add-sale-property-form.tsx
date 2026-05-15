@@ -24,7 +24,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from './ui/separator';
-import type { Property, PropertyType, PriceUnit, SizeUnit } from '@/lib/types';
+import type { Property, PropertyType, PriceUnit } from '@/lib/types';
 import { useUser } from '@/firebase/auth/use-user';
 import { useProfile } from '@/context/profile-context';
 import { formatPhoneNumber } from '@/lib/utils';
@@ -126,7 +126,7 @@ export function AddSalePropertyForm({
     },
   });
 
-  const { control, setValue, reset } = form;
+  const { control, setValue } = form;
 
   const watchedFields = useWatch({
     control,
@@ -171,6 +171,7 @@ export function AddSalePropertyForm({
       property_type: finalPropertyType as PropertyType,
       demand_unit: values.demand_unit as 'Lacs' | 'Crore' | 'Thousand',
       tags: tagsArray,
+      is_recorded: propertyToEdit?.is_recorded || false,
     };
 
     onSave(propertyData);

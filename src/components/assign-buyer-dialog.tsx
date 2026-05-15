@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -18,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { useProfile } from '@/context/profile-context';
 import { useFirestore } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, doc, writeBatch, serverTimestamp, addDoc } from 'firebase/firestore';
+import { collection, doc, writeBatch } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/hooks';
 import type { User, Buyer, Activity } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -54,7 +53,6 @@ export function AssignBuyerDialog({ isOpen, setIsOpen }: AssignBuyerDialogProps)
   const unassignedBuyers = useMemo(() => allBuyers?.filter(b => !b.assignedTo && !b.is_deleted) || [], [allBuyers]);
 
   useEffect(() => {
-    // Reset state when dialog closes
     if (!isOpen) {
       setSelectedAgentId('');
       setSelectedBuyerIds([]);
@@ -94,13 +92,13 @@ export function AssignBuyerDialog({ isOpen, setIsOpen }: AssignBuyerDialogProps)
             }
         });
         
-        // Create a single activity log for the batch assignment
         const newActivity: Omit<Activity, 'id'> = {
             userName: profile.name,
             userAvatar: profile.avatar,
             action: `assigned ${buyerNames.length} buyer(s) to ${agent.name}`,
             target: buyerNames.join(', '),
             targetType: 'Buyer',
+            details: null,
             timestamp: new Date().toISOString(),
             agency_id: profile.agency_id,
         };

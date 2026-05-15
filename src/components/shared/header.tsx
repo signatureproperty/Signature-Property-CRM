@@ -72,7 +72,7 @@ export function AppHeader({
   const [isActivityDialogOpen, setIsActivityDialogOpen] = useState(false);
 
   const displayName = profile.name || 'User';
-  const displayImage = profile.avatar || user?.photoURL;
+  const displayImage = profile.avatar || user?.photoURL || undefined;
   const firstName = displayName.split(' ')[0];
   
   const handleLogout = async () => {
@@ -203,17 +203,16 @@ export function AppHeader({
                 ) : notifications && notifications.length > 0 ? (
                     <div className="max-h-80 overflow-y-auto">
                         {notifications.map(notification => (
-                            <DropdownMenuItem 
+                            <div 
                                 key={notification.id} 
-                                className={cn("flex justify-between items-start gap-3 cursor-pointer group", notification.isRead && "opacity-60")} 
-                                onSelect={(e) => e.preventDefault()}
+                                className={cn("flex justify-between items-start gap-3 cursor-pointer group p-2 hover:bg-accent", notification.isRead && "opacity-60")} 
                                 onClick={() => handleNotificationClick(notification)}
                             >
                                 <div className="flex-shrink-0 pt-1">{getNotificationIcon(notification.type)}</div>
                                 <div className="flex-1">
-                                    <p className="font-semibold">{notification.title}</p>
+                                    <p className="font-semibold text-sm">{notification.title}</p>
                                     <p className="text-xs text-muted-foreground">{notification.description}</p>
-                                    <p className="text-xs text-muted-foreground mt-1">{formatDistanceToNow(notification.timestamp, { addSuffix: true })}</p>
+                                    <p className="text-[10px] text-muted-foreground mt-1">{formatDistanceToNow(notification.timestamp, { addSuffix: true })}</p>
                                 </div>
                                 {notification.type === 'invitation' ? (
                                     <div className="flex items-center gap-1 w-20 justify-end">
@@ -240,11 +239,11 @@ export function AppHeader({
                                     </Tooltip>
                                    </TooltipProvider>
                                 )}
-                            </DropdownMenuItem>
+                            </div>
                         ))}
                     </div>
                 ) : (
-                    <DropdownMenuItem disabled>No new notifications</DropdownMenuItem>
+                    <div className="p-4 text-center text-sm text-muted-foreground">No new notifications</div>
                 )}
             </DropdownMenuContent>
         </DropdownMenu>
@@ -253,7 +252,7 @@ export function AppHeader({
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="flex items-center gap-2 rounded-full p-1 h-auto">
               <Avatar className="h-9 w-9 border-2 border-primary/50">
-                <AvatarImage src={displayImage} alt={displayName} />
+                <AvatarImage src={displayImage ?? undefined} alt={displayName} />
                 <AvatarFallback>{displayName.split(' ').map(n => n[0]).join('')}</AvatarFallback>
               </Avatar>
               <span className="hidden sm:inline font-semibold">{displayName}</span>

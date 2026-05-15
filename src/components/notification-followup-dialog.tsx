@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -89,7 +88,7 @@ export function NotificationFollowupDialog({
             </div>
             <div className="flex items-center text-sm pt-3 border-t">
                 <CalendarCheck className="mr-2 h-4 w-4 text-muted-foreground" />
-                <span>Next Reminder: {new Date(followUp.nextReminder).toLocaleDateString()}</span>
+                <span>Next Reminder: {new Date(followUp.nextReminderDate).toLocaleDateString()}</span>
             </div>
         </div>
         <DialogFooter className="sm:justify-between">
