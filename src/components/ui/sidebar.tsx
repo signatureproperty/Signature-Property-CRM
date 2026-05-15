@@ -185,6 +185,8 @@ const Sidebar = React.forwardRef<
           <SheetContent
             data-sidebar="sidebar"
             data-mobile="true"
+            data-state="expanded"
+            data-collapsible={collapsible}
             className="w-[--sidebar-width] glass-card p-0 text-foreground [&>button]:hidden rounded-r-[2rem] overflow-hidden"
             style={
               {
