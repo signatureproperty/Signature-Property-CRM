@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -13,6 +14,7 @@ import { Buyer, PriceUnit, SizeUnit } from '@/lib/types';
 import { ScrollArea } from './ui/scroll-area';
 import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
+import { SharePropertyDialog } from './share-property-dialog';
 import { 
   Home, 
   Tag, 
@@ -29,11 +31,12 @@ import {
   Clock,
   User,
   MessageSquareText,
-  Calendar
+  Calendar,
+  Check
 } from 'lucide-react';
 import { useCurrency } from '@/context/currency-context';
 import { formatCurrency, formatUnit } from '@/lib/formatters';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import {
   AlertDialog,
@@ -51,6 +54,7 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { useProfile } from '@/context/profile-context';
 
 interface BuyerDetailsDialogProps {
   buyer: Buyer;
@@ -89,6 +93,22 @@ export function BuyerDetailsDialog({
   const { currency } = useCurrency();
   const firestore = useFirestore();
   const { toast } = useToast();
+  const { profile } = useProfile();
+
+  // Mark notes as read when details are viewed
+  useEffect(() => {
+    if (isOpen && buyer.timeline_notes && profile.agency_id) {
+        const unreadNotes = buyer.timeline_notes.filter(n => !n.readBy?.includes(profile.user_id));
+        if (unreadNotes.length > 0) {
+            const updatedNotes = buyer.timeline_notes.map(n => ({
+                ...n,
+                readBy: Array.from(new Set([...(n.readBy || []), profile.user_id]))
+            }));
+            const buyerRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', buyer.id);
+            updateDoc(buyerRef, { timeline_notes: updatedNotes });
+        }
+    }
+  }, [isOpen, buyer.timeline_notes, profile.user_id, profile.agency_id, firestore, buyer.id]);
 
   const formatBudget = (minAmount?: number, minUnit?: PriceUnit, maxAmount?: number, maxUnit?: PriceUnit) => {
     if (!minAmount || !minUnit) return 'N/A';
@@ -213,18 +233,27 @@ export function BuyerDetailsDialog({
             {buyer.timeline_notes && buyer.timeline_notes.length > 0 && (
                  <div className="space-y-3">
                     <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                      <History className="h-3.5 w-3.5" /> Lead Timeline
+                      <History className="h-3.5 w-3.5" /> Remarks History & Tracking
                     </h3>
                     <div className="space-y-3">
-                        {buyer.timeline_notes.slice().reverse().map((note) => (
-                            <div key={note.id} className="p-3 rounded-lg border bg-card/50">
-                                <div className="flex items-center justify-between gap-2 mb-1">
-                                    <span className="font-bold text-xs">{note.authorName} ({note.authorRole})</span>
-                                    <span className="text-[10px] text-muted-foreground">{format(new Date(note.timestamp), 'MMM d, p')}</span>
+                        {buyer.timeline_notes.slice().reverse().map((note) => {
+                            const otherPartySeen = note.readBy?.some(uid => uid !== note.authorId);
+                            return (
+                                <div key={note.id} className="p-3 rounded-lg border bg-card/50">
+                                    <div className="flex items-center justify-between gap-2 mb-1">
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-bold text-xs">{note.authorName}</span>
+                                            <Badge variant="outline" className="text-[9px] uppercase h-4 px-1">{note.authorRole}</Badge>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {otherPartySeen && <span className="text-[9px] text-emerald-500 font-bold flex items-center gap-0.5"><Check className="h-2.5 w-2.5"/> Seen</span>}
+                                            <span className="text-[10px] text-muted-foreground">{format(new Date(note.timestamp), 'MMM d, p')}</span>
+                                        </div>
+                                    </div>
+                                    <p className="text-sm">{note.text}</p>
                                 </div>
-                                <p className="text-sm">{note.text}</p>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                  </div>
             )}

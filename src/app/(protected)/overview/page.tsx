@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -31,6 +32,8 @@ import { PerformanceChart } from '@/components/performance-chart';
 import { LeadsChart } from '@/components/leads-chart';
 import { SalesBreakdownChart } from '@/components/sales-breakdown-chart';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { BuyerNotesDialog } from '@/components/buyer-notes-dialog';
+import { PropertyNotesDialog } from '@/components/property-notes-dialog';
 
 interface StatCardProps {
     title: string;
@@ -105,6 +108,10 @@ export default function OverviewPage() {
     const [appointmentToUpdateStatus, setAppointmentToUpdateStatus] = useState<Appointment | null>(null);
     const [newStatus, setNewStatus] = useState<AppointmentStatus | null>(null);
 
+    // Remarks management
+    const [selectedLead, setSelectedLead] = useState<Buyer | Property | null>(null);
+    const [isRemarksOpen, setIsRemarksOpen] = useState(false);
+
     const [appointmentDetails, setAppointmentDetails] = useState<{
         contactType: AppointmentContactType;
         contactName: string;
@@ -172,22 +179,27 @@ export default function OverviewPage() {
 
     // Collect all remarks from both properties and buyers
     const latestRemarks = useMemo(() => {
-        const allRemarks: (LeadNote & { leadName: string, leadSerial: string, leadType: 'Buyer' | 'Property' })[] = [];
+        const allRemarks: (LeadNote & { leadName: string, leadSerial: string, leadType: 'Buyer' | 'Property', leadData: Buyer | Property })[] = [];
         
         buyers?.forEach(b => {
             b.timeline_notes?.forEach(n => {
-                allRemarks.push({ ...n, leadName: b.name, leadSerial: b.serial_no, leadType: 'Buyer' });
+                allRemarks.push({ ...n, leadName: b.name, leadSerial: b.serial_no, leadType: 'Buyer', leadData: b });
             });
         });
 
         properties?.forEach(p => {
             p.timeline_notes?.forEach(n => {
-                allRemarks.push({ ...n, leadName: p.auto_title, leadSerial: p.serial_no, leadType: 'Property' });
+                allRemarks.push({ ...n, leadName: p.auto_title, leadSerial: p.serial_no, leadType: 'Property', leadData: p });
             });
         });
 
         return allRemarks.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 5);
     }, [buyers, properties]);
+
+    const handleRemarkClick = (remark: any) => {
+        setSelectedLead(remark.leadData);
+        setIsRemarksOpen(true);
+    };
 
     const stats = useMemo(() => {
         const activeProps = properties?.filter(p => !p.is_deleted) || [];
@@ -285,7 +297,11 @@ export default function OverviewPage() {
                                 {latestRemarks.length > 0 ? (
                                     <div className="divide-y divide-border/30">
                                         {latestRemarks.map((remark) => (
-                                            <div key={remark.id} className="p-4 hover:bg-primary/5 transition-colors">
+                                            <div 
+                                                key={remark.id} 
+                                                className="p-4 hover:bg-primary/5 transition-colors cursor-pointer"
+                                                onClick={() => handleRemarkClick(remark)}
+                                            >
                                                 <div className="flex items-start justify-between gap-4">
                                                     <div className="flex-1">
                                                         <div className="flex items-center gap-2 mb-1">
@@ -294,10 +310,10 @@ export default function OverviewPage() {
                                                             <span className="text-[10px] text-muted-foreground ml-auto">{formatDistanceToNow(new Date(remark.timestamp), { addSuffix: true })}</span>
                                                         </div>
                                                         <p className="text-sm text-foreground mb-2 leading-relaxed line-clamp-2">"{remark.text}"</p>
-                                                        <Link href={remark.leadType === 'Buyer' ? '/buyers' : '/properties'} className="inline-flex items-center gap-1.5 text-[10px] font-black text-primary hover:underline uppercase tracking-wider">
+                                                        <div className="inline-flex items-center gap-1.5 text-[10px] font-black text-primary hover:underline uppercase tracking-wider">
                                                             {remark.leadType === 'Buyer' ? <Briefcase className="h-3 w-3" /> : <Building2 className="h-3 w-3" />}
                                                             {remark.leadSerial}: {remark.leadName}
-                                                        </Link>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -426,6 +442,24 @@ export default function OverviewPage() {
                 />
             )}
             <AllEventsDialog isOpen={isAllEventsOpen} setIsOpen={setIsAllEventsOpen} appointments={allAppointments || []} />
+            
+            {selectedLead && isRemarksOpen && (
+                <>
+                    { 'serial_no' in selectedLead && selectedLead.serial_no.startsWith('B') ? (
+                        <BuyerNotesDialog 
+                            buyer={selectedLead as Buyer} 
+                            isOpen={isRemarksOpen} 
+                            setIsOpen={setIsRemarksOpen} 
+                        />
+                    ) : (
+                        <PropertyNotesDialog 
+                            property={selectedLead as Property} 
+                            isOpen={isRemarksOpen} 
+                            setIsOpen={setIsRemarksOpen} 
+                        />
+                    )}
+                </>
+            )}
         </div>
     );
 }

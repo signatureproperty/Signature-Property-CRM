@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -19,9 +19,10 @@ import { useFirestore } from '@/firebase/provider';
 import { doc, updateDoc, arrayUnion, collection, addDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { MessageSquareText, Send, User, Clock, Calendar } from 'lucide-react';
+import { MessageSquareText, Send, User, Clock, Calendar, Check, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from './ui/badge';
+import { PropertyDetailsDialog } from './property-details-dialog';
 
 interface PropertyNotesDialogProps {
   property: Property;
@@ -39,6 +40,22 @@ export function PropertyNotesDialog({
   const { toast } = useToast();
   const [newNote, setNewNote] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+
+  // Mark all notes as read by current user when dialog opens
+  useEffect(() => {
+    if (isOpen && property.timeline_notes && profile.agency_id) {
+        const unreadNotes = property.timeline_notes.filter(n => !n.readBy?.includes(profile.user_id));
+        if (unreadNotes.length > 0) {
+            const updatedNotes = property.timeline_notes.map(n => ({
+                ...n,
+                readBy: Array.from(new Set([...(n.readBy || []), profile.user_id]))
+            }));
+            const propRef = doc(firestore, 'agencies', profile.agency_id, 'properties', property.id);
+            updateDoc(propRef, { timeline_notes: updatedNotes });
+        }
+    }
+  }, [isOpen, property.timeline_notes, profile.user_id, profile.agency_id, firestore, property.id]);
 
   const handleAddNote = async () => {
     if (!newNote.trim() || !profile.agency_id) return;
@@ -62,20 +79,6 @@ export function PropertyNotesDialog({
             last_remark_at: timestamp
         });
 
-        // Send an Inbox Message to notify the other party
-        const inboxMessage: Omit<InboxMessage, 'id'> = {
-            type: 'lead_update',
-            fromUserId: profile.user_id,
-            fromUserName: profile.name,
-            message: newNote.trim(),
-            propertyId: property.id,
-            propertySerial: property.serial_no,
-            isRead: false,
-            createdAt: timestamp,
-            agency_id: profile.agency_id,
-        };
-        await addDoc(collection(firestore, 'agencies', profile.agency_id, 'inboxMessages'), inboxMessage);
-
         setNewNote('');
         toast({ title: "Remark Added" });
     } catch (error) {
@@ -91,20 +94,26 @@ export function PropertyNotesDialog({
   );
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
         <div className="p-6 pb-2">
             <DialogHeader>
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary/10 rounded-full text-primary">
-                        <MessageSquareText className="h-6 w-6" />
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-primary/10 rounded-full text-primary">
+                            <MessageSquareText className="h-6 w-6" />
+                        </div>
+                        <div>
+                            <DialogTitle className="font-headline text-xl">Property Remarks</DialogTitle>
+                            <DialogDescription>
+                                Keep the agency updated about <strong>{property.auto_title}</strong> ({property.serial_no}).
+                            </DialogDescription>
+                        </div>
                     </div>
-                    <div>
-                        <DialogTitle className="font-headline text-xl">Property Remarks</DialogTitle>
-                        <DialogDescription>
-                            Keep the agency updated about <strong>{property.auto_title}</strong> ({property.serial_no}).
-                        </DialogDescription>
-                    </div>
+                    <Button variant="outline" size="sm" className="rounded-full gap-2 font-bold" onClick={() => setIsDetailsOpen(true)}>
+                        <Eye className="h-4 w-4" /> View Details
+                    </Button>
                 </div>
             </DialogHeader>
         </div>
@@ -114,30 +123,38 @@ export function PropertyNotesDialog({
                 <ScrollArea className="h-[40vh] p-4">
                     {sortedNotes.length > 0 ? (
                         <div className="space-y-6 relative before:absolute before:left-[17px] before:top-2 before:bottom-2 before:w-[2px] before:bg-border/50">
-                            {sortedNotes.map((note) => (
-                                <div key={note.id} className="relative pl-10">
-                                    <div className="absolute left-0 top-1 h-9 w-9 rounded-full bg-background border flex items-center justify-center z-10 shadow-sm">
-                                        <User className={cn("h-4 w-4", note.authorRole === 'Admin' ? "text-primary" : "text-muted-foreground")} />
-                                    </div>
-                                    <div className="bg-card border rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow">
-                                        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-bold text-sm">{note.authorName}</span>
-                                                <Badge variant="outline" className="text-[9px] uppercase tracking-tighter h-4 px-1.5 font-bold">
-                                                    {note.authorRole}
-                                                </Badge>
-                                            </div>
-                                            <div className="flex items-center gap-3 text-[10px] text-muted-foreground font-medium">
-                                                <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {format(new Date(note.timestamp), 'MMM d, yyyy')}</span>
-                                                <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {format(new Date(note.timestamp), 'p')}</span>
-                                            </div>
+                            {sortedNotes.map((note) => {
+                                const otherPartySeen = note.readBy?.some(uid => uid !== note.authorId);
+                                return (
+                                    <div key={note.id} className="relative pl-10">
+                                        <div className="absolute left-0 top-1 h-9 w-9 rounded-full bg-background border flex items-center justify-center z-10 shadow-sm">
+                                            <User className={cn("h-4 w-4", note.authorRole === 'Admin' ? "text-primary" : "text-muted-foreground")} />
                                         </div>
-                                        <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
-                                            {note.text}
-                                        </p>
+                                        <div className="bg-card border rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow">
+                                            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-bold text-sm">{note.authorName}</span>
+                                                    <Badge variant="outline" className="text-[9px] uppercase tracking-tighter h-4 px-1.5 font-bold">
+                                                        {note.authorRole}
+                                                    </Badge>
+                                                </div>
+                                                <div className="flex items-center gap-3 text-[10px] text-muted-foreground font-medium">
+                                                    {otherPartySeen && (
+                                                        <span className="text-emerald-500 font-bold flex items-center gap-0.5">
+                                                            <Check className="h-3 w-3" /> Seen
+                                                        </span>
+                                                    )}
+                                                    <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {format(new Date(note.timestamp), 'MMM d')}</span>
+                                                    <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {format(new Date(note.timestamp), 'p')}</span>
+                                                </div>
+                                            </div>
+                                            <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+                                                {note.text}
+                                            </p>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     ) : (
                         <div className="h-full flex flex-col items-center justify-center text-center p-8 opacity-40">
@@ -177,5 +194,14 @@ export function PropertyNotesDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    {isDetailsOpen && (
+        <PropertyDetailsDialog 
+            property={property} 
+            isOpen={isDetailsOpen} 
+            setIsOpen={setIsDetailsOpen} 
+        />
+    )}
+    </>
   );
 }

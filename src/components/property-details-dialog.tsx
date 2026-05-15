@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -14,7 +15,7 @@ import { ScrollArea } from './ui/scroll-area';
 import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
 import { SharePropertyDialog } from './share-property-dialog';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { 
   Ruler, 
   CalendarDays, 
@@ -33,12 +34,18 @@ import {
   UtilityPole,
   FileText,
   Clock,
-  MessageSquare
+  MessageSquare,
+  History,
+  Check
 } from 'lucide-react';
 import { VideoLinksDialog } from './video-links-dialog';
 import { useCurrency } from '@/context/currency-context';
 import { formatCurrency, formatUnit } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
+import { useProfile } from '@/context/profile-context';
+import { useFirestore } from '@/firebase/provider';
+import { doc, updateDoc } from 'firebase/firestore';
+import { format } from 'date-fns';
 
 interface PropertyDetailsDialogProps {
   property: Property;
@@ -66,6 +73,23 @@ export function PropertyDetailsDialog({
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isVideoLinksOpen, setIsVideoLinksOpen] = useState(false);
   const { currency } = useCurrency();
+  const { profile } = useProfile();
+  const firestore = useFirestore();
+
+  // Mark notes as read when details are viewed
+  useEffect(() => {
+    if (isOpen && property.timeline_notes && profile.agency_id) {
+        const unreadNotes = property.timeline_notes.filter(n => !n.readBy?.includes(profile.user_id));
+        if (unreadNotes.length > 0) {
+            const updatedNotes = property.timeline_notes.map(n => ({
+                ...n,
+                readBy: Array.from(new Set([...(n.readBy || []), profile.user_id]))
+            }));
+            const propRef = doc(firestore, 'agencies', profile.agency_id, 'properties', property.id);
+            updateDoc(propRef, { timeline_notes: updatedNotes });
+        }
+    }
+  }, [isOpen, property.timeline_notes, profile.user_id, profile.agency_id, firestore, property.id]);
 
   const formatPrice = (amount?: number, unit?: PriceUnit) => {
     if (amount === undefined || amount === null || !unit) return 'N/A';
@@ -212,6 +236,34 @@ export function PropertyDetailsDialog({
                 </div>
               )}
               
+              {property.timeline_notes && property.timeline_notes.length > 0 && (
+                 <div className="space-y-3">
+                    <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                      <History className="h-3.5 w-3.5" /> Remarks History & Tracking
+                    </h3>
+                    <div className="space-y-3">
+                        {property.timeline_notes.slice().reverse().map((note) => {
+                            const otherPartySeen = note.readBy?.some(uid => uid !== note.authorId);
+                            return (
+                                <div key={note.id} className="p-3 rounded-lg border bg-card/50">
+                                    <div className="flex items-center justify-between gap-2 mb-1">
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-bold text-xs">{note.authorName}</span>
+                                            <Badge variant="outline" className="text-[9px] uppercase h-4 px-1">{note.authorRole}</Badge>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {otherPartySeen && <span className="text-[9px] text-emerald-500 font-bold flex items-center gap-0.5"><Check className="h-2.5 w-2.5"/> Seen</span>}
+                                            <span className="text-[10px] text-muted-foreground">{format(new Date(note.timestamp), 'MMM d, p')}</span>
+                                        </div>
+                                    </div>
+                                    <p className="text-sm">{note.text}</p>
+                                </div>
+                            );
+                        })}
+                    </div>
+                 </div>
+              )}
+
               {property.message && !property.is_for_rent && (
                 <div className="space-y-3">
                    <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
