@@ -13,8 +13,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Home, Loader2, Eye, EyeOff, Download, Share, X, Moon, Sun, Plus } from 'lucide-react';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Home, Loader2, Eye, EyeOff, Moon, Sun } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -27,37 +26,20 @@ import {
 } from '@/components/ui/form';
 import { useAuth, useFirestore } from '@/firebase/provider';
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { ProfileProvider } from '@/context/profile-context';
 import { Separator } from '@/components/ui/separator';
 import { doc, getDoc } from 'firebase/firestore';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { useTheme } from 'next-themes';
-
 
 const formSchema = z.object({
   email: z.string().email('Please enter a valid email.'),
   password: z.string().min(1, 'Password is required.'),
-  remember: z.boolean().default(false),
 });
 
 type LoginFormValues = z.infer<typeof formSchema>;
-
-interface BeforeInstallPromptEvent extends Event {
-  readonly platforms: Array<string>;
-  readonly userChoice: Promise<{
-    outcome: 'accepted' | 'dismissed',
-    platform: string
-  }>;
-  prompt(): Promise<void>;
-}
 
 function LoginPageContent() {
   const router = useRouter();
@@ -67,9 +49,6 @@ function LoginPageContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
-  const [isIos, setIsIos] = useState(false);
-  const [showIosInstall, setShowIosInstall] = useState(false);
   const { setTheme, theme } = useTheme();
 
   const form = useForm<LoginFormValues>({
@@ -77,42 +56,8 @@ function LoginPageContent() {
     defaultValues: {
       email: '',
       password: '',
-      remember: false,
     },
   });
-
-  useEffect(() => {
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      setInstallPromptEvent(e as BeforeInstallPromptEvent);
-    };
-
-    const userAgent = window.navigator.userAgent.toLowerCase();
-    const isIosDevice = /iphone|ipad|ipod/.test(userAgent);
-    const isInStandaloneMode = ('standalone' in window.navigator) && (window.navigator as any).standalone;
-    
-    setIsIos(isIosDevice && !isInStandaloneMode);
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    };
-  }, []);
-
-  const handleInstallClick = () => {
-    if (isIos) {
-      setShowIosInstall(true);
-    } else if (installPromptEvent) {
-      installPromptEvent.prompt();
-      installPromptEvent.userChoice.then(choiceResult => {
-        if (choiceResult.outcome === 'accepted') {
-          toast({ title: "App installing...", description: "Check your home screen shortly." });
-        }
-        setInstallPromptEvent(null);
-      });
-    }
-  };
 
   const onSubmit = async (values: LoginFormValues) => {
     setIsLoading(true);
@@ -183,7 +128,7 @@ function LoginPageContent() {
             <span className="sr-only">Toggle theme</span>
         </Button>
       </div>
-      <div className="w-full max-w-sm space-y-6">
+      <div className="w-full max-sm:px-4 max-w-sm space-y-6">
         <div className="text-center">
           <div className="flex justify-center items-center gap-3 mb-4">
             <h1 className="text-3xl font-black text-white font-headline tracking-tighter uppercase">
@@ -195,7 +140,7 @@ function LoginPageContent() {
           </p>
         </div>
 
-        <Card className="glass-card shadow-2xl border-white/20 bg-white/10">
+        <Card className="glass-card shadow-2xl border-white/20 bg-white/10 overflow-hidden">
           <CardHeader>
             <CardTitle className="text-white">Login</CardTitle>
           </CardHeader>
@@ -298,37 +243,6 @@ function LoginPageContent() {
                   )}
                   Login
                 </Button>
-
-                {(installPromptEvent || isIos) && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full h-12 text-base font-bold bg-emerald-500 hover:bg-emerald-600 border-none text-white shadow-xl shadow-emerald-500/20"
-                    onClick={handleInstallClick}
-                  >
-                    <Download className="mr-2 h-4 w-4" />
-                    Install App
-                  </Button>
-                )}
-                
-                <Dialog open={showIosInstall} onOpenChange={setShowIosInstall}>
-                    <DialogContent className="glass-modal">
-                      <DialogHeader>
-                        <DialogTitle className="text-foreground">Install on iPhone/iPad</DialogTitle>
-                      </DialogHeader>
-                      <div className="py-4 text-center space-y-4">
-                        <p className="text-sm">To install the app on your device, tap the 'Share' icon in Safari and then select 'Add to Home Screen'.</p>
-                        <div className="flex justify-center items-center gap-2">
-                            <Share className="h-8 w-8 text-primary" />
-                            <span className="mx-2 text-2xl">→</span>
-                            <div className="p-2 border rounded-xl">
-                                <Plus className="h-6 w-6" />
-                            </div>
-                        </div>
-                      </div>
-                    </DialogContent>
-                </Dialog>
-
 
                 <Separator className="my-4 border-white/10" />
                 <div className="space-y-2 text-center">

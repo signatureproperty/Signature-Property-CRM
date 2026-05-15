@@ -1,10 +1,11 @@
+
 'use client';
 import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { 
     Building2, Users, DollarSign, Home, TrendingUp, Star, CalendarDays, 
-    CheckCircle, Briefcase, Info, Video, PlayCircle, Gem, ArrowRight, 
-    VideoOff, Circle, Clock, History, FilePlus, UserPlus, Edit, Check, X, ArrowUpRight,
+    CheckCircle, Briefcase, Video, PlayCircle, Gem, ArrowRight, 
+    VideoOff, Circle, Clock, History, FilePlus, UserPlus, Edit, ArrowUpRight,
     Plus
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -13,23 +14,22 @@ import { useFirestore } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useMemoFirebase } from '@/firebase/hooks';
 import { collection, query, where, addDoc, doc, setDoc, deleteDoc, orderBy, limit, or } from 'firebase/firestore';
-import type { Property, Buyer, Appointment, User, PriceUnit, AppointmentContactType, AppointmentStatus, Activity, ListingType } from '@/lib/types';
+import type { Property, Buyer, Appointment, AppointmentContactType, AppointmentStatus, Activity } from '@/lib/types';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { subDays, isWithinInterval, parseISO, format, addDays } from 'date-fns';
+import { subDays, parseISO, format } from 'date-fns';
 import { useCurrency } from '@/context/currency-context';
-import { formatCurrency, formatUnit } from '@/lib/formatters';
+import { formatCurrency } from '@/lib/formatters';
 import { Button } from '@/components/ui/button';
 import { UpcomingEvents } from '@/components/upcoming-events';
 import { SetAppointmentDialog } from '@/components/set-appointment-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { AddEventDialog, type EventDetails } from '@/components/add-event-dialog';
+import { AddEventDialog } from '@/components/add-event-dialog';
 import { UpdateAppointmentStatusDialog } from '@/components/update-appointment-status-dialog';
 import { AllEventsDialog } from '@/components/all-events-dialog';
 import { PerformanceChart } from '@/components/performance-chart';
 import { LeadsChart } from '@/components/leads-chart';
 import { SalesBreakdownChart } from '@/components/sales-breakdown-chart';
-import { Badge } from '@/components/ui/badge';
 
 interface StatCardProps {
     title: string;
