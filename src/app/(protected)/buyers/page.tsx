@@ -15,7 +15,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { buyerStatuses } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
-import { Edit, MoreHorizontal, PlusCircle, Trash2, Wallet, Ruler, Eye, MessageSquare, ChevronLeft, ChevronRight, ArrowUpDown, Tag as TagIcon, MapPin, ChevronDown, UserPlus, CalendarPlus, Sparkles, MessageSquareText } from 'lucide-react';
+import { Edit, MoreHorizontal, PlusCircle, Trash2, Wallet, Ruler, Eye, MessageSquare, ChevronLeft, ChevronRight, ArrowUpDown, Tag as TagIcon, MapPin, ChevronDown, UserPlus, CalendarPlus, Sparkles, MessageSquareText, Filter } from 'lucide-react';
 import { useState, useMemo, Suspense } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useIsMobile } from '@/hooks/use-is-mobile';
