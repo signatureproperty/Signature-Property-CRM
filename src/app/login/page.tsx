@@ -202,7 +202,7 @@ function LoginPageContent() {
 
                 <Button type="submit" className="w-full h-12 text-sm font-black mt-2 glowing-btn rounded-xl" disabled={isLoading || isGoogleLoading}>
                   {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Login to Portal
+                  Login
                 </Button>
 
                 <div className="pt-4 space-y-4">
@@ -215,12 +215,12 @@ function LoginPageContent() {
                   <div className="grid grid-cols-2 gap-3">
                     <Button variant="outline" size="sm" className="h-10 rounded-xl font-bold text-[10px] flex items-center gap-1.5" asChild>
                       <Link href="/signup">
-                        <ShieldCheck className="h-3.5 w-3.5 text-primary" /> Agency Owner
+                        <ShieldCheck className="h-3.5 w-3.5 text-primary" /> Create Agency
                       </Link>
                     </Button>
                     <Button variant="outline" size="sm" className="h-10 rounded-xl font-bold text-[10px] flex items-center gap-1.5" asChild>
                       <Link href="/agent/signup">
-                        <UserCircle className="h-3.5 w-3.5 text-primary" /> Independent Agent
+                        <UserCircle className="h-3.5 w-3.5 text-primary" /> Create Agent
                       </Link>
                     </Button>
                   </div>
