@@ -15,7 +15,9 @@ import {
   History, 
   FileArchive, 
   Trash2,
-  X
+  X,
+  ShieldAlert,
+  Palette
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProfile } from '@/context/profile-context';
@@ -26,9 +28,13 @@ export function MobileNav() {
   const { profile } = useProfile();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  // Recorders have a very specific workflow, we don't show the standard bottom nav to them.
   if (profile.role === 'Video Recorder') return null;
 
+  // Define menu items for the "More" overlay, excluding Settings, Support, and Upgrade.
   const menuItems = [
+    { href: '/super-admin', label: 'Admin Control', icon: <ShieldAlert />, roles: ['Super Admin'] },
+    { href: '/super-admin/branding', label: 'App Branding', icon: <Palette />, roles: ['Super Admin'] },
     { href: '/team', label: 'Team', icon: <UserCog />, roles: ['Admin'] },
     { href: '/appointments', label: 'Appointments', icon: <Calendar />, roles: ['Admin', 'Agent'] },
     { href: '/reports', label: 'Reports', icon: <ClipboardList />, roles: ['Admin'] },
@@ -37,6 +43,7 @@ export function MobileNav() {
     { href: '/trash', label: 'Trash', icon: <Trash2 />, roles: ['Admin', 'Agent'] },
   ].filter(item => item.roles.includes(profile.role));
 
+  // Core navigation items for the main bar
   const mainNavItems = [
     { href: '/tools', label: 'Tools', icon: <Rocket className="h-5 w-5" /> },
     { href: '/properties', label: 'Properties', icon: <Building2 className="h-5 w-5" /> },
@@ -59,8 +66,8 @@ export function MobileNav() {
         )}
       </AnimatePresence>
 
-      {/* Floating Menu Items */}
-      <div className="fixed bottom-24 right-6 z-[70] flex flex-col items-end gap-4">
+      {/* Floating Menu Items (Gol buttons with names on the left) */}
+      <div className="fixed bottom-24 right-6 z-[70] flex flex-col items-end gap-4 pointer-events-none">
         <AnimatePresence>
           {isMenuOpen && (
             <div className="flex flex-col items-end gap-3 mb-2">
@@ -70,16 +77,16 @@ export function MobileNav() {
                   initial={{ opacity: 0, y: 20, scale: 0.8 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 20, scale: 0.8 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="flex items-center gap-3"
+                  transition={{ delay: (menuItems.length - index) * 0.05 }}
+                  className="flex items-center gap-3 pointer-events-auto"
                 >
-                  <span className="text-sm font-black uppercase tracking-widest text-foreground bg-background/80 px-3 py-1 rounded-lg shadow-sm border">
+                  <span className="text-sm font-black uppercase tracking-widest text-foreground bg-background/90 px-3 py-1.5 rounded-lg shadow-xl border border-white/20">
                     {item.label}
                   </span>
                   <Link
                     href={item.href}
                     onClick={() => setIsMenuOpen(false)}
-                    className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl transition-transform active:scale-90"
+                    className="flex h-12 w-12 items-center justify-center rounded-full glowing-btn shadow-2xl transition-transform active:scale-90"
                   >
                     {React.cloneElement(item.icon as React.ReactElement, { className: "h-5 w-5" })}
                   </Link>
@@ -103,13 +110,16 @@ export function MobileNav() {
                   <Link
                     href={item.href}
                     className={cn(
-                      "absolute -top-10 flex h-14 w-14 items-center justify-center rounded-full glowing-btn shadow-2xl transition-all duration-300",
-                      isActive ? "scale-110 ring-4 ring-background" : "scale-100"
+                      "absolute -top-10 flex h-14 w-14 items-center justify-center rounded-full glowing-btn shadow-2xl transition-all duration-300 ring-4 ring-background",
+                      isActive ? "scale-110 shadow-primary/40" : "scale-100"
                     )}
                   >
                     {item.icon}
                   </Link>
-                  <span className="mt-6 text-[10px] font-black uppercase tracking-tighter text-primary">
+                  <span className={cn(
+                    "mt-6 text-[10px] font-black uppercase tracking-tighter transition-colors",
+                    isActive ? "text-primary" : "text-muted-foreground/60"
+                  )}>
                     {item.label}
                   </span>
                 </div>
@@ -131,15 +141,17 @@ export function MobileNav() {
             );
           })}
 
-          {/* More Toggle Button */}
+          {/* More Toggle Button (Three Dots) */}
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             className={cn(
-              "flex flex-col items-center justify-center gap-1 px-3 py-1 transition-all duration-200",
+              "flex flex-col items-center justify-center gap-1 px-3 py-1 transition-all duration-200 outline-none",
               isMenuOpen ? "text-primary scale-110" : "text-muted-foreground hover:text-foreground"
             )}
           >
-            {isMenuOpen ? <X className="h-5 w-5" /> : <MoreHorizontal className="h-5 w-5" />}
+            <div className="h-5 w-5 flex items-center justify-center">
+                {isMenuOpen ? <X className="h-5 w-5" /> : <MoreHorizontal className="h-5 w-5" />}
+            </div>
             <span className="text-[10px] font-bold uppercase tracking-tighter">More</span>
           </button>
         </nav>
