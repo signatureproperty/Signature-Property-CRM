@@ -14,6 +14,7 @@ import { AppLoader } from '@/components/ui/loader';
 import { useToast } from '@/hooks/use-toast';
 import { sendEmailVerification } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
+import { MobileNav } from '@/components/shared/mobile-nav';
 
 // A simple React context to manage global search state
 const SearchContext = React.createContext<{
@@ -186,6 +187,7 @@ function ProtectedLayoutContent({ children }: { children: React.ReactNode }) {
                 <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 pb-32">
                     {children}
                 </main>
+                <MobileNav />
             </div>
             </div>
           </AuthGuard>
