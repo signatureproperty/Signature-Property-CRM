@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -22,7 +21,7 @@ interface UpdateAppointmentStatusDialogProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   appointment: Appointment;
-  newStatus: 'Completed' | 'Cancelled';
+  newStatus: AppointmentStatus;
   onUpdate: (appointmentId: string, status: AppointmentStatus, notes?: string) => void;
 }
 
