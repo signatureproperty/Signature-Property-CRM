@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -10,7 +9,7 @@ import type { Property, RecordingPaymentStatus, InboxMessage } from '@/lib/types
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, doc, updateDoc, query, where, addDoc } from 'firebase/firestore';
+import { collection, doc, updateDoc, query, where, addDoc, arrayRemove } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/hooks';
 import { useProfile } from '@/context/profile-context';
 import { useSearch } from '../layout';
@@ -175,14 +174,14 @@ export default function RecordingPage() {
                                     <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent>
-                                    <DropdownMenuItem onSelect={() => handleRowClick(prop)}>
-                                        <Eye className="mr-2" /> View Details
+                                    <DropdownMenuItem onSelect={() => handleRowClick(prop) as any}>
+                                        <Eye className="mr-2 h-4 w-4" /> View Details
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem onSelect={() => handleMarkAsRecorded(prop)}>
-                                        <Check className="mr-2" /> Mark as Recorded
+                                    <DropdownMenuItem onSelect={() => handleMarkAsRecorded(prop) as any}>
+                                        <Check className="mr-2 h-4 w-4" /> Mark as Recorded
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem onSelect={() => handleCannotRecord(prop)} className="text-destructive focus:bg-destructive/10">
-                                        <XCircle className="mr-2" /> Cannot Record
+                                    <DropdownMenuItem onSelect={() => handleCannotRecord(prop) as any} className="text-destructive focus:bg-destructive/10">
+                                        <XCircle className="mr-2 h-4 w-4" /> Cannot Record
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
@@ -222,11 +221,11 @@ export default function RecordingPage() {
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                                    <DropdownMenuItem onSelect={() => handleMarkAsRecorded(prop)}>
+                                    <DropdownMenuItem onSelect={() => handleMarkAsRecorded(prop) as any}>
                                         <Check className="mr-2 h-4 w-4" />
                                         Mark as Recorded
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem onSelect={() => handleCannotRecord(prop)} className="text-destructive focus:bg-destructive/10">
+                                    <DropdownMenuItem onSelect={() => handleCannotRecord(prop) as any} className="text-destructive focus:bg-destructive/10">
                                         <XCircle className="mr-2 h-4 w-4" />
                                         Cannot Record
                                     </DropdownMenuItem>
