@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -44,18 +45,21 @@ export function PropertyNotesDialog({
 
     setIsSaving(true);
     try {
+        const timestamp = new Date().toISOString();
         const note: LeadNote = {
             id: crypto.randomUUID(),
             text: newNote.trim(),
             authorId: profile.user_id,
             authorName: profile.name,
             authorRole: profile.role,
-            timestamp: new Date().toISOString(),
+            timestamp: timestamp,
+            readBy: [profile.user_id]
         };
 
         const propRef = doc(firestore, 'agencies', profile.agency_id, 'properties', property.id);
         await updateDoc(propRef, {
-            timeline_notes: arrayUnion(note)
+            timeline_notes: arrayUnion(note),
+            last_remark_at: timestamp
         });
 
         // Send an Inbox Message to notify the other party
@@ -67,16 +71,16 @@ export function PropertyNotesDialog({
             propertyId: property.id,
             propertySerial: property.serial_no,
             isRead: false,
-            createdAt: new Date().toISOString(),
+            createdAt: timestamp,
             agency_id: profile.agency_id,
         };
         await addDoc(collection(firestore, 'agencies', profile.agency_id, 'inboxMessages'), inboxMessage);
 
         setNewNote('');
-        toast({ title: "Message Sent" });
+        toast({ title: "Remark Added" });
     } catch (error) {
         console.error("Error adding note:", error);
-        toast({ title: "Failed to send message", variant: "destructive" });
+        toast({ title: "Failed to add remark", variant: "destructive" });
     } finally {
         setIsSaving(false);
     }
@@ -96,9 +100,9 @@ export function PropertyNotesDialog({
                         <MessageSquareText className="h-6 w-6" />
                     </div>
                     <div>
-                        <DialogTitle className="font-headline text-xl">Property Message Center</DialogTitle>
+                        <DialogTitle className="font-headline text-xl">Property Remarks</DialogTitle>
                         <DialogDescription>
-                            Communication for <strong>{property.auto_title}</strong> ({property.serial_no}).
+                            Keep the agency updated about <strong>{property.auto_title}</strong> ({property.serial_no}).
                         </DialogDescription>
                     </div>
                 </div>
@@ -138,8 +142,8 @@ export function PropertyNotesDialog({
                     ) : (
                         <div className="h-full flex flex-col items-center justify-center text-center p-8 opacity-40">
                             <MessageSquareText className="h-12 w-12 mb-2" />
-                            <p className="text-sm font-medium">No messages yet.</p>
-                            <p className="text-xs">Start the conversation by sending a message below.</p>
+                            <p className="text-sm font-medium">No remarks yet.</p>
+                            <p className="text-xs">Post an update about this property below.</p>
                         </div>
                     )}
                 </ScrollArea>
@@ -148,7 +152,7 @@ export function PropertyNotesDialog({
             <div className="py-4 space-y-3">
                 <div className="relative">
                     <Textarea 
-                        placeholder="Write a message to the company about this property..." 
+                        placeholder="Add a property remark..." 
                         value={newNote}
                         onChange={(e) => setNewNote(e.target.value)}
                         className="min-h-[100px] resize-none pr-12 rounded-xl focus-visible:ring-primary/20 bg-background"

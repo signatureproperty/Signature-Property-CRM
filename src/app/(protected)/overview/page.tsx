@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -5,7 +6,7 @@ import {
     Building2, Users, DollarSign, Home, TrendingUp, Star, CalendarDays, 
     CheckCircle, Briefcase, Video, PlayCircle, Gem, ArrowRight, 
     VideoOff, Circle, Clock, History, FilePlus, UserPlus, Edit, ArrowUpRight,
-    Plus
+    Plus, MessageSquareText
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useProfile } from '@/context/profile-context';
@@ -13,10 +14,10 @@ import { useFirestore } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useMemoFirebase } from '@/firebase/hooks';
 import { collection, query, where, addDoc, doc, setDoc, deleteDoc, orderBy, limit, or } from 'firebase/firestore';
-import type { Property, Buyer, Appointment, AppointmentContactType, AppointmentStatus, Activity } from '@/lib/types';
+import type { Property, Buyer, Appointment, AppointmentContactType, AppointmentStatus, Activity, LeadNote } from '@/lib/types';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { subDays, parseISO, format } from 'date-fns';
+import { subDays, parseISO, format, formatDistanceToNow } from 'date-fns';
 import { useCurrency } from '@/context/currency-context';
 import { formatCurrency } from '@/lib/formatters';
 import { Button } from '@/components/ui/button';
@@ -29,6 +30,7 @@ import { AllEventsDialog } from '@/components/all-events-dialog';
 import { PerformanceChart } from '@/components/performance-chart';
 import { LeadsChart } from '@/components/leads-chart';
 import { SalesBreakdownChart } from '@/components/sales-breakdown-chart';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface StatCardProps {
     title: string;
@@ -168,6 +170,25 @@ export default function OverviewPage() {
 
     const isLoading = isProfileLoading || isPropertiesLoading || isBuyersLoading || isAppointmentsLoading;
 
+    // Collect all remarks from both properties and buyers
+    const latestRemarks = useMemo(() => {
+        const allRemarks: (LeadNote & { leadName: string, leadSerial: string, leadType: 'Buyer' | 'Property' })[] = [];
+        
+        buyers?.forEach(b => {
+            b.timeline_notes?.forEach(n => {
+                allRemarks.push({ ...n, leadName: b.name, leadSerial: b.serial_no, leadType: 'Buyer' });
+            });
+        });
+
+        properties?.forEach(p => {
+            p.timeline_notes?.forEach(n => {
+                allRemarks.push({ ...n, leadName: p.auto_title, leadSerial: p.serial_no, leadType: 'Property' });
+            });
+        });
+
+        return allRemarks.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 5);
+    }, [buyers, properties]);
+
     const stats = useMemo(() => {
         const activeProps = properties?.filter(p => !p.is_deleted) || [];
         const activeBuyers = buyers?.filter(b => !b.is_deleted) || [];
@@ -248,6 +269,50 @@ export default function OverviewPage() {
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
                 <div className="xl:col-span-2 space-y-8">
                     <PerformanceChart properties={properties || []} />
+                    
+                    {/* Latest Remarks Section */}
+                    <Card className="border-none shadow-xl bg-card/60 backdrop-blur-sm rounded-2xl overflow-hidden">
+                        <CardHeader className="pb-3 border-b border-border/30">
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="text-sm font-black uppercase tracking-wider flex items-center gap-2">
+                                    <MessageSquareText className="h-4 w-4 text-primary" /> Latest Lead Remarks
+                                </CardTitle>
+                                <span className="text-[10px] font-bold text-muted-foreground uppercase">Real-time Feed</span>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <ScrollArea className="h-[300px]">
+                                {latestRemarks.length > 0 ? (
+                                    <div className="divide-y divide-border/30">
+                                        {latestRemarks.map((remark) => (
+                                            <div key={remark.id} className="p-4 hover:bg-primary/5 transition-colors">
+                                                <div className="flex items-start justify-between gap-4">
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <span className="font-bold text-xs">{remark.authorName}</span>
+                                                            <Badge variant="outline" className="text-[9px] uppercase h-4 px-1">{remark.authorRole}</Badge>
+                                                            <span className="text-[10px] text-muted-foreground ml-auto">{formatDistanceToNow(new Date(remark.timestamp), { addSuffix: true })}</span>
+                                                        </div>
+                                                        <p className="text-sm text-foreground mb-2 leading-relaxed line-clamp-2">"{remark.text}"</p>
+                                                        <Link href={remark.leadType === 'Buyer' ? '/buyers' : '/properties'} className="inline-flex items-center gap-1.5 text-[10px] font-black text-primary hover:underline uppercase tracking-wider">
+                                                            {remark.leadType === 'Buyer' ? <Briefcase className="h-3 w-3" /> : <Building2 className="h-3 w-3" />}
+                                                            {remark.leadSerial}: {remark.leadName}
+                                                        </Link>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-20 text-muted-foreground opacity-40">
+                                        <MessageSquareText className="h-10 w-10 mb-2" />
+                                        <p className="text-xs font-bold uppercase tracking-widest">No remarks yet</p>
+                                    </div>
+                                )}
+                            </ScrollArea>
+                        </CardContent>
+                    </Card>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <LeadsChart properties={properties || []} buyers={buyers || []} />
                         <SalesBreakdownChart properties={properties || []} />

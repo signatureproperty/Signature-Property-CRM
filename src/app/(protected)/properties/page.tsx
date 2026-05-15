@@ -305,6 +305,14 @@ function PropertiesPageContent() {
     }
     
     return baseProperties.sort((a, b) => {
+      // Sort by last_remark_at first
+      const dateA = a.last_remark_at ? new Date(a.last_remark_at).getTime() : 0;
+      const dateB = b.last_remark_at ? new Date(b.last_remark_at).getTime() : 0;
+      
+      if (dateA !== dateB) {
+          return dateB - dateA;
+      }
+
       const aNum = parseInt(a.serial_no.split('-')[1] || '0', 10);
       const bNum = parseInt(b.serial_no.split('-')[1] || '0', 10);
       return sortOrder === 'asc' ? aNum - bNum : bNum - aNum;
@@ -500,7 +508,7 @@ function PropertiesPageContent() {
         </TableHeader>
         <TableBody>
           {properties.map((prop, index) => {
-            const hasRecentNotes = (prop.timeline_notes?.length || 0) > 0;
+            const hasUnreadNotes = prop.timeline_notes?.some(n => !n.readBy?.includes(profile.user_id));
             return (
             <motion.tr key={prop.id} className="hover:bg-accent/50 transition-colors cursor-pointer" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, delay: index * 0.02 }} >
               <TableCell onClick={(e) => e.stopPropagation()}><Checkbox checked={selectedProperties.includes(prop.id)} onCheckedChange={(checked) => setSelectedProperties(prev => checked ? [...prev, prop.id] : prev.filter(id => id !== prop.id))} /></TableCell>
@@ -508,7 +516,12 @@ function PropertiesPageContent() {
                 <div className="flex items-center gap-2 font-bold font-headline text-base">
                     {prop.auto_title || `${prop.size_value} ${prop.size_unit} ${prop.property_type}`} 
                     {prop.is_recorded && <Video className="h-4 w-4 text-primary" />}
-                    {hasRecentNotes && <MessageSquareText className="h-3.5 w-3.5 text-primary animate-pulse" />}
+                    {hasUnreadNotes && (
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                        </span>
+                    )}
                 </div>
                 <div className="flex flex-wrap gap-1 mt-1">
                     <Badge variant="default" className={cn('font-mono text-[10px]', prop.serial_no.startsWith('RP') ? 'bg-emerald-100 text-emerald-700' : 'bg-primary/20 text-primary')}>{prop.serial_no}</Badge>
@@ -530,7 +543,7 @@ function PropertiesPageContent() {
                   <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="rounded-full"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="glass-card">
                     <DropdownMenuItem onSelect={() => handleRowClick(prop)}><Eye />View Details</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => handleNotesClick(prop)}><MessageSquareText /> Message</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleNotesClick(prop)}><MessageSquareText /> Remarks Update</DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => handleShare(prop)}><Share2 />Share Details</DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => handleManageTags(prop)}><TagIcon />Edit Tags</DropdownMenuItem>
                     <DropdownMenuItem onSelect={(e) => handleWhatsAppChat(e, prop)}><MessageSquare /> WhatsApp</DropdownMenuItem>
@@ -579,7 +592,7 @@ function PropertiesPageContent() {
     return (
       <div className="space-y-4">
         {properties.map((prop, index) => {
-          const hasRecentNotes = (prop.timeline_notes?.length || 0) > 0;
+          const hasUnreadNotes = prop.timeline_notes?.some(n => !n.readBy?.includes(profile.user_id));
           return (
           <motion.div key={prop.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, delay: index * 0.02 }}>
             <Card className="overflow-hidden border-l-4 border-l-primary/40">
@@ -593,7 +606,12 @@ function PropertiesPageContent() {
                   <div onClick={() => handleRowClick(prop)} className="cursor-pointer">
                     <div className="flex items-center gap-2">
                         <CardTitle className="text-base font-bold font-headline">{prop.auto_title}</CardTitle>
-                        {hasRecentNotes && <MessageSquareText className="h-3.5 w-3.5 text-primary" />}
+                        {hasUnreadNotes && (
+                            <span className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                            </span>
+                        )}
                     </div>
                     <div className="flex items-center gap-2 mt-1">
                        <Badge variant="outline" className="text-[10px] bg-background font-mono">{prop.serial_no}</Badge>
@@ -634,7 +652,7 @@ function PropertiesPageContent() {
               <CardFooter className="p-2 bg-muted/20 border-t justify-between items-center">
                 <Button variant="ghost" size="sm" className="h-8 gap-2 text-[10px] font-bold" onClick={() => handleNotesClick(prop)}>
                     <MessageSquareText className="h-3.5 w-3.5" />
-                    Message
+                    Remarks
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>

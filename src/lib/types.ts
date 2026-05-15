@@ -1,3 +1,4 @@
+
 'use client';
 
 export type UserRole = 'Admin' | 'Agent' | 'Video Recorder' | 'Super Admin';
@@ -149,8 +150,9 @@ export type Property = {
   // Tags
   tags?: string[];
   
-  // Messaging
+  // Remarks & Updates
   timeline_notes?: LeadNote[];
+  last_remark_at?: string;
 };
 
 export type RecommendedProperty = Property & {
@@ -175,7 +177,7 @@ export type LeadNote = {
     authorName: string;
     authorRole: UserRole;
     timestamp: string;
-    readBy?: string[]; // Track who has seen this message
+    readBy?: string[]; // Track who has seen this remark
 };
 
 export type Buyer = {
@@ -201,6 +203,7 @@ export type Buyer = {
     size_max_unit?: SizeUnit;
     notes?: string;
     timeline_notes?: LeadNote[];
+    last_remark_at?: string;
     created_at: string;
     created_by: string;
     agency_id: string;

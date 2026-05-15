@@ -395,7 +395,15 @@ function BuyersPageContent() {
             buyers = buyers.filter(b => b.serial_no === fullSerialNo);
         }
 
+        // --- NEW SORTING LOGIC: Sort by last_remark_at first, then by serial number ---
         return buyers.sort((a, b) => {
+            const dateA = a.last_remark_at ? new Date(a.last_remark_at).getTime() : 0;
+            const dateB = b.last_remark_at ? new Date(b.last_remark_at).getTime() : 0;
+            
+            if (dateA !== dateB) {
+                return dateB - dateA; // Recent remarks first
+            }
+
             const aNum = parseInt(a.serial_no.split('-')[1] || '0', 10);
             const bNum = parseInt(b.serial_no.split('-')[1] || '0', 10);
             return sortOrder === 'asc' ? aNum - bNum : bNum - aNum;
@@ -433,7 +441,8 @@ function BuyersPageContent() {
                             ? areas.slice(0, 2).join(', ') + '...' 
                             : areas.join(', ') || 'N/A';
                         
-                        const hasRecentNotes = (buyer.timeline_notes?.length || 0) > 0;
+                        // Show pulse if there are unread notes
+                        const hasUnreadNotes = buyer.timeline_notes?.some(n => !n.readBy?.includes(profile.user_id));
                             
                         return (
                             <TableRow key={buyer.id} className="cursor-pointer hover:bg-accent/50" onClick={() => handleDetailsClick(buyer)}>
@@ -441,7 +450,12 @@ function BuyersPageContent() {
                                 <TableCell>
                                     <div className="flex items-center gap-2">
                                         <div className="font-bold text-base font-headline">{buyer.name}</div>
-                                        {hasRecentNotes && <MessageSquareText className="h-3.5 w-3.5 text-primary animate-pulse" />}
+                                        {hasUnreadNotes && (
+                                            <span className="relative flex h-2 w-2">
+                                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                                              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                                            </span>
+                                        )}
                                     </div>
                                     <div className="flex gap-1 mt-1">
                                         <Badge variant="outline" className={cn("text-[10px] border-primary/20", buyer.serial_no.startsWith('RB') ? "bg-emerald-100 text-emerald-700" : "bg-primary/10 text-primary")}>{buyer.serial_no}</Badge>
@@ -471,7 +485,7 @@ function BuyersPageContent() {
                                         <DropdownMenuTrigger asChild><Button size="icon" variant="ghost"><MoreHorizontal /></Button></DropdownMenuTrigger>
                                         <DropdownMenuContent align="end" className="glass-card w-48">
                                             <DropdownMenuItem onSelect={() => handleDetailsClick(buyer)}><Eye /> View Details</DropdownMenuItem>
-                                            <DropdownMenuItem onSelect={() => handleNotesClick(buyer)}><MessageSquareText /> Message</DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={() => handleNotesClick(buyer)}><MessageSquareText /> Remarks Update</DropdownMenuItem>
                                             <DropdownMenuItem onSelect={() => handleRecommendProperties(buyer)}><Sparkles /> Recommended Properties</DropdownMenuItem>
                                             <DropdownMenuItem onSelect={() => handleManageTags(buyer)}><TagIcon /> Edit Tags</DropdownMenuItem>
                                             <DropdownMenuItem onSelect={(e) => handleWhatsAppChat(e, buyer)}><MessageSquare /> WhatsApp Chat</DropdownMenuItem>
@@ -513,7 +527,7 @@ function BuyersPageContent() {
     const renderCards = (buyers: Buyer[]) => (
         <div className="space-y-4">
             {buyers.map(buyer => {
-                const hasRecentNotes = (buyer.timeline_notes?.length || 0) > 0;
+                const hasUnreadNotes = buyer.timeline_notes?.some(n => !n.readBy?.includes(profile.user_id));
 
                 return (
                 <Card key={buyer.id} className="overflow-hidden border-l-4 border-l-primary/40">
@@ -527,7 +541,12 @@ function BuyersPageContent() {
                             <div onClick={() => handleDetailsClick(buyer)} className="cursor-pointer">
                                 <div className="flex items-center gap-2">
                                     <CardTitle className="text-base font-bold font-headline">{buyer.name}</CardTitle>
-                                    {hasRecentNotes && <MessageSquareText className="h-3.5 w-3.5 text-primary" />}
+                                    {hasUnreadNotes && (
+                                        <span className="relative flex h-2 w-2">
+                                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                                          <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                                        </span>
+                                    )}
                                 </div>
                                 <div className="flex items-center gap-2 mt-1">
                                     <Badge variant="outline" className="text-[10px] bg-background font-mono">{buyer.serial_no}</Badge>
@@ -567,7 +586,7 @@ function BuyersPageContent() {
                     <CardFooter className="p-2 bg-muted/20 border-t justify-between items-center">
                         <Button variant="ghost" size="sm" className="h-8 gap-2 text-[10px] font-bold" onClick={() => handleNotesClick(buyer)}>
                             <MessageSquareText className="h-3.5 w-3.5" />
-                            Message
+                            Remarks
                         </Button>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
