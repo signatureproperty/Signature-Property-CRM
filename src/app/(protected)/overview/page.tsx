@@ -1,12 +1,11 @@
-
 'use client';
 import React, { useMemo, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { 
     Building2, Users, DollarSign, Home, TrendingUp, Star, CalendarDays, 
     CheckCircle, Briefcase, Video, PlayCircle, Gem, ArrowRight, 
     VideoOff, Circle, Clock, History, FilePlus, UserPlus, Edit, ArrowUpRight,
-    Plus, MessageSquareText
+    Plus, MessageSquareText, Calendar, MapPin, User, MessageSquare
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useProfile } from '@/context/profile-context';
@@ -14,7 +13,7 @@ import { useFirestore } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useMemoFirebase } from '@/firebase/hooks';
 import { collection, query, where, addDoc, doc, setDoc, deleteDoc, orderBy, limit, or } from 'firebase/firestore';
-import type { Property, Buyer, Appointment, AppointmentContactType, AppointmentStatus, Activity, LeadNote } from '@/lib/types';
+import type { Property, Buyer, Appointment, AppointmentContactType, AppointmentStatus, Activity, LeadNote, User as TeamMember } from '@/lib/types';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { subDays, parseISO, format, formatDistanceToNow } from 'date-fns';
@@ -34,6 +33,10 @@ import { SalesBreakdownChart } from '@/components/sales-breakdown-chart';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { BuyerNotesDialog } from '@/components/buyer-notes-dialog';
 import { PropertyNotesDialog } from '@/components/property-notes-dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
+import { BuyerDetailsDialog } from '@/components/buyer-details-dialog';
+import { PropertyDetailsDialog } from '@/components/property-details-dialog';
 
 interface StatCardProps {
     title: string;
@@ -108,6 +111,11 @@ export default function OverviewPage() {
     const [appointmentToUpdateStatus, setAppointmentToUpdateStatus] = useState<Appointment | null>(null);
     const [newStatus, setNewStatus] = useState<AppointmentStatus | null>(null);
 
+    // Details state
+    const [selectedApptForDetails, setSelectedApptForDetails] = useState<Appointment | null>(null);
+    const [isLeadDetailsOpen, setIsLeadDetailsOpen] = useState(false);
+    const [selectedLeadForFullDetails, setSelectedLeadForFullDetails] = useState<Buyer | Property | null>(null);
+
     // Remarks management
     const [selectedLead, setSelectedLead] = useState<Buyer | Property | null>(null);
     const [isRemarksOpen, setIsRemarksOpen] = useState(false);
@@ -127,6 +135,9 @@ export default function OverviewPage() {
     const isRecorder = profile.role === 'Video Recorder';
 
     // --- Data Fetching ---
+    const teamMembersQuery = useMemoFirebase(() => canFetch ? collection(firestore, 'agencies', profile.agency_id, 'teamMembers') : null, [canFetch, firestore, profile.agency_id]);
+    const { data: teamMembers } = useCollection<TeamMember>(teamMembersQuery);
+
     const propertiesQuery = useMemoFirebase(() => {
         if (!canFetch) return null;
         const ref = collection(firestore, 'agencies', profile.agency_id, 'properties');
@@ -199,6 +210,26 @@ export default function OverviewPage() {
     const handleRemarkClick = (remark: any) => {
         setSelectedLead(remark.leadData);
         setIsRemarksOpen(true);
+    };
+
+    const handleViewLeadFromAppointment = () => {
+        if (!selectedApptForDetails || !selectedApptForDetails.contactSerialNo) return;
+        
+        const serial = selectedApptForDetails.contactSerialNo.toUpperCase();
+        let lead: Buyer | Property | undefined;
+        
+        if (serial.startsWith('B') || serial.startsWith('RB')) {
+            lead = buyers?.find(b => b.serial_no === serial);
+        } else {
+            lead = properties?.find(p => p.serial_no === serial);
+        }
+
+        if (lead) {
+            setSelectedLeadForFullDetails(lead);
+            setIsLeadDetailsOpen(true);
+        } else {
+            toast({ title: "Lead not found", description: "Could not find record for this serial number.", variant: 'destructive' });
+        }
     };
 
     const stats = useMemo(() => {
@@ -341,7 +372,11 @@ export default function OverviewPage() {
                         isLoading={isAppointmentsLoading}
                         onAddAppointment={() => setIsAppointmentOpen(true)}
                         onAddEvent={() => setIsEventOpen(true)}
-                        onUpdateStatus={(a, s) => { setAppointmentToUpdateStatus(a); setNewStatus(s); }}
+                        onUpdateStatus={async (a, s) => { 
+                            if (!profile.agency_id) return;
+                            await setDoc(doc(firestore, 'agencies', profile.agency_id, 'appointments', a.id), { status: s }, { merge: true });
+                            toast({ title: `Marked as ${s}` });
+                        }}
                         onDelete={async (a) => {
                             if (!profile.agency_id) return;
                             await deleteDoc(doc(firestore, 'agencies', profile.agency_id, 'appointments', a.id));
@@ -353,6 +388,7 @@ export default function OverviewPage() {
                             window.open(`https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(a.contactName)}&dates=${start}/${end}&details=${encodeURIComponent(a.message)}`, '_blank');
                         }}
                         onAllEventsClick={() => setIsAllEventsOpen(true)}
+                        onViewDetails={(a) => setSelectedApptForDetails(a)}
                     />
 
                     <Card className="border-none shadow-xl bg-card/60 backdrop-blur-sm rounded-2xl overflow-hidden">
@@ -415,7 +451,25 @@ export default function OverviewPage() {
 
             <SetAppointmentDialog isOpen={isAppointmentOpen} setIsOpen={setIsAppointmentOpen} onSave={async (a) => {
                 if (!profile.agency_id) return;
+                
+                // Save appointment
                 await addDoc(collection(firestore, 'agencies', profile.agency_id, 'appointments'), { ...a, agency_id: profile.agency_id, status: 'Scheduled' });
+                
+                // Logic for notification if assigned to another agent
+                const assignedAgent = teamMembers?.find(m => m.name === a.agentName);
+                if (assignedAgent && assignedAgent.id !== profile.user_id) {
+                    await addDoc(collection(firestore, 'agencies', profile.agency_id, 'activityLogs'), {
+                        userName: profile.name,
+                        action: 'assigned an appointment',
+                        target: a.contactName,
+                        targetType: 'Appointment',
+                        timestamp: new Date().toISOString(),
+                        agency_id: profile.agency_id,
+                        assignedToId: assignedAgent.user_id || assignedAgent.id,
+                        assignedToName: assignedAgent.name
+                    });
+                }
+                
                 toast({ title: 'Appointment Scheduled' });
             }} appointmentDetails={appointmentDetails} />
             
@@ -428,21 +482,83 @@ export default function OverviewPage() {
                 toast({ title: 'Event Created' });
             }} />
 
-            {appointmentToUpdateStatus && newStatus && (
-                <UpdateAppointmentStatusDialog
-                    isOpen={!!appointmentToUpdateStatus}
-                    setIsOpen={() => setAppointmentToUpdateStatus(null)}
-                    appointment={appointmentToUpdateStatus}
-                    newStatus={newStatus}
-                    onUpdate={async (id, s, n) => {
-                        if (!profile.agency_id) return;
-                        await setDoc(doc(firestore, 'agencies', profile.agency_id, 'appointments', id), { status: s, notes: n || '' }, { merge: true });
-                        toast({ title: `Marked as ${s}` });
-                    }}
-                />
+            {selectedApptForDetails && (
+                <Dialog open={!!selectedApptForDetails} onOpenChange={() => setSelectedApptForDetails(null)}>
+                    <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                            <div className="flex items-center gap-3">
+                                <div className={cn(
+                                    "p-3 rounded-2xl",
+                                    selectedApptForDetails.contactType === 'Buyer' ? "bg-sky-500/10 text-sky-600" : "bg-purple-500/10 text-purple-600"
+                                )}>
+                                    {selectedApptForDetails.contactType === 'Buyer' ? <Briefcase className="h-6 w-6" /> : <Building className="h-6 w-6" />}
+                                </div>
+                                <div>
+                                    <DialogTitle className="text-xl font-black font-headline">{selectedApptForDetails.contactName}</DialogTitle>
+                                    <DialogDescription className="font-bold flex items-center gap-2">
+                                        <Calendar className="h-3 w-3" /> {format(parseISO(selectedApptForDetails.date), 'PPPP')}
+                                    </DialogDescription>
+                                </div>
+                            </div>
+                        </DialogHeader>
+                        <div className="space-y-6 py-4">
+                            <div className="flex items-center gap-6 px-1">
+                                <div className="space-y-1">
+                                    <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest block">Time</span>
+                                    <span className="font-bold flex items-center gap-1.5"><Clock className="h-4 w-4 text-primary" /> {selectedApptForDetails.time}</span>
+                                </div>
+                                <div className="space-y-1">
+                                    <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest block">Agent</span>
+                                    <span className="font-bold flex items-center gap-1.5"><User className="h-4 w-4 text-primary" /> {selectedApptForDetails.agentName}</span>
+                                </div>
+                                <div className="space-y-1 ml-auto">
+                                    <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest block text-right">Status</span>
+                                    <Badge variant={selectedApptForDetails.status === 'Scheduled' ? 'secondary' : 'default'} className="uppercase text-[9px] font-black">{selectedApptForDetails.status}</Badge>
+                                </div>
+                            </div>
+                            
+                            <Separator />
+                            
+                            <div className="space-y-2">
+                                <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest flex items-center gap-2">
+                                    <MessageSquare className="h-3 w-3" /> Purpose & Message
+                                </span>
+                                <div className="p-4 bg-muted/20 rounded-2xl border border-border/40 text-sm font-medium leading-relaxed">
+                                    {selectedApptForDetails.message}
+                                </div>
+                            </div>
+
+                            {selectedApptForDetails.contactSerialNo && (
+                                <Button 
+                                    className="w-full rounded-2xl h-12 glowing-btn gap-2"
+                                    onClick={handleViewLeadFromAppointment}
+                                >
+                                    <Eye className="h-4 w-4" /> View Full File ({selectedApptForDetails.contactSerialNo})
+                                </Button>
+                            )}
+                        </div>
+                    </DialogContent>
+                </Dialog>
             )}
-            <AllEventsDialog isOpen={isAllEventsOpen} setIsOpen={setIsAllEventsOpen} appointments={allAppointments || []} />
-            
+
+            {isLeadDetailsOpen && selectedLeadForFullDetails && (
+                <>
+                    {'serial_no' in selectedLeadForFullDetails && selectedLeadForFullDetails.serial_no.startsWith('B') ? (
+                        <BuyerDetailsDialog 
+                            buyer={selectedLeadForFullDetails as Buyer} 
+                            isOpen={isLeadDetailsOpen} 
+                            setIsOpen={setIsLeadDetailsOpen} 
+                        />
+                    ) : (
+                        <PropertyDetailsDialog 
+                            property={selectedLeadForFullDetails as Property} 
+                            isOpen={isLeadDetailsOpen} 
+                            setIsOpen={setIsLeadDetailsOpen} 
+                        />
+                    )}
+                </>
+            )}
+
             {selectedLead && isRemarksOpen && (
                 <>
                     { 'serial_no' in selectedLead && selectedLead.serial_no.startsWith('B') ? (

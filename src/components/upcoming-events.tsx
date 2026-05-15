@@ -21,6 +21,7 @@ interface UpcomingEventsProps {
     onDelete: (appointment: Appointment) => void;
     onAddToCalendar: (event: React.MouseEvent, appointment: Appointment) => void;
     onAllEventsClick: () => void;
+    onViewDetails: (appointment: Appointment) => void;
 }
 
 export function UpcomingEvents({ 
@@ -32,6 +33,7 @@ export function UpcomingEvents({
     onDelete,
     onAddToCalendar,
     onAllEventsClick,
+    onViewDetails,
 }: UpcomingEventsProps) {
     const [selectedDay, setSelectedDay] = useState<Date | undefined>(new Date());
     
@@ -131,8 +133,9 @@ export function UpcomingEvents({
                                 {selectedDayEvents.length > 0 ? selectedDayEvents.map(appt => (
                                     <div 
                                         key={appt.id} 
+                                        onClick={() => onViewDetails(appt)}
                                         className={cn(
-                                            "group relative flex items-start gap-3 p-3 rounded-xl border border-border/40 transition-all",
+                                            "group relative flex items-start gap-3 p-3 rounded-xl border border-border/40 transition-all cursor-pointer",
                                             appt.status === 'Completed' ? "bg-emerald-50/30 dark:bg-emerald-500/5 opacity-60" : "bg-card hover:shadow-md hover:border-primary/20"
                                         )}
                                     >
@@ -155,25 +158,25 @@ export function UpcomingEvents({
                                             <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5">{appt.message}</p>
                                         </div>
 
-                                        <div className="flex items-center gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div className="flex items-center gap-1 ml-2">
                                             {appt.status === 'Scheduled' && (
                                                 <Button 
                                                     variant="ghost" 
                                                     size="icon" 
                                                     className="h-6 w-6 text-emerald-600 hover:bg-emerald-50"
-                                                    onClick={() => onUpdateStatus(appt, 'Completed')}
+                                                    onClick={(e) => { e.stopPropagation(); onUpdateStatus(appt, 'Completed'); }}
                                                 >
                                                     <Check className="h-3.5 w-3.5" />
                                                 </Button>
                                             )}
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6">
+                                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => e.stopPropagation()}>
                                                         <MoreHorizontal className="h-3.5 w-3.5" />
                                                     </Button>
                                                 </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="glass-card">
-                                                    <DropdownMenuItem onSelect={(e) => onAddToCalendar(e, appt)}>
+                                                <DropdownMenuContent align="end" className="glass-card" onClick={(e) => e.stopPropagation()}>
+                                                    <DropdownMenuItem onSelect={(e) => onAddToCalendar(e as any, appt)}>
                                                         <CalendarPlus className="mr-2 h-4 w-4" /> Sync Calendar
                                                     </DropdownMenuItem>
                                                     <Separator />
