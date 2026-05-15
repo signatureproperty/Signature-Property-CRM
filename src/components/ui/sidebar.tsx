@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -9,22 +8,16 @@ import { Menu } from "lucide-react"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Separator } from "@/components/ui/separator"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
-import { Skeleton } from "@/components/ui/skeleton"
 import {
-  Tooltip,
-  TooltipContent,
   TooltipProvider,
-  TooltipTrigger,
 } from "@/components/ui/tooltip"
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 const SIDEBAR_WIDTH = "16rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
-const SIDEBAR_WIDTH_ICON = "4rem" // Increased width for larger icons
+const SIDEBAR_WIDTH_ICON = "4rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 
 type SidebarContext = {
@@ -71,8 +64,6 @@ const SidebarProvider = React.forwardRef<
     const isMobile = useIsMobile();
     const [openMobile, setOpenMobile] = React.useState(false)
 
-    // This is the internal state of the sidebar.
-    // We use openProp and setOpenProp for control from outside the component.
     const [_open, _setOpen] = React.useState(defaultOpen)
     const open = openProp ?? _open
     const setOpen = React.useCallback(
@@ -84,20 +75,17 @@ const SidebarProvider = React.forwardRef<
           _setOpen(openState)
         }
 
-        // This sets the cookie to keep the sidebar state.
         document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
       },
       [setOpenProp, open]
     )
 
-    // Helper to toggle the sidebar.
     const toggleSidebar = React.useCallback(() => {
       return isMobile
         ? setOpenMobile((open) => !open)
         : setOpen((open) => !open)
     }, [isMobile, setOpen, setOpenMobile])
 
-    // Adds a keyboard shortcut to toggle the sidebar.
     React.useEffect(() => {
       const handleKeyDown = (event: KeyboardEvent) => {
         if (
@@ -113,8 +101,6 @@ const SidebarProvider = React.forwardRef<
       return () => window.removeEventListener("keydown", handleKeyDown)
     }, [toggleSidebar])
 
-    // We add a state so that we can do data-state="expanded" or "collapsed".
-    // This makes it easier to style the sidebar with Tailwind classes.
     const state = open ? "expanded" : "collapsed"
 
     const contextValue = React.useMemo<SidebarContext>(
@@ -122,7 +108,7 @@ const SidebarProvider = React.forwardRef<
         state,
         open,
         setOpen,
-        isMobile,
+        isMobile: !!isMobile,
         openMobile,
         setOpenMobile,
         toggleSidebar,
@@ -142,7 +128,7 @@ const SidebarProvider = React.forwardRef<
               } as React.CSSProperties
             }
             className={cn(
-              "group/sidebar-wrapper",
+              "group/sidebar-wrapper flex min-h-svh w-full has-[[data-variant=inset]]:bg-background",
               className
             )}
             ref={ref}
@@ -199,7 +185,7 @@ const Sidebar = React.forwardRef<
           <SheetContent
             data-sidebar="sidebar"
             data-mobile="true"
-            className="w-[--sidebar-width] bg-card/80 p-0 text-foreground [&>button]:hidden"
+            className="w-[--sidebar-width] glass-card p-0 text-foreground [&>button]:hidden rounded-r-[2rem] overflow-hidden"
             style={
               {
                 "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
@@ -306,21 +292,6 @@ const SidebarFooter = React.forwardRef<
 })
 SidebarFooter.displayName = "SidebarFooter"
 
-const SidebarSeparator = React.forwardRef<
-  React.ElementRef<typeof Separator>,
-  React.ComponentProps<typeof Separator>
->(({ className, ...props }, ref) => {
-  return (
-    <Separator
-      ref={ref}
-      data-sidebar="separator"
-      className={cn("mx-2 w-auto bg-border/50", className)}
-      {...props}
-    />
-  )
-})
-SidebarSeparator.displayName = "SidebarSeparator"
-
 const SidebarContent = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div">
@@ -401,7 +372,6 @@ const SidebarMenuButton = React.forwardRef<
     },
     ref
   ) => {
-    // agar multiple children ho to unko ek div ke andar wrap kar dega
     const Comp = asChild ? Slot : "button";
 
     const safeChildren =
@@ -440,7 +410,6 @@ export {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
-  SidebarSeparator,
   SidebarTrigger,
   useSidebar,
   SidebarInset,

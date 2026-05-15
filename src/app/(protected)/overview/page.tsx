@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -46,7 +45,7 @@ const StatCard = ({ title, value, change, icon, color, href, isLoading }: StatCa
 
     if (isLoading) {
         return (
-            <Card className="border-none shadow-sm bg-card/50">
+            <Card className="border-none shadow-md bg-card/50">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground"><Skeleton className="h-3 w-20" /></CardTitle>
                     <Skeleton className="h-8 w-8 rounded-full" />
@@ -61,10 +60,10 @@ const StatCard = ({ title, value, change, icon, color, href, isLoading }: StatCa
 
     return (
         <CardContentWrapper href={href || ''} className={cn("block transition-all rounded-2xl group", href && "hover:scale-[1.02]")}>
-            <Card className="h-full border-none shadow-sm hover:shadow-md transition-shadow bg-card/60 backdrop-blur-sm">
+            <Card className="h-full border border-primary/10 shadow-xl hover:shadow-2xl transition-all duration-300 bg-card/60 backdrop-blur-sm">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-[10px] font-black uppercase tracking-[0.1em] text-muted-foreground">{title}</CardTitle>
-                    <div className={cn("flex items-center justify-center rounded-xl h-10 w-10 transition-transform group-hover:rotate-12", color)}>
+                    <div className={cn("flex items-center justify-center rounded-xl h-10 w-10 shadow-inner transition-transform group-hover:rotate-12", color)}>
                         {icon}
                     </div>
                 </CardHeader>
@@ -233,7 +232,7 @@ export default function OverviewPage() {
                     <p className="text-muted-foreground font-medium">Your agency's performance at a glance.</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" className="rounded-full" onClick={() => setIsAllEventsOpen(true)}>
+                    <Button variant="outline" className="rounded-full shadow-sm" onClick={() => setIsAllEventsOpen(true)}>
                         <CalendarDays className="mr-2 h-4 w-4" /> Full Calendar
                     </Button>
                     <Button className="rounded-full glowing-btn" onClick={() => { setAppointmentDetails(null); setIsAppointmentOpen(true); }}>
@@ -275,7 +274,7 @@ export default function OverviewPage() {
                         onAllEventsClick={() => setIsAllEventsOpen(true)}
                     />
 
-                    <Card className="border-none shadow-sm bg-card/60 backdrop-blur-sm rounded-2xl overflow-hidden">
+                    <Card className="border-none shadow-xl bg-card/60 backdrop-blur-sm rounded-2xl overflow-hidden">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
                             <CardTitle className="text-sm font-black uppercase tracking-wider flex items-center gap-2">
                                 <History className="h-4 w-4 text-primary" /> Recent Actions
