@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -13,7 +12,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Home, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Eye, EyeOff, Building2, ArrowLeft } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -51,7 +50,6 @@ function SignupPageContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [showAgencyName, setShowAgencyName] = useState(false);
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(formSchema),
@@ -96,7 +94,7 @@ function SignupPageContent() {
                   name: user.displayName,
                   createdAt: serverTimestamp(),
                   avatar: user.photoURL,
-                  planName: 'Basic', // Add default plan
+                  planName: 'Basic',
               });
 
               const teamMemberRef = doc(firestore, 'agencies', agencyId, 'teamMembers', user.uid);
@@ -126,13 +124,6 @@ function SignupPageContent() {
                   planName: 'Basic' as const,
               };
               setProfile(newProfileData);
-          } else {
-            // Existing user, just fetch their profile
-            const userDocRef = doc(firestore, 'users', user.uid);
-            const userDocSnap = await getDoc(userDocRef);
-            if (userDocSnap.exists()) {
-                // Profile will be loaded by the main layout's context provider
-            }
           }
 
           toast({
@@ -164,49 +155,28 @@ function SignupPageContent() {
       const user = userCredential.user;
       if (user) {
         await updateProfile(user, { displayName: values.name });
-
-        const agencyId = user.uid; // The Admin's UID is the agency ID
-        
-        const newProfileData = {
-            id: user.uid,
-            name: values.name,
-            agencyName: values.agencyName,
-            email: values.email,
-            phone: '',
-            role: 'Admin' as const, 
-            agency_id: agencyId,
-            user_id: user.uid,
-            avatar: '',
-            planName: 'Basic' as const,
-        };
-        
+        const agencyId = user.uid; 
         const batch = writeBatch(firestore);
 
-        // 1. Create the user's main document with all profile info
-        const userDocRef = doc(firestore, 'users', user.uid);
-        batch.set(userDocRef, {
+        batch.set(doc(firestore, 'users', user.uid), {
              id: user.uid,
              name: values.name,
              email: values.email,
              role: 'Admin',
-             agency_id: agencyId, // Critical: user belongs to their own agency
+             agency_id: agencyId,
              createdAt: serverTimestamp(),
         });
         
-        // 2. Create the agency document, owned by this user
-        const agencyDocRef = doc(firestore, 'agencies', agencyId);
-        batch.set(agencyDocRef, {
+        batch.set(doc(firestore, 'agencies', agencyId), {
             id: agencyId,
-            agencyName: values.agencyName, // Corrected field
+            agencyName: values.agencyName,
             ownerId: user.uid,
-            name: values.name, // Storing the owner's name directly in the agency doc
+            name: values.name,
             createdAt: serverTimestamp(),
-            planName: 'Basic', // Add default plan
+            planName: 'Basic',
         });
 
-        // 3. Add the admin as a team member of their own agency
-        const teamMemberRef = doc(firestore, 'agencies', agencyId, 'teamMembers', user.uid);
-        batch.set(teamMemberRef, {
+        batch.set(doc(firestore, 'agencies', agencyId, 'teamMembers', user.uid), {
             id: user.uid,
             name: values.name,
             email: values.email,
@@ -217,16 +187,12 @@ function SignupPageContent() {
         });
         
         await batch.commit();
-
         await sendEmailVerification(user);
-
-        // Immediately set the profile in the context to avoid stale data issues
-        setProfile(newProfileData);
       }
 
       toast({
         title: 'Account Created!',
-        description: 'A verification email has been sent. Please verify your email to continue.',
+        description: 'Please verify your email to continue.',
       });
       router.push('/overview');
 
@@ -235,10 +201,7 @@ function SignupPageContent() {
       toast({
         variant: 'destructive',
         title: 'Signup Failed',
-        description:
-          error.code === 'auth/email-already-in-use'
-            ? 'This email address is already in use.'
-            : 'An unexpected error occurred. Please try again.',
+        description: error.code === 'auth/email-already-in-use' ? 'Email already in use.' : 'Error occurred.',
       });
     } finally {
       setIsLoading(false);
@@ -246,114 +209,73 @@ function SignupPageContent() {
   };
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-violet-100 via-white to-blue-100 dark:from-slate-900 dark:via-slate-800 dark:to-violet-900 p-4 font-body">
-      <div className="w-full max-w-sm space-y-6">
-        <div className="text-center">
-          <div className="flex justify-center items-center gap-3 mb-4">
-            
-            <h1 className="text-3xl font-extrabold text-foreground font-headline tracking-tight">
-              Signature Property CRM
-            </h1>
-          </div>
-          <p className="text-muted-foreground">
-            Create an account to get started with your agency.
-          </p>
+    <div className="flex h-svh w-full items-center justify-center p-4 font-body overflow-hidden relative">
+      <div className="absolute inset-0 z-0 bg-gradient-to-br from-[#2563eb] to-[#0f172a]" />
+      
+      <div className="w-full max-w-md z-10 space-y-4">
+        <div className="flex items-center justify-between px-2">
+            <Button variant="ghost" size="sm" className="text-white/60 hover:text-white" asChild>
+                <Link href="/login"><ArrowLeft className="mr-2 h-4 w-4" /> Back</Link>
+            </Button>
+            <div className="flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-blue-400" />
+                <span className="text-sm font-black text-white tracking-widest uppercase">Agency Registration</span>
+            </div>
         </div>
 
-        <Card className="glass-card shadow-2xl hover:shadow-primary/20">
-          <CardHeader>
-            <CardTitle>Create Agency Account</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <Card className="glass-card shadow-2xl border-white/10 bg-white/5 backdrop-blur-2xl overflow-hidden rounded-[2.5rem]">
+          <CardContent className="pt-6">
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-3">
                 <Button
                   type="button"
                   variant="outline"
-                  className="w-full h-11"
+                  className="w-full h-10 bg-white/5 border-white/10 text-white hover:bg-white/10 text-xs font-bold rounded-xl"
                   onClick={handleGoogleSignUp}
                   disabled={isGoogleLoading || isLoading}
                 >
-                  {isGoogleLoading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <svg
-                      className="mr-2 h-4 w-4"
-                      aria-hidden="true"
-                      focusable="false"
-                      data-prefix="fab"
-                      data-icon="google"
-                      role="img"
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 488 512"
-                    >
-                      <path
-                        fill="currentColor"
-                        d="M488 261.8C488 403.3 381.5 512 244 512 111.8 512 0 400.2 0 264.8S111.8 17.6 244 17.6c78.2 0 128.8 30.7 172.4 69.3l-59.8 58.6C324.2 119.8 291.6 98.4 244 98.4c-83.8 0-146.4 65.5-146.4 166.4s62.6 166.4 146.4 166.4c97.2 0 130.3-72.8 134.7-109.8H244v-73.4h239.3c5.1 26.6 7.7 54.5 7.7 85.4z"
-                      ></path>
-                    </svg>
-                  )}
-                  Sign up with Google
+                  {isGoogleLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Signup with Google
                 </Button>
 
-                <div className="relative my-4">
-                    <div className="absolute inset-0 flex items-center">
-                        <span className="w-full border-t" />
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-background px-2 text-muted-foreground">Or continue with email</span>
-                    </div>
+                <div className="relative my-1">
+                    <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-white/5" /></div>
+                    <div className="relative flex justify-center text-[10px] uppercase font-black"><span className="bg-transparent px-2 text-blue-200/40">Or fill details</span></div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                    <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                        <FormItem className="space-y-1">
+                        <Label className="text-blue-100 text-xs font-bold">Full Name</Label>
+                        <FormControl><Input placeholder="Ali Khan" className="bg-white/5 border-white/10 text-white h-10 rounded-xl" {...field} /></FormControl>
+                        <FormMessage className="text-[10px]" />
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="agencyName"
+                    render={({ field }) => (
+                        <FormItem className="space-y-1">
+                        <Label className="text-blue-100 text-xs font-bold">Agency Name</Label>
+                        <FormControl><Input placeholder="Signature Prop" className="bg-white/5 border-white/10 text-white h-10 rounded-xl" {...field} /></FormControl>
+                        <FormMessage className="text-[10px]" />
+                        </FormItem>
+                    )}
+                    />
                 </div>
 
                 <FormField
                   control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <Label>Your Name</Label>
-                      <FormControl>
-                        <Input
-                          placeholder="e.g. Ali Khan"
-                          className="bg-input/80"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="agencyName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <Label>Agency Name</Label>
-                      <FormControl>
-                        <Input
-                          placeholder="e.g. Signature Property CRM Properties"
-                          className="bg-input/80"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
                   name="email"
                   render={({ field }) => (
-                    <FormItem>
-                      <Label>Email</Label>
-                      <FormControl>
-                        <Input
-                          type="email"
-                          placeholder="m@example.com"
-                          className="bg-input/80"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
+                    <FormItem className="space-y-1">
+                      <Label className="text-blue-100 text-xs font-bold">Email</Label>
+                      <FormControl><Input type="email" placeholder="admin@example.com" className="bg-white/5 border-white/10 text-white h-10 rounded-xl" {...field} /></FormControl>
+                      <FormMessage className="text-[10px]" />
                     </FormItem>
                   )}
                 />
@@ -361,51 +283,25 @@ function SignupPageContent() {
                   control={form.control}
                   name="password"
                   render={({ field }) => (
-                    <FormItem>
-                      <Label>Password</Label>
+                    <FormItem className="space-y-1">
+                      <Label className="text-blue-100 text-xs font-bold">Password</Label>
                        <div className="relative">
-                        <FormControl>
-                          <Input
-                            type={showPassword ? 'text' : 'password'}
-                            className="bg-input/80 pr-10"
-                            {...field}
-                            placeholder="••••••••"
-                          />
-                        </FormControl>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="absolute inset-y-0 right-0 h-full px-3 text-muted-foreground"
-                          onClick={() => setShowPassword(!showPassword)}
-                        >
-                          {showPassword ? <EyeOff /> : <Eye />}
-                        </Button>
+                        <FormControl><Input type={showPassword ? 'text' : 'password'} className="bg-white/5 border-white/10 text-white pr-10 h-10 rounded-xl" {...field} placeholder="••••••••" /></FormControl>
+                        <Button type="button" variant="ghost" size="icon" className="absolute inset-y-0 right-0 h-full px-3 text-white/40 hover:text-white" onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</Button>
                       </div>
-                      <FormMessage />
+                      <FormMessage className="text-[10px]" />
                     </FormItem>
                   )}
                 />
 
-                <Button
-                  type="submit"
-                  className="w-full h-12 text-base font-bold mt-4 glowing-btn"
-                  disabled={isLoading || isGoogleLoading}
-                >
-                  {isLoading && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  Create Account
+                <Button type="submit" className="w-full h-11 text-sm font-black mt-2 glowing-btn rounded-xl shadow-lg" disabled={isLoading || isGoogleLoading}>
+                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Create Agency Account
                 </Button>
-                <div className="mt-4 text-center text-sm">
-                  Already have an account?{' '}
-                  <Link
-                    href="/login"
-                    className="font-semibold text-primary hover:text-primary/80 transition-colors"
-                  >
-                    Login
-                  </Link>
-                </div>
+                
+                <p className="text-center text-[10px] text-blue-200/50 mt-2">
+                    By signing up, you agree to our Terms and Service.
+                </p>
               </form>
             </Form>
           </CardContent>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -13,7 +12,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Home, Loader2, Eye, EyeOff, Moon, Sun } from 'lucide-react';
+import { Loader2, Eye, EyeOff, Moon, Sun, ShieldCheck, UserCircle } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -120,68 +119,58 @@ function LoginPageContent() {
   };
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center p-4 font-body">
-      <div className="absolute top-4 right-4">
-        <Button variant="ghost" size="icon" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} className="rounded-full text-white">
+    <div className="flex h-svh w-full items-center justify-center p-4 font-body overflow-hidden relative">
+      {/* Dynamic Background to match CRM */}
+      <div className="absolute inset-0 z-0 bg-gradient-to-br from-[#2563eb] to-[#0f172a]" />
+      
+      <div className="absolute top-4 right-4 z-10">
+        <Button variant="ghost" size="icon" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} className="rounded-full text-white/80 hover:text-white hover:bg-white/10">
             <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
             <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-            <span className="sr-only">Toggle theme</span>
         </Button>
       </div>
-      <div className="w-full max-sm:px-4 max-w-sm space-y-6">
-        <div className="text-center">
-          <div className="flex justify-center items-center gap-3 mb-4">
-            <h1 className="text-3xl font-black text-white font-headline tracking-tighter uppercase">
-              Signature CRM
-            </h1>
-          </div>
-          <p className="text-blue-100 font-medium">
-            Welcome back! Please sign in to continue.
+
+      <div className="w-full max-w-sm z-10 space-y-4">
+        <div className="text-center space-y-1">
+          <h1 className="text-3xl font-black text-white font-headline tracking-tighter uppercase">
+            Signature CRM
+          </h1>
+          <p className="text-blue-100/70 text-sm font-medium">
+            Professional Real Estate Management
           </p>
         </div>
 
-        <Card className="glass-card shadow-2xl border-white/20 bg-white/10 overflow-hidden">
-          <CardHeader>
-            <CardTitle className="text-white">Login</CardTitle>
+        <Card className="glass-card shadow-2xl border-white/10 bg-white/5 backdrop-blur-2xl overflow-hidden rounded-[2.5rem]">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-white text-xl text-center">Welcome Back</CardTitle>
+            <CardDescription className="text-blue-100/50 text-xs text-center italic">Sign in to your dashboard</CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-3">
                 <Button
                   type="button"
                   variant="outline"
-                  className="w-full h-11 bg-white/5 text-white hover:bg-white/10"
+                  className="w-full h-10 bg-white/5 border-white/10 text-white hover:bg-white/10 text-xs font-bold rounded-xl"
                   onClick={handleGoogleSignIn}
                   disabled={isGoogleLoading || isLoading}
                 >
                   {isGoogleLoading ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
-                    <svg
-                      className="mr-2 h-4 w-4"
-                      aria-hidden="true"
-                      focusable="false"
-                      data-prefix="fab"
-                      data-icon="google"
-                      role="img"
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 488 512"
-                    >
-                      <path
-                        fill="currentColor"
-                        d="M488 261.8C488 403.3 381.5 512 244 512 111.8 512 0 400.2 0 264.8S111.8 17.6 244 17.6c78.2 0 128.8 30.7 172.4 69.3l-59.8 58.6C324.2 119.8 291.6 98.4 244 98.4c-83.8 0-146.4 65.5-146.4 166.4s62.6 166.4 146.4 166.4c97.2 0 130.3-72.8 134.7-109.8H244v-73.4h239.3c5.1 26.6 7.7 54.5 7.7 85.4z"
-                      ></path>
+                    <svg className="mr-2 h-4 w-4" viewBox="0 0 488 512" fill="currentColor">
+                      <path d="M488 261.8C488 403.3 381.5 512 244 512 111.8 512 0 400.2 0 264.8S111.8 17.6 244 17.6c78.2 0 128.8 30.7 172.4 69.3l-59.8 58.6C324.2 119.8 291.6 98.4 244 98.4c-83.8 0-146.4 65.5-146.4 166.4s62.6 166.4 146.4 166.4c97.2 0 130.3-72.8 134.7-109.8H244v-73.4h239.3c5.1 26.6 7.7 54.5 7.7 85.4z" />
                     </svg>
                   )}
-                  Sign in with Google
+                  Continue with Google
                 </Button>
 
-                <div className="relative my-4">
+                <div className="relative my-1">
                     <div className="absolute inset-0 flex items-center">
-                        <span className="w-full border-t border-white/10" />
+                        <span className="w-full border-t border-white/5" />
                     </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-transparent px-2 text-blue-200">Or continue with</span>
+                    <div className="relative flex justify-center text-[10px] uppercase font-black">
+                        <span className="bg-transparent px-2 text-blue-200/40">Or email</span>
                     </div>
                 </div>
 
@@ -189,17 +178,17 @@ function LoginPageContent() {
                   control={form.control}
                   name="email"
                   render={({ field }) => (
-                    <FormItem>
-                      <Label className="text-blue-100">Email</Label>
+                    <FormItem className="space-y-1">
+                      <Label className="text-blue-100 text-xs font-bold">Email Address</Label>
                       <FormControl>
                         <Input
                           type="email"
                           placeholder="m@example.com"
-                          className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
+                          className="bg-white/5 border-white/10 text-white placeholder:text-white/20 h-10 rounded-xl focus:ring-primary/40"
                           {...field}
                         />
                       </FormControl>
-                      <FormMessage />
+                      <FormMessage className="text-[10px]" />
                     </FormItem>
                   )}
                 />
@@ -207,13 +196,13 @@ function LoginPageContent() {
                   control={form.control}
                   name="password"
                   render={({ field }) => (
-                    <FormItem>
-                      <Label className="text-blue-100">Password</Label>
+                    <FormItem className="space-y-1">
+                      <Label className="text-blue-100 text-xs font-bold">Password</Label>
                       <div className="relative">
                         <FormControl>
                           <Input
                             type={showPassword ? 'text' : 'password'}
-                            className="bg-white/5 border-white/10 text-white placeholder:text-white/40 pr-10"
+                            className="bg-white/5 border-white/10 text-white placeholder:text-white/20 pr-10 h-10 rounded-xl focus:ring-primary/40"
                             {...field}
                             placeholder="••••••••"
                           />
@@ -222,34 +211,45 @@ function LoginPageContent() {
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="absolute inset-y-0 right-0 h-full px-3 text-white/60 hover:text-white"
+                          className="absolute inset-y-0 right-0 h-full px-3 text-white/40 hover:text-white"
                           onClick={() => setShowPassword(!showPassword)}
                         >
-                          {showPassword ? <EyeOff /> : <Eye />}
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </Button>
                       </div>
-                      <FormMessage />
+                      <FormMessage className="text-[10px]" />
                     </FormItem>
                   )}
                 />
 
                 <Button
                   type="submit"
-                  className="w-full h-12 text-base font-bold mt-4 glowing-btn"
+                  className="w-full h-11 text-sm font-black mt-2 glowing-btn rounded-xl shadow-lg"
                   disabled={isLoading || isGoogleLoading}
                 >
-                  {isLoading && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  Login
+                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Login to Portal
                 </Button>
 
-                <Separator className="my-4 border-white/10" />
-                <div className="space-y-2 text-center">
-                  <p className="text-sm text-blue-200">Don't have an account?</p>
-                  <Button variant="outline" className="w-full bg-transparent border-white/20 text-white hover:bg-white/10" asChild>
-                    <Link href="/signup">Create Agency Account</Link>
-                  </Button>
+                <div className="flex flex-col gap-2 mt-4">
+                  <div className="flex items-center gap-2">
+                    <Separator className="flex-1 bg-white/5" />
+                    <span className="text-[10px] font-black text-blue-200/40 uppercase">New Here?</span>
+                    <Separator className="flex-1 bg-white/5" />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button variant="outline" size="sm" className="h-9 bg-white/5 border-white/10 text-white hover:bg-white/10 text-[10px] font-bold rounded-xl flex items-center gap-1.5" asChild>
+                      <Link href="/signup">
+                        <ShieldCheck className="h-3.5 w-3.5" /> Agency
+                      </Link>
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-9 bg-white/5 border-white/10 text-white hover:bg-white/10 text-[10px] font-bold rounded-xl flex items-center gap-1.5" asChild>
+                      <Link href="/agent/signup">
+                        <UserCircle className="h-3.5 w-3.5" /> Agent
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
               </form>
             </Form>
