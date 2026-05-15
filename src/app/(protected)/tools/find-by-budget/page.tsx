@@ -404,7 +404,7 @@ export default function FindByBudgetPage() {
                             <FormItem className="flex-1">
                                 <FormLabel>Min Budget</FormLabel>
                                 <FormControl>
-                                <Input type="number" {...field} />
+                                    <Input type="number" {...field} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -417,7 +417,7 @@ export default function FindByBudgetPage() {
                             <FormItem className="flex-1">
                                 <FormLabel>Max Budget</FormLabel>
                                 <FormControl>
-                                <Input type="number" {...field} />
+                                    <Input type="number" {...field} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>

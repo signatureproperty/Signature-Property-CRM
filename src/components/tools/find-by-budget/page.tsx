@@ -619,7 +619,7 @@ ${utilities || 'N/A'}${videoLinksSection}`;
                 setGeneratedMessage(rentDetails);
             } else {
                  const rentInBaseUnit = formatUnit(selectedProperty.potential_rent_amount || 0, selectedProperty.potential_rent_unit || 'Thousand');
-                const potentialRent = selectedProperty.potential_rent_amount ? `Rs. ${formatCurrency(rentInBaseUnit, currency)}` : 'N/A';
+                const potentialRent = selectedProperty.potential_rent_amount ? `Rs. ${formatCurrency(rentInBaseUnit, currency as Currency)}` : 'N/A';
                 
                 const saleDetails = `*PROPERTY DETAILS* 🏡
 Serial No: ${selectedProperty.serial_no}

@@ -16,7 +16,7 @@ import { Badge } from './ui/badge';
 import { Share2, Sparkles, RefreshCw, Video, Eye } from 'lucide-react';
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { formatCurrency, formatUnit, formatPhoneNumberForWhatsApp } from '@/lib/formatters';
-import { useCurrency } from '@/context/currency-context';
+import { useCurrency, Currency } from '@/context/currency-context';
 import { Progress } from './ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -174,7 +174,7 @@ ${utilities || 'N/A'}${videoLinksSection || ''}`;
         } else {
             const demand = `${property.demand_amount} ${property.demand_unit}`;
             const rentInBaseUnit = formatUnit(property.potential_rent_amount || 0, property.potential_rent_unit || 'Thousand');
-            const potentialRent = property.potential_rent_amount ? `Rs. ${formatCurrency(rentInBaseUnit, currency)}` : 'N/A';
+            const potentialRent = property.potential_rent_amount ? `Rs. ${formatCurrency(rentInBaseUnit, currency as Currency)}` : 'N/A';
             const utilities = [
                 property.meters?.gas && '- Gas',
                 property.meters?.electricity && '- Electricity',
@@ -250,7 +250,7 @@ ${utilities || 'N/A'}
                     <h4 className="font-bold">{property.auto_title}</h4>
                     <p className="text-sm text-muted-foreground">{property.address}</p>
                 </div>
-                <Badge variant="secondary">{formatCurrency(formatUnit(property.demand_amount, property.demand_unit), currency)}</Badge>
+                <Badge variant="secondary">{formatCurrency(formatUnit(property.demand_amount, property.demand_unit), currency as Currency)}</Badge>
             </div>
             <div className="flex items-center gap-4 mt-4">
                 <div className="w-24 text-center">

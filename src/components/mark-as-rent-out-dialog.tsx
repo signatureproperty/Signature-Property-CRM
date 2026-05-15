@@ -38,8 +38,6 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command';
 import { cn } from '@/lib/utils';
 
-const priceUnitArray = ['Thousand', 'Lacs', 'Crore'] as const;
-
 const formSchema = z.object({
   rent_out_date: z.string().refine(date => new Date(date).toString() !== 'Invalid Date', { message: 'Please select a valid date' }),
   rented_by_agent_id: z.string().min(1, "You must select the agent."),
@@ -113,13 +111,13 @@ export function MarkAsRentOutDialog({
             rented_by_agent_id: property.rented_by_agent_id || '',
             buyerId: property.buyerId || '',
             final_rent_amount: property.final_rent_amount || property.demand_amount,
-            final_rent_unit: (property.final_rent_unit || property.demand_unit) as any,
+            final_rent_unit: (property.final_rent_unit || property.demand_unit) as PriceUnit,
             rent_commission_from_tenant: property.rent_commission_from_tenant || 0,
-            rent_commission_from_tenant_unit: (property.rent_commission_from_tenant_unit as any) || 'Thousand',
+            rent_commission_from_tenant_unit: (property.rent_commission_from_tenant_unit as PriceUnit) || 'Thousand',
             rent_commission_from_owner: property.rent_commission_from_owner || 0,
-            rent_commission_from_owner_unit: (property.rent_commission_from_owner_unit as any) || 'Thousand',
+            rent_commission_from_owner_unit: (property.rent_commission_from_owner_unit as PriceUnit) || 'Thousand',
             rent_agent_share: property.rent_agent_share || 0,
-            rent_agent_share_unit: (property.rent_agent_share_unit as any) || 'Thousand',
+            rent_agent_share_unit: (property.rent_agent_share_unit as PriceUnit) || 'Thousand',
             tenant_name: property.tenant_name || '',
             tenant_phone: property.tenant_phone || '',
             tenant_cnic: property.tenant_cnic || '',
@@ -316,7 +314,9 @@ export function MarkAsRentOutDialog({
                                     <Select onValueChange={field.onChange} value={field.value}>
                                         <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                                         <SelectContent>
-                                            {priceUnitArray.map(unit => <SelectItem key={unit} value={unit}>{unit}</SelectItem>)}
+                                            <SelectItem value="Thousand">Thousand</SelectItem>
+                                            <SelectItem value="Lacs">Lacs</SelectItem>
+                                            <SelectItem value="Crore">Crore</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </FormItem>
@@ -392,7 +392,9 @@ export function MarkAsRentOutDialog({
                                 <Select onValueChange={field.onChange} value={field.value}>
                                     <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                                     <SelectContent>
-                                        {priceUnitArray.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                                        <SelectItem value="Thousand">Thousand</SelectItem>
+                                        <SelectItem value="Lacs">Lacs</SelectItem>
+                                        <SelectItem value="Crore">Crore</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </FormItem>
@@ -411,7 +413,9 @@ export function MarkAsRentOutDialog({
                                 <Select onValueChange={field.onChange} value={field.value}>
                                     <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                                     <SelectContent>
-                                        {priceUnitArray.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                                        <SelectItem value="Thousand">Thousand</SelectItem>
+                                        <SelectItem value="Lacs">Lacs</SelectItem>
+                                        <SelectItem value="Crore">Crore</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </FormItem>
@@ -432,7 +436,9 @@ export function MarkAsRentOutDialog({
                             <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                                 <SelectContent>
-                                    {priceUnitArray.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                                    <SelectItem value="Thousand">Thousand</SelectItem>
+                                    <SelectItem value="Lacs">Lacs</SelectItem>
+                                    <SelectItem value="Crore">Crore</SelectItem>
                                 </SelectContent>
                             </Select>
                         </FormItem>
@@ -446,7 +452,7 @@ export function MarkAsRentOutDialog({
                         <div className="flex items-center gap-2">
                             <Calculator className="text-muted-foreground" />
                             <p className="text-sm text-muted-foreground">Total Commission:</p>
-                            <p className="font-bold text-lg">{formatCurrency(totalCommission, currency)}</p>
+                            <p className="font-bold text-lg">{formatCurrency(totalCommission, currency as Currency)}</p>
                         </div>
                     </CardContent>
                </Card>

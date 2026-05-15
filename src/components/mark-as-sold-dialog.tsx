@@ -32,14 +32,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Separator } from './ui/separator';
 import { ScrollArea } from './ui/scroll-area';
 import { Calculator, Check, ChevronsUpDown } from 'lucide-react';
-import { useCurrency } from '@/context/currency-context';
+import { useCurrency, Currency } from '@/context/currency-context';
 import { Card, CardContent } from './ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command';
 import { cn } from '@/lib/utils';
 import { Alert, AlertDescription } from './ui/alert';
-
-const priceUnitArray = ['Thousand', 'Lacs', 'Crore'] as const;
 
 const formSchema = z.object({
   sold_price: z.coerce.number().positive("Sold price is required"),
@@ -96,7 +94,7 @@ export function MarkAsSoldDialog({
     resolver: zodResolver(formSchema),
     defaultValues: {
       sold_price: property.demand_amount,
-      sold_price_unit: property.demand_unit as 'Lacs' | 'Crore',
+      sold_price_unit: (property.demand_unit as any === 'Thousand' ? 'Lacs' : property.demand_unit) as 'Lacs' | 'Crore',
       sale_date: new Date().toISOString().split('T')[0],
       commission_from_buyer_unit: 'Lacs',
       commission_from_seller_unit: 'Lacs',
@@ -137,7 +135,7 @@ export function MarkAsSoldDialog({
     if (isOpen) {
         form.reset({
             sold_price: property.demand_amount,
-            sold_price_unit: property.demand_unit as 'Lacs' | 'Crore',
+            sold_price_unit: (property.demand_unit as any === 'Thousand' ? 'Lacs' : property.demand_unit) as 'Lacs' | 'Crore',
             sale_date: new Date().toISOString().split('T')[0],
             sold_by_agent_id: '',
             commission_from_buyer: 0,
@@ -191,7 +189,7 @@ export function MarkAsSoldDialog({
         ...property,
         status: 'Sold',
         sold_price: soldPriceInBaseUnit,
-        sold_price_unit: values.sold_price_unit,
+        sold_price_unit: values.sold_price_unit as PriceUnit,
         sale_date: values.sale_date,
         sold_by_agent_id: values.sold_by_agent_id,
         buyerId: buyer.id,
@@ -220,7 +218,7 @@ export function MarkAsSoldDialog({
         const newActivity = {
             userName: profile.name,
             action: `marked property as "Sold" to ${buyer.name}`,
-            target: `${property.serial_no} for ${formatCurrency(soldPriceInBaseUnit, currency)}`,
+            target: `${property.serial_no} for ${formatCurrency(soldPriceInBaseUnit, currency as Currency)}`,
             targetType: 'Property',
             timestamp: new Date().toISOString(),
             agency_id: profile.agency_id,
@@ -415,7 +413,9 @@ export function MarkAsSoldDialog({
                                 </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                    {priceUnitArray.map(unit => <SelectItem key={unit} value={unit}>{unit}</SelectItem>)}
+                                    <SelectItem value="Thousand">Thousand</SelectItem>
+                                    <SelectItem value="Lacs">Lacs</SelectItem>
+                                    <SelectItem value="Crore">Crore</SelectItem>
                                 </SelectContent>
                             </Select>
                             <FormMessage />
@@ -440,7 +440,9 @@ export function MarkAsSoldDialog({
                                 </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                    {priceUnitArray.map(unit => <SelectItem key={unit} value={unit}>{unit}</SelectItem>)}
+                                    <SelectItem value="Thousand">Thousand</SelectItem>
+                                    <SelectItem value="Lacs">Lacs</SelectItem>
+                                    <SelectItem value="Crore">Crore</SelectItem>
                                 </SelectContent>
                             </Select>
                             <FormMessage />
@@ -468,7 +470,9 @@ export function MarkAsSoldDialog({
                                 </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                    {priceUnitArray.map(unit => <SelectItem key={unit} value={unit}>{unit}</SelectItem>)}
+                                    <SelectItem value="Thousand">Thousand</SelectItem>
+                                    <SelectItem value="Lacs">Lacs</SelectItem>
+                                    <SelectItem value="Crore">Crore</SelectItem>
                                 </SelectContent>
                             </Select>
                             <FormMessage />
@@ -491,7 +495,7 @@ export function MarkAsSoldDialog({
                         <div className="flex items-center gap-2">
                             <Calculator className="text-muted-foreground" />
                             <p className="text-sm text-muted-foreground">Total Commission:</p>
-                            <p className="font-bold text-lg">{formatCurrency(totalCommission, currency)}</p>
+                            <p className="font-bold text-lg">{formatCurrency(totalCommission, currency as Currency)}</p>
                         </div>
                     </CardContent>
                </Card>
