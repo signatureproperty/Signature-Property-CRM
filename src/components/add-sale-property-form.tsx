@@ -24,7 +24,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from './ui/separator';
-import type { Property, PropertyType, PriceUnit } from '@/lib/types';
+import type { Property, PropertyType, PriceUnit, PropertyStatus } from '@/lib/types';
 import { useUser } from '@/firebase/auth/use-user';
 import { useProfile } from '@/context/profile-context';
 import { formatPhoneNumber } from '@/lib/utils';
@@ -146,9 +146,9 @@ export function AddSalePropertyForm({
   }, [watchedFields, setValue]);
 
   function onSubmit(values: AddSalePropertyFormValues) {
-    const finalPropertyType = values.property_type === 'Other' && values.property_type_other
+    const finalPropertyType = (values.property_type === 'Other' && values.property_type_other
         ? values.property_type_other
-        : values.property_type;
+        : values.property_type) as PropertyType;
 
     const tagsArray = values.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [];
     if (!propertyToEdit && values.status === 'New' && !tagsArray.includes('New')) {
@@ -160,18 +160,35 @@ export function AddSalePropertyForm({
       ...values,
       listing_type: 'For Sale',
       is_for_rent: false,
-      id: propertyToEdit?.id,
+      id: propertyToEdit?.id || '',
       serial_no: propertyToEdit?.serial_no || `P-${totalProperties + 1}`,
-      status: values.status as any,
+      status: values.status as PropertyStatus,
       created_at: propertyToEdit?.created_at || new Date().toISOString(),
       created_by: propertyToEdit?.created_by || user?.uid || '',
       agency_id: propertyToEdit?.agency_id || profile.agency_id || '',
       is_deleted: propertyToEdit?.is_deleted || false,
       owner_number: formatPhoneNumber(values.owner_number, values.country_code),
-      property_type: finalPropertyType as PropertyType,
-      demand_unit: values.demand_unit as 'Lacs' | 'Crore' | 'Thousand',
+      property_type: finalPropertyType,
+      demand_unit: (values.demand_unit as 'Lacs' | 'Crore' | 'Thousand') || 'Lacs',
       tags: tagsArray,
-      is_recorded: propertyToEdit?.is_recorded || false,
+      is_recorded: propertyToEdit?.is_recorded ?? false,
+      auto_title: values.auto_title || '',
+      country_code: values.country_code || '+92',
+      city: values.city || 'Lahore',
+      area: values.area || '',
+      address: values.address || '',
+      size_value: values.size_value,
+      size_unit: values.size_unit,
+      road_size_ft: values.road_size_ft ?? 0,
+      storey: values.storey || '',
+      meters: values.meters,
+      potential_rent_amount: values.potential_rent_amount ?? 0,
+      potential_rent_unit: (values.potential_rent_unit as PriceUnit) || 'Thousand',
+      front_ft: values.front_ft ?? 0,
+      length_ft: values.length_ft ?? 0,
+      demand_amount: values.demand_amount,
+      documents: values.documents || '',
+      message: values.message || '',
     };
 
     onSave(propertyData);

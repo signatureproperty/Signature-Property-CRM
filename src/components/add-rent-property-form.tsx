@@ -24,7 +24,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from './ui/separator';
-import type { Property, PropertyType, PriceUnit } from '@/lib/types';
+import type { Property, PropertyType, PriceUnit, PropertyStatus } from '@/lib/types';
 import { useUser } from '@/firebase/auth/use-user';
 import { useProfile } from '@/context/profile-context';
 import { formatPhoneNumber } from '@/lib/utils';
@@ -135,9 +135,9 @@ export function AddRentPropertyForm({
   }, [watchedFields, setValue]);
 
   function onSubmit(values: AddRentPropertyFormValues) {
-    const finalPropertyType = values.property_type === 'Other' && values.property_type_other
+    const finalPropertyType = (values.property_type === 'Other' && values.property_type_other
         ? values.property_type_other
-        : values.property_type;
+        : values.property_type) as PropertyType;
 
     const tagsArray = values.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [];
     if (!propertyToEdit && values.status === 'New' && !tagsArray.includes('New')) {
@@ -149,20 +149,31 @@ export function AddRentPropertyForm({
       ...values,
       listing_type: 'For Rent',
       is_for_rent: true,
-      potential_rent_amount: 0,
-      potential_rent_unit: 'Thousand',
-      id: propertyToEdit?.id,
+      potential_rent_amount: propertyToEdit?.potential_rent_amount || 0,
+      potential_rent_unit: propertyToEdit?.potential_rent_unit || 'Thousand',
+      id: propertyToEdit?.id || '',
       serial_no: propertyToEdit?.serial_no || `RP-${totalProperties + 1}`,
-      status: values.status as any,
+      status: values.status as PropertyStatus,
       created_at: propertyToEdit?.created_at || new Date().toISOString(),
       created_by: propertyToEdit?.created_by || user?.uid || '',
       agency_id: propertyToEdit?.agency_id || profile.agency_id || '',
       is_deleted: propertyToEdit?.is_deleted || false,
       owner_number: formatPhoneNumber(values.owner_number, values.country_code),
-      property_type: finalPropertyType as PropertyType,
-      demand_unit: values.demand_unit as 'Lacs' | 'Crore' | 'Thousand',
+      property_type: finalPropertyType,
+      demand_unit: (values.demand_unit as 'Lacs' | 'Crore' | 'Thousand') || 'Thousand',
       tags: tagsArray,
-      is_recorded: propertyToEdit?.is_recorded || false,
+      is_recorded: propertyToEdit?.is_recorded ?? false,
+      auto_title: values.auto_title || '',
+      country_code: values.country_code || '+92',
+      city: values.city || 'Lahore',
+      area: values.area || '',
+      address: values.address || '',
+      size_value: values.size_value,
+      size_unit: values.size_unit,
+      storey: values.storey || '',
+      meters: values.meters,
+      demand_amount: values.demand_amount,
+      message: values.message || '',
     };
 
     onSave(propertyData);
