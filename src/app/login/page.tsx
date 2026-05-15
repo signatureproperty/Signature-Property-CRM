@@ -25,13 +25,14 @@ import {
 } from '@/components/ui/form';
 import { useAuth, useFirestore } from '@/firebase/provider';
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { ProfileProvider } from '@/context/profile-context';
 import { Separator } from '@/components/ui/separator';
 import { doc, getDoc } from 'firebase/firestore';
 import { useTheme } from 'next-themes';
+import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
   email: z.string().email('Please enter a valid email.'),
@@ -49,6 +50,12 @@ function LoginPageContent() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { setTheme, theme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  // Avoid hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(formSchema),
@@ -118,19 +125,25 @@ function LoginPageContent() {
     }
   };
 
+  if (!mounted) return null;
+
   return (
     <div className="flex h-svh w-full items-center justify-center p-4 font-body overflow-hidden relative">
-      {/* Dynamic Background to match CRM */}
-      <div className="absolute inset-0 z-0 bg-gradient-to-br from-[#2563eb] to-[#0f172a]" />
+      {/* Background inherits from body gradient in globals.css */}
       
       <div className="absolute top-4 right-4 z-10">
-        <Button variant="ghost" size="icon" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} className="rounded-full text-white/80 hover:text-white hover:bg-white/10">
-            <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} 
+          className="rounded-full text-white/80 hover:text-white hover:bg-white/10"
+        >
+            <Sun className={cn("h-5 w-5 transition-all", theme === 'dark' ? "scale-0 rotate-90" : "scale-100 rotate-0")} />
+            <Moon className={cn("absolute h-5 w-5 transition-all", theme === 'dark' ? "scale-100 rotate-0" : "scale-0 -rotate-90")} />
         </Button>
       </div>
 
-      <div className="w-full max-w-sm z-10 space-y-4">
+      <div className="w-full max-w-sm z-10 space-y-4 animate-fade-in">
         <div className="text-center space-y-1">
           <h1 className="text-3xl font-black text-white font-headline tracking-tighter uppercase">
             Signature CRM
@@ -140,7 +153,7 @@ function LoginPageContent() {
           </p>
         </div>
 
-        <Card className="glass-card shadow-2xl border-white/10 bg-white/5 backdrop-blur-2xl overflow-hidden rounded-[2.5rem]">
+        <Card className="glass-card shadow-2xl border-white/20 bg-white/5 dark:bg-black/20 backdrop-blur-2xl overflow-hidden rounded-[2.5rem]">
           <CardHeader className="pb-2">
             <CardTitle className="text-white text-xl text-center">Welcome Back</CardTitle>
             <CardDescription className="text-blue-100/50 text-xs text-center italic">Sign in to your dashboard</CardDescription>
