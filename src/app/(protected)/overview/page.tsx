@@ -48,7 +48,7 @@ interface StatCardProps {
 }
 
 const StatCard = ({ title, value, change, icon, color, href, isLoading }: StatCardProps) => {
-    const CardContentWrapper = href ? Link : 'div';
+    const CardContentWrapper = (href ? Link : 'div') as any;
 
     if (isLoading) {
         return (
@@ -446,29 +446,34 @@ export default function OverviewPage() {
                 </Card>
             )}
 
-            <SetAppointmentDialog isOpen={isAppointmentOpen} setIsOpen={setIsAppointmentOpen} onSave={async (a) => {
-                if (!profile.agency_id) return;
-                
-                // Save appointment
-                await addDoc(collection(firestore, 'agencies', profile.agency_id, 'appointments'), { ...a, agency_id: profile.agency_id, status: 'Scheduled' });
-                
-                // Logic for notification if assigned to another agent
-                const assignedAgent = teamMembers?.find(m => m.name === a.agentName);
-                if (assignedAgent && (assignedAgent.user_id || assignedAgent.id) !== profile.user_id) {
-                    await addDoc(collection(firestore, 'agencies', profile.agency_id, 'activityLogs'), {
-                        userName: profile.name,
-                        action: 'assigned an appointment',
-                        target: a.contactName,
-                        targetType: 'Appointment',
-                        timestamp: new Date().toISOString(),
-                        agency_id: profile.agency_id,
-                        assignedToId: assignedAgent.user_id || assignedAgent.id,
-                        assignedToName: assignedAgent.name
-                    });
-                }
-                
-                toast({ title: 'Appointment Scheduled' });
-            }} appointmentDetails={appointmentDetails} />
+            <SetAppointmentDialog 
+                isOpen={isAppointmentOpen} 
+                setIsOpen={setIsAppointmentOpen} 
+                onSave={async (a) => {
+                    if (!profile.agency_id) return;
+                    
+                    // Save appointment
+                    await addDoc(collection(firestore, 'agencies', profile.agency_id, 'appointments'), { ...a, agency_id: profile.agency_id, status: 'Scheduled' });
+                    
+                    // Logic for notification if assigned to another agent
+                    const assignedAgent = teamMembers?.find(m => m.name === a.agentName);
+                    if (assignedAgent && (assignedAgent.user_id || assignedAgent.id) !== profile.user_id) {
+                        await addDoc(collection(firestore, 'agencies', profile.agency_id, 'activityLogs'), {
+                            userName: profile.name,
+                            action: 'assigned an appointment',
+                            target: a.contactName,
+                            targetType: 'Appointment',
+                            timestamp: new Date().toISOString(),
+                            agency_id: profile.agency_id,
+                            assignedToId: assignedAgent.user_id || assignedAgent.id,
+                            assignedToName: assignedAgent.name
+                        });
+                    }
+                    
+                    toast({ title: 'Appointment Scheduled' });
+                }} 
+                appointmentDetails={appointmentDetails ?? undefined} 
+            />
             
             <AddEventDialog isOpen={isEventOpen} setIsOpen={setIsEventOpen} onSave={async (e) => {
                 if (!profile.agency_id) return;
@@ -478,6 +483,8 @@ export default function OverviewPage() {
                 });
                 toast({ title: 'Event Created' });
             }} />
+
+            <AllEventsDialog isOpen={isAllEventsOpen} setIsOpen={setIsAllEventsOpen} appointments={allAppointments || []} />
 
             {selectedApptForDetails && (
                 <Dialog open={!!selectedApptForDetails} onOpenChange={() => setSelectedApptForDetails(null)}>

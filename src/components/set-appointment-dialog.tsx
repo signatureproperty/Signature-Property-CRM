@@ -152,7 +152,7 @@ export function SetAppointmentDialog({
     const appointmentData: Appointment = {
       ...data,
       contactSerialNo: finalSerial,
-      id: isEditing ? appointmentToEdit.id : new Date().toISOString(),
+      id: isEditing ? (appointmentToEdit as Appointment).id : new Date().toISOString(),
       status: 'Scheduled',
       agency_id: profile.agency_id,
     };

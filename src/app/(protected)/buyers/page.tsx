@@ -480,12 +480,12 @@ function BuyersPageContent() {
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild><Button size="icon" variant="ghost"><MoreHorizontal /></Button></DropdownMenuTrigger>
                                         <DropdownMenuContent align="end" className="bg-background w-48">
-                                            <DropdownMenuItem onSelect={() => handleDetailsClick(buyer)}><Eye className="mr-2 h-4 w-4" /> View Details</DropdownMenuItem>
-                                            <DropdownMenuItem onSelect={() => handleNotesClick(buyer)}><MessageSquareText className="mr-2 h-4 w-4" /> Remarks Update</DropdownMenuItem>
-                                            <DropdownMenuItem onSelect={() => handleRecommendProperties(buyer)}><Sparkles className="mr-2 h-4 w-4" /> Recommended Properties</DropdownMenuItem>
-                                            <DropdownMenuItem onSelect={() => handleManageTags(buyer)}><TagIcon className="mr-2 h-4 w-4" /> Edit Tags</DropdownMenuItem>
-                                            <DropdownMenuItem onSelect={(e) => handleWhatsAppChat(e, buyer)}><MessageSquare className="mr-2 h-4 w-4" /> WhatsApp Chat</DropdownMenuItem>
-                                            <DropdownMenuItem onSelect={() => handleSetAppointment(buyer)}><CalendarPlus className="mr-2 h-4 w-4" /> Set Appointment</DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={() => handleDetailsClick(buyer) as any}><Eye className="mr-2 h-4 w-4" /> View Details</DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={() => handleNotesClick(buyer) as any}><MessageSquareText className="mr-2 h-4 w-4" /> Remarks Update</DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={() => handleRecommendProperties(buyer) as any}><Sparkles className="mr-2 h-4 w-4" /> Recommended Properties</DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={() => handleManageTags(buyer) as any}><TagIcon className="mr-2 h-4 w-4" /> Edit Tags</DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={(e) => handleWhatsAppChat(e, buyer) as any}><MessageSquare className="mr-2 h-4 w-4" /> WhatsApp Chat</DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={() => handleSetAppointment(buyer) as any}><CalendarPlus className="mr-2 h-4 w-4" /> Set Appointment</DropdownMenuItem>
                                             
                                             {profile.role === 'Admin' && (
                                                 <>
@@ -494,7 +494,7 @@ function BuyersPageContent() {
                                                         <DropdownMenuPortal>
                                                             <DropdownMenuSubContent className="bg-background">
                                                                 {activeAgents.map(member => (
-                                                                    <DropdownMenuItem key={member.id} onSelect={() => handleAssignAgent(buyer.id, member.user_id || member.id, member.name)}>
+                                                                    <DropdownMenuItem key={member.id} onSelect={() => handleAssignAgent(buyer.id, member.user_id || member.id, member.name) as any}>
                                                                         {member.name}
                                                                     </DropdownMenuItem>
                                                                 ))}
@@ -504,10 +504,10 @@ function BuyersPageContent() {
                                                 </>
                                             )}
                                             {profile.role === 'Admin' && (
-                                                <DropdownMenuItem onSelect={() => handleEdit(buyer)}><Edit className="mr-2 h-4 w-4" /> Edit Details</DropdownMenuItem>
+                                                <DropdownMenuItem onSelect={() => handleEdit(buyer) as any}><Edit className="mr-2 h-4 w-4" /> Edit Details</DropdownMenuItem>
                                             )}
                                             {profile.role === 'Admin' && (
-                                                <DropdownMenuItem onSelect={() => handleDelete(buyer)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete Buyer</DropdownMenuItem>
+                                                <DropdownMenuItem onSelect={() => handleDelete(buyer) as any} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete Buyer</DropdownMenuItem>
                                             )}
                                         </DropdownMenuContent>
                                     </DropdownMenu>
@@ -591,11 +591,11 @@ function BuyersPageContent() {
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="bg-background w-48">
-                                <DropdownMenuItem onSelect={() => handleDetailsClick(buyer)}><Eye className="mr-2 h-4 w-4" /> View Details</DropdownMenuItem>
-                                <DropdownMenuItem onSelect={() => handleRecommendProperties(buyer)}><Sparkles className="mr-2 h-4 w-4" /> Recommended Properties</DropdownMenuItem>
-                                <DropdownMenuItem onSelect={() => handleManageTags(buyer)}><TagIcon className="mr-2 h-4 w-4" /> Edit Tags</DropdownMenuItem>
-                                <DropdownMenuItem onSelect={(e) => handleWhatsAppChat(e as any, buyer)}><MessageSquare className="mr-2 h-4 w-4" /> WhatsApp Chat</DropdownMenuItem>
-                                <DropdownMenuItem onSelect={() => handleSetAppointment(buyer)}><CalendarPlus className="mr-2 h-4 w-4" /> Set Appointment</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => handleDetailsClick(buyer) as any}><Eye className="mr-2 h-4 w-4" /> View Details</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => handleRecommendProperties(buyer) as any}><Sparkles className="mr-2 h-4 w-4" /> Recommended Properties</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => handleManageTags(buyer) as any}><TagIcon className="mr-2 h-4 w-4" /> Edit Tags</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={(e) => handleWhatsAppChat(e as any, buyer) as any}><MessageSquare className="mr-2 h-4 w-4" /> WhatsApp Chat</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => handleSetAppointment(buyer) as any}><CalendarPlus className="mr-2 h-4 w-4" /> Set Appointment</DropdownMenuItem>
                                 
                                 {profile.role === 'Admin' && (
                                     <>
@@ -604,7 +604,7 @@ function BuyersPageContent() {
                                             <DropdownMenuPortal>
                                                 <DropdownMenuSubContent className="bg-background">
                                                     {activeAgents.map(member => (
-                                                        <DropdownMenuItem key={member.id} onSelect={() => handleAssignAgent(buyer.id, member.user_id || member.id, member.name)}>
+                                                        <DropdownMenuItem key={member.id} onSelect={() => handleAssignAgent(buyer.id, member.user_id || member.id, member.name) as any}>
                                                             {member.name}
                                                         </DropdownMenuItem>
                                                     ))}
@@ -614,10 +614,10 @@ function BuyersPageContent() {
                                     </>
                                 )}
                                 {profile.role === 'Admin' && (
-                                    <DropdownMenuItem onSelect={() => handleEdit(buyer)}><Edit className="mr-2 h-4 w-4" /> Edit Details</DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={() => handleEdit(buyer) as any}><Edit className="mr-2 h-4 w-4" /> Edit Details</DropdownMenuItem>
                                 )}
                                 {profile.role === 'Admin' && (
-                                    <DropdownMenuItem onSelect={() => handleDelete(buyer)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete Buyer</DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={() => handleDelete(buyer) as any} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete Buyer</DropdownMenuItem>
                                 )}
                             </DropdownMenuContent>
                         </DropdownMenu>
@@ -646,7 +646,7 @@ function BuyersPageContent() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="bg-background">
                             {activeAgents.map((member) => (
-                                <DropdownMenuItem key={member.id} onSelect={() => handleBulkAssign(member.id)}>
+                                <DropdownMenuItem key={member.id} onSelect={() => handleBulkAssign(member.id) as any}>
                                 {member.name}
                                 </DropdownMenuItem>
                             ))}

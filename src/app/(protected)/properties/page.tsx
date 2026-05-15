@@ -541,13 +541,13 @@ function PropertiesPageContent() {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="rounded-full"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="bg-background">
-                    <DropdownMenuItem onSelect={() => handleRowClick(prop)}><Eye className="mr-2 h-4 w-4" />View Details</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => handleNotesClick(prop)}><MessageSquareText className="mr-2 h-4 w-4" /> Remarks Update</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => handleShare(prop)}><Share2 className="mr-2 h-4 w-4" />Share Details</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => handleManageTags(prop)}><TagIcon className="mr-2 h-4 w-4" />Edit Tags</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={(e) => handleWhatsAppChat(e, prop)}><MessageSquare className="mr-2 h-4 w-4" /> WhatsApp</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => handleSetAppointment(prop)}><CalendarPlus className="mr-2 h-4 w-4" /> Set Appointment</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => handleMarkAsSoldOrRent(prop)}><Check className="mr-2 h-4 w-4" /> {prop.is_for_rent ? 'Mark as Rent Out' : 'Mark as Sold'}</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleRowClick(prop) as any}><Eye className="mr-2 h-4 w-4" />View Details</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleNotesClick(prop) as any}><MessageSquareText className="mr-2 h-4 w-4" /> Remarks Update</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleShare(prop) as any}><Share2 className="mr-2 h-4 w-4" />Share Details</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleManageTags(prop) as any}><TagIcon className="mr-2 h-4 w-4" />Edit Tags</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={(e) => handleWhatsAppChat(e, prop) as any}><MessageSquare className="mr-2 h-4 w-4" /> WhatsApp</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleSetAppointment(prop) as any}><CalendarPlus className="mr-2 h-4 w-4" /> Set Appointment</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleMarkAsSoldOrRent(prop) as any}><Check className="mr-2 h-4 w-4" /> {prop.is_for_rent ? 'Mark as Rent Out' : 'Mark as Sold'}</DropdownMenuItem>
                     
                     {profile.role === 'Admin' && (
                         <>
@@ -560,7 +560,7 @@ function PropertiesPageContent() {
                                                 ? prop.assignedTo.includes(member.user_id || member.id)
                                                 : prop.assignedTo === (member.user_id || member.id);
                                             return (
-                                                <DropdownMenuItem key={member.id} onSelect={() => handleAssignAgent(prop.id, member.user_id || member.id, member.name)}>
+                                                <DropdownMenuItem key={member.id} onSelect={() => handleAssignAgent(prop.id, member.user_id || member.id, member.name) as any}>
                                                     <div className="flex items-center justify-between w-full">
                                                         {member.name}
                                                         {isAssigned && <Check className="h-4 w-4 ml-2" />}
@@ -573,9 +573,9 @@ function PropertiesPageContent() {
                             </DropdownMenuSub>
                         </>
                     )}
-                    <DropdownMenuItem onSelect={() => handleEdit(prop)}><Edit className="mr-2 h-4 w-4" />Edit</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleEdit(prop) as any}><Edit className="mr-2 h-4 w-4" />Edit</DropdownMenuItem>
                     {profile.role === 'Admin' && (
-                        <DropdownMenuItem onSelect={() => handleDelete(prop)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => handleDelete(prop) as any} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -660,12 +660,12 @@ function PropertiesPageContent() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="bg-background w-48">
-                    <DropdownMenuItem onSelect={() => handleRowClick(prop)}><Eye className="mr-2 h-4 w-4" />View Details</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => handleShare(prop)}><Share2 className="mr-2 h-4 w-4" />Share Details</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => handleManageTags(prop)}><TagIcon className="mr-2 h-4 w-4" />Edit Tags</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={(e) => handleWhatsAppChat(e as any, prop)}><MessageSquare className="mr-2 h-4 w-4" /> WhatsApp Chat</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => handleSetAppointment(prop)}><CalendarPlus className="mr-2 h-4 w-4" /> Set Appointment</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => handleMarkAsSoldOrRent(prop)}><Check className="mr-2 h-4 w-4" /> {prop.is_for_rent ? 'Mark as Rent Out' : 'Mark as Sold'}</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleRowClick(prop) as any}><Eye className="mr-2 h-4 w-4" />View Details</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleShare(prop) as any}><Share2 className="mr-2 h-4 w-4" />Share Details</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleManageTags(prop) as any}><TagIcon className="mr-2 h-4 w-4" />Edit Tags</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={(e) => handleWhatsAppChat(e as any, prop) as any}><MessageSquare className="mr-2 h-4 w-4" /> WhatsApp Chat</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleSetAppointment(prop) as any}><CalendarPlus className="mr-2 h-4 w-4" /> Set Appointment</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleMarkAsSoldOrRent(prop) as any}><Check className="mr-2 h-4 w-4" /> {prop.is_for_rent ? 'Mark as Rent Out' : 'Mark as Sold'}</DropdownMenuItem>
                     
                     {profile.role === 'Admin' && (
                         <>
@@ -678,7 +678,7 @@ function PropertiesPageContent() {
                                                 ? prop.assignedTo.includes(member.user_id || member.id)
                                                 : prop.assignedTo === (member.user_id || member.id);
                                             return (
-                                                <DropdownMenuItem key={member.id} onSelect={() => handleAssignAgent(prop.id, member.user_id || member.id, member.name)}>
+                                                <DropdownMenuItem key={member.id} onSelect={() => handleAssignAgent(prop.id, member.user_id || member.id, member.name) as any}>
                                                     <div className="flex items-center justify-between w-full">
                                                         {member.name}
                                                         {isAssigned && <Check className="h-4 w-4 ml-2" />}
@@ -691,9 +691,9 @@ function PropertiesPageContent() {
                             </DropdownMenuSub>
                         </>
                     )}
-                    <DropdownMenuItem onSelect={() => handleEdit(prop)}><Edit className="mr-2 h-4 w-4" />Edit Details</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleEdit(prop) as any}><Edit className="mr-2 h-4 w-4" />Edit Details</DropdownMenuItem>
                     {profile.role === 'Admin' && (
-                        <DropdownMenuItem onSelect={() => handleDelete(prop)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" />Delete Property</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => handleDelete(prop) as any} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" />Delete Property</DropdownMenuItem>
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -719,7 +719,7 @@ function PropertiesPageContent() {
                 <div className="flex items-center gap-2">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild><Button variant="outline" className="rounded-full"><UserPlus className="mr-2 h-4 w-4" /> Assign</Button></DropdownMenuTrigger>
-                    <DropdownMenuContent className="bg-background">{assignableMembers.map((member) => <DropdownMenuItem key={member.id} onSelect={() => handleBulkAssign(member.id)}>{member.name}</DropdownMenuItem>)}</DropdownMenuContent>
+                    <DropdownMenuContent className="bg-background">{assignableMembers.map((member) => <DropdownMenuItem key={member.id} onSelect={() => handleBulkAssign(member.id) as any}>{member.name}</DropdownMenuItem>)}</DropdownMenuContent>
                   </DropdownMenu>
                   <Button variant="destructive" className="rounded-full" onClick={handleBulkDelete}><Trash2 className="mr-2 h-4 w-4" /> Delete ({selectedProperties.length})</Button>
                 </div>

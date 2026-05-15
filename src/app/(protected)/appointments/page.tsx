@@ -28,7 +28,7 @@ function AppointmentsPageContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const activeTab = searchParams.get('tab') || 'buyer';
+  const activeTab = (searchParams ? searchParams.get('tab') : 'buyer') || 'buyer';
 
   const firestore = useFirestore();
   const { profile } = useProfile();
@@ -287,28 +287,28 @@ function AppointmentsPageContent() {
                     </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="bg-background">
-                        <DropdownMenuItem onSelect={() => handleViewDetails(appt)}><Eye className="mr-2 h-4 w-4"/> View Contact Details</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={(e) => handleWhatsAppChat(e, appt)}><MessageSquare className="mr-2 h-4 w-4"/> Chat on WhatsApp</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => handleViewDetails(appt) as any}><Eye className="mr-2 h-4 w-4"/> View Contact Details</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={(e) => handleWhatsAppChat(e, appt) as any}><MessageSquare className="mr-2 h-4 w-4"/> Chat on WhatsApp</DropdownMenuItem>
                          {appt.status === 'Scheduled' && (
-                          <DropdownMenuItem onSelect={(e) => handleAddToCalendar(e, appt)}><AddToCalendarIcon className="mr-2 h-4 w-4"/> Add to Calendar</DropdownMenuItem>
+                          <DropdownMenuItem onSelect={(e) => handleAddToCalendar(e, appt) as any}><AddToCalendarIcon className="mr-2 h-4 w-4"/> Add to Calendar</DropdownMenuItem>
                          )}
                         {appt.status === 'Scheduled' && (
                             <>
-                                <DropdownMenuItem onSelect={() => handleOpenStatusUpdate(appt, 'Completed')}>
+                                <DropdownMenuItem onSelect={() => handleOpenStatusUpdate(appt, 'Completed') as any}>
                                     <Check className="mr-2 h-4 w-4" />
                                     Mark as Completed
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onSelect={() => handleOpenStatusUpdate(appt, 'Cancelled')}>
+                                <DropdownMenuItem onSelect={() => handleOpenStatusUpdate(appt, 'Cancelled') as any}>
                                     <XCircle className="mr-2 h-4 w-4" />
                                     Mark as Cancelled
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onSelect={() => handleReschedule(appt)}>
+                                <DropdownMenuItem onSelect={() => handleReschedule(appt) as any}>
                                     <Edit className="mr-2 h-4 w-4" />
                                     Reschedule
                                 </DropdownMenuItem>
                             </>
                         )}
-                        <DropdownMenuItem onSelect={() => handleDeleteAppointment(appt)} className="text-destructive focus:text-destructive-foreground focus:bg-destructive">
+                        <DropdownMenuItem onSelect={() => handleDeleteAppointment(appt) as any} className="text-destructive focus:text-destructive-foreground focus:bg-destructive">
                             <Trash2 className="mr-2 h-4 w-4" />
                             Delete
                         </DropdownMenuItem>
