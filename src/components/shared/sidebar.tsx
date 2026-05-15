@@ -159,7 +159,7 @@ export function AppSidebar() {
         { href: '/editing', label: 'Editing', icon: <Edit />, roles: [], isCenter: false },
       ];
       return (
-        <div className="fixed bottom-0 left-0 z-50 w-full h-20 border-t bg-background/95 backdrop-blur-sm">
+        <div className="fixed bottom-0 left-0 z-50 w-full h-20 border-t bg-background/95 dark:bg-black/20 backdrop-blur-xl">
           <div className="grid h-full grid-cols-3 relative">
             {recorderNavItems.map(item => {
               const isActive = pathname.startsWith(item.href);
@@ -205,7 +205,7 @@ export function AppSidebar() {
     ];
     return (
         <>
-            <div className="fixed bottom-0 left-0 z-50 w-full h-20 border-t bg-background/95 backdrop-blur-sm">
+            <div className="fixed bottom-0 left-0 z-50 w-full h-20 border-t bg-background/95 dark:bg-black/20 backdrop-blur-xl">
                 <div className="grid h-full grid-cols-5 relative">
                     {mobileNavItems.map(item => {
                         if (item.roles.length > 0 && !item.roles.includes(profile.role)) return null;
@@ -284,7 +284,7 @@ export function AppSidebar() {
                             }}
                             className="flex items-center gap-3"
                         >
-                            <span className="bg-card text-card-foreground px-3 py-1.5 rounded-lg text-sm font-semibold shadow-md">
+                            <span className="bg-card dark:bg-slate-900 text-card-foreground px-3 py-1.5 rounded-lg text-sm font-semibold shadow-md border dark:border-white/10">
                                 {item.label}
                             </span>
                             <Link href={item.href} onClick={() => setIsMoreMenuOpen(false)}>
@@ -307,7 +307,7 @@ export function AppSidebar() {
     <TooltipProvider>
       <Sidebar
         collapsible="icon"
-        className="hidden md:flex flex-col bg-card dark:bg-neutral-900 border-r"
+        className="hidden md:flex flex-col bg-card dark:bg-transparent border-r dark:border-white/10"
       >
         <SidebarHeader className="p-6">
             <div className="flex items-center gap-2">
