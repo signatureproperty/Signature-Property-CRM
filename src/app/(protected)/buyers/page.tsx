@@ -1,4 +1,3 @@
-
 'use client';
 
 import { AddBuyerDialog } from '@/components/add-buyer-dialog';
@@ -395,7 +394,6 @@ function BuyersPageContent() {
             buyers = buyers.filter(b => b.serial_no === fullSerialNo);
         }
 
-        // --- NEW SORTING LOGIC: Sort by last_remark_at first, then by serial number ---
         return buyers.sort((a, b) => {
             const dateA = a.last_remark_at ? new Date(a.last_remark_at).getTime() : 0;
             const dateB = b.last_remark_at ? new Date(b.last_remark_at).getTime() : 0;
@@ -665,7 +663,7 @@ function BuyersPageContent() {
                         <AlertDialogTrigger asChild>
                             <Button variant="outline" className="rounded-full"><Filter className="mr-2 h-4 w-4" /> Filters {filters.area.length > 0 && `(${filters.area.length})`}</Button>
                         </AlertDialogTrigger>
-                        <AlertDialogContent className="max-w-md glass-card">
+                        <AlertDialogContent className="max-w-md">
                             <AlertDialogHeader><AlertDialogTitle>Refine Buyer Search</AlertDialogTitle></AlertDialogHeader>
                             <div className="grid gap-4 py-4">
                                 <div className="grid grid-cols-3 items-center gap-4">

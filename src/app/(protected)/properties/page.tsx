@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -517,7 +516,7 @@ function PropertiesPageContent() {
                     {prop.auto_title || `${prop.size_value} ${prop.size_unit} ${prop.property_type}`} 
                     {prop.is_recorded && <Video className="h-4 w-4 text-primary" />}
                     {hasUnreadNotes && (
-                        <span className="relative flex h-2 w-2">
+                        <span className="relative flex h-2 v-2">
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                           <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
                         </span>
@@ -729,7 +728,7 @@ function PropertiesPageContent() {
                 <AlertDialogTrigger asChild>
                   <Button variant="outline" className="rounded-full"><Filter className="mr-2 h-4 w-4" /> Filters {filters.area.length > 0 && `(${filters.area.length})`}</Button>
                 </AlertDialogTrigger>
-                <AlertDialogContent className="max-w-md glass-card">
+                <AlertDialogContent className="max-w-md">
                   <AlertDialogHeader><AlertDialogTitle>Refine Property Search</AlertDialogTitle></AlertDialogHeader>
                   <div className="grid gap-4 py-4">
                     <div className="grid grid-cols-3 items-center gap-4">
