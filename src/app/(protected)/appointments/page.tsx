@@ -138,8 +138,8 @@ function AppointmentsPageContent() {
       await logActivity('updated appointment status', appointment.contactName, { from: appointment.status, to: status });
   };
 
-  const handleWhatsAppChat = (e: React.MouseEvent, appointment: Appointment) => {
-    e.stopPropagation();
+  const handleWhatsAppChat = (e: any, appointment: Appointment) => {
+    if (e && e.stopPropagation) e.stopPropagation();
     let phoneNumber = '';
     let countryCode = '+92';
 
@@ -165,8 +165,8 @@ function AppointmentsPageContent() {
     }
   };
   
-    const handleAddToCalendar = (e: React.MouseEvent, appointment: Appointment) => {
-        e.stopPropagation();
+    const handleAddToCalendar = (e: any, appointment: Appointment) => {
+        if (e && e.stopPropagation) e.stopPropagation();
         
         const startTimeStr = `${appointment.date}T${appointment.time}:00`;
         const startTime = new Date(startTimeStr);
@@ -412,7 +412,3 @@ export default function AppointmentsPage() {
         </Suspense>
     );
 }
-
-
-
-    

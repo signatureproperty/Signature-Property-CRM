@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -464,8 +465,8 @@ function PropertiesPageContent() {
     setSelectedProperties([]);
   };
 
-  const handleWhatsAppChat = (e: React.MouseEvent, prop: Property) => {
-    e.stopPropagation();
+  const handleWhatsAppChat = (e: any, prop: Property) => {
+    if (e && e.stopPropagation) e.stopPropagation();
     const phoneNumber = formatPhoneNumberForWhatsApp(prop.owner_number, prop.country_code);
     window.open(`https://wa.me/${phoneNumber}`, '_blank');
   };
