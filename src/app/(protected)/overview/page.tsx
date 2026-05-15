@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -21,6 +20,7 @@ import { subDays, parseISO, format, formatDistanceToNow } from 'date-fns';
 import { useCurrency } from '@/context/currency-context';
 import { formatCurrency } from '@/lib/formatters';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { UpcomingEvents } from '@/components/upcoming-events';
 import { SetAppointmentDialog } from '@/components/set-appointment-dialog';
 import { useToast } from '@/hooks/use-toast';
