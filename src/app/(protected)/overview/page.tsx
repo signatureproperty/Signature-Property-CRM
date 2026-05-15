@@ -187,7 +187,7 @@ export default function OverviewPage() {
 
     // Collect all remarks from both properties and buyers
     const latestRemarks = useMemo(() => {
-        const allRemarks: (LeadNote & { leadName: string, leadSerial: string, leadType: 'Buyer' | 'Property', leadData: Buyer | Property })[] = [];
+        const allRemarks: any[] = [];
         
         buyers?.forEach(b => {
             b.timeline_notes?.forEach(n => {

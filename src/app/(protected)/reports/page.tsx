@@ -176,14 +176,14 @@ export default function ReportsPage() {
   const handleDownloadPdf = (type: 'sales' | 'rental') => {
     const doc = new jsPDF() as jsPDFWithAutoTable;
     const isSales = type === 'sales';
-    const data = isSales ? salesReportData : rentalReportData;
+    const data: any = isSales ? salesReportData : rentalReportData;
     const title = isSales ? 'Sales Performance Report' : 'Rental Performance Report';
     
     const head = isSales 
       ? [['Property', 'Buyer', 'Sale Date', 'Sold Price', 'Total Commission', 'Agent\'s Share', 'Agency Profit']]
       : [['Property', 'Rent Out Date', 'Monthly Rent', 'Total Commission', 'Agent\'s Share', 'Agency Profit']];
       
-    const body = data.rows.map(p => isSales ? [
+    const body = data.rows.map((p: any) => isSales ? [
         `${p.auto_title}\n${p.serial_no}`,
         `${p.buyerName || '-'}\n${p.buyerSerialNo || '-'}`,
         p.sale_date ? new Date(p.sale_date).toLocaleDateString() : 'N/A',
