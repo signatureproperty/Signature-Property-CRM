@@ -8,7 +8,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { CurrencyProvider } from '@/context/currency-context';
 import { ProfileProvider, useProfile } from '@/context/profile-context';
 import { useUser } from '@/firebase/auth/use-user';
-import { Loader2, MailWarning, Send, AlertTriangle, ShieldAlert } from 'lucide-react';
+import { Loader2, MailWarning, Send, ShieldAlert } from 'lucide-react';
 import { Card, CardDescription, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { AppLoader } from '@/components/ui/loader';
 import { useToast } from '@/hooks/use-toast';
@@ -85,23 +85,22 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
   // --- Role Based Access Control (RBAC) ---
   
-  // Super Admin can access everything
-  if (profile.role === 'Super Admin') {
+  // Super Admin bypass
+  if ((profile.role as string) === 'Super Admin') {
       return <>{children}</>;
   }
 
   // Define forbidden paths for each role
-  // /super-admin is REMOVED from forbidden lists to allow emergency access
   const agentForbiddenPaths = ['/team', '/documents', '/analytics', '/reports', '/finance'];
   const recorderForbiddenPaths = ['/team', '/upgrade', '/buyers', '/analytics', '/reports', '/tools', '/follow-ups', '/appointments', '/activities', '/trash', '/settings', '/support', '/properties', '/documents', '/finance', '/inbox'];
-  const adminForbiddenPaths = [] as string[];
 
   let isAllowed = true;
   let message = "This page is not accessible with your current role.";
 
-  // Special bypass for super-admin area to fix access issues
+  // Routing Logic
   if (pathname.startsWith('/super-admin')) {
-      isAllowed = true;
+      // Handled by the bypass above, but for clarity:
+      isAllowed = (profile.role as string) === 'Super Admin';
   } else if (profile.role === 'Agent' && agentForbiddenPaths.some(path => pathname.startsWith(path))) {
       isAllowed = false;
   } else if (profile.role === 'Video Recorder' && recorderForbiddenPaths.some(path => pathname.startsWith(path))) {
@@ -111,7 +110,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   if (!isAllowed) {
       return (
          <div className="flex h-screen w-full items-center justify-center p-4 bg-slate-50 dark:bg-slate-950">
-            <Card className="max-w-md w-full border-destructive shadow-2xl">
+            <Card className="max-w-md w-full border-destructive shadow-2xl bg-background">
                 <CardHeader className="text-center pb-2">
                     <div className="mx-auto bg-destructive/10 w-12 h-12 rounded-full flex items-center justify-center mb-4">
                         <ShieldAlert className="text-destructive h-6 w-6" />
@@ -133,7 +132,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-        {!user.emailVerified && profile.role !== 'Super Admin' && (
+        {!user.emailVerified && (profile.role as string) !== 'Super Admin' && (
             <div className="sticky top-0 z-40 w-full bg-amber-500 text-amber-900 shadow-md">
                 <div className="container mx-auto flex items-center justify-center p-2 text-sm font-semibold gap-4">
                     <MailWarning className="h-5 w-5" />

@@ -3,9 +3,9 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Check, Clock, PlusCircle, User, Briefcase, Building, MessageSquare, MoreHorizontal, Edit, Trash2, XCircle, Users, Eye, History, CalendarPlus as AddToCalendarIcon } from 'lucide-react';
+import { Calendar, Check, Clock, PlusCircle, User, Briefcase, Building, MessageSquare, MoreHorizontal, Edit, Trash2, XCircle, Eye, CalendarPlus as AddToCalendarIcon } from 'lucide-react';
 import { SetAppointmentDialog } from '@/components/set-appointment-dialog';
-import { useState, useEffect, useMemo, Suspense } from 'react';
+import { useState, useMemo, Suspense } from 'react';
 import { Appointment, AppointmentStatus, Activity, Buyer, Property } from '@/lib/types';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { UpdateAppointmentStatusDialog } from '@/components/update-appointment-status-dialog';
@@ -22,7 +22,6 @@ import { useIsMobile } from '@/hooks/use-is-mobile';
 import { BuyerDetailsDialog } from '@/components/buyer-details-dialog';
 import { PropertyDetailsDialog } from '@/components/property-details-dialog';
 import { isWithinInterval, subDays, parseISO, format } from 'date-fns';
-import { Separator } from '@/components/ui/separator';
 
 
 function AppointmentsPageContent() {
@@ -100,22 +99,23 @@ function AppointmentsPageContent() {
     setIsAppointmentOpen(true);
   };
   
-  const handleOpenStatusUpdate = (appointment: Appointment, status: 'Completed' | 'Cancelled') => {
+  const handleOpenStatusUpdate = (appointment: Appointment, status: AppointmentStatus) => {
       setAppointmentToUpdateStatus(appointment);
       setNewStatus(status);
   };
   
   const handleViewDetails = (appointment: Appointment) => {
-    if (appointment.contactType === 'Buyer') {
-      const buyer = buyersData?.find(b => b.serial_no === appointment.contactSerialNo);
+    const serial = appointment.contactSerialNo || '';
+    if (serial.startsWith('B') || serial.startsWith('RB')) {
+      const buyer = buyersData?.find(b => b.serial_no === serial);
       if (buyer) {
         setContactForDetails(buyer);
         setIsDetailsOpen(true);
       } else {
         toast({ title: 'Buyer not found', variant: 'destructive' });
       }
-    } else { // Owner
-      const property = propertiesData?.find(p => p.serial_no === appointment.contactSerialNo);
+    } else { // Owner or Property
+      const property = propertiesData?.find(p => p.serial_no === serial);
       if (property) {
         setContactForDetails(property);
         setIsDetailsOpen(true);
@@ -175,7 +175,7 @@ function AppointmentsPageContent() {
         }
         const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // Add 1 hour
 
-        const formatDate = (date: Date) => format(date, "yyyyMMdd'T'HHmmss");
+        const formatDateStr = (date: Date) => format(date, "yyyyMMdd'T'HHmmss");
 
         const details = `Appointment with ${appointment.contactName}.\nPurpose: ${appointment.message}\nAssigned Agent: ${appointment.agentName}`;
         
@@ -188,7 +188,7 @@ function AppointmentsPageContent() {
         const url = new URL('https://www.google.com/calendar/render');
         url.searchParams.set('action', 'TEMPLATE');
         url.searchParams.set('text', `Appointment: ${appointment.contactName}`);
-        url.searchParams.set('dates', `${formatDate(startTime)}/${formatDate(endTime)}`);
+        url.searchParams.set('dates', `${formatDateStr(startTime)}/${formatDateStr(endTime)}`);
         url.searchParams.set('details', details);
         url.searchParams.set('location', location);
         
@@ -230,20 +230,20 @@ function AppointmentsPageContent() {
     router.push(url);
   };
   
-  const formatTime = (time24: string) => {
+  const formatTimeStr = (time24: string) => {
     if (!time24) return '';
     const [hours, minutes] = time24.split(':');
     const date = new Date();
     date.setHours(parseInt(hours));
     date.setMinutes(parseInt(minutes));
-    return format(date, 'p'); // 'p' is for localized time, e.g., 5:00 PM
+    return format(date, 'p'); 
   };
 
 
   const renderAppointmentCard = (appt: Appointment) => {
     const currentStatus = statusConfig[appt.status];
     return(
-        <Card key={appt.id} className="hover:shadow-primary/10 transition-shadow flex flex-col">
+        <Card key={appt.id} className="hover:shadow-primary/10 transition-shadow flex flex-col bg-background">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <div className="flex items-center gap-3">
                     <div className={`flex items-center justify-center rounded-full h-10 w-10 ${appt.contactType === 'Buyer' ? 'bg-emerald-100 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-300' : 'bg-sky-100 dark:bg-sky-900 text-sky-600 dark:text-sky-300'}`}>
@@ -270,7 +270,7 @@ function AppointmentsPageContent() {
                 <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
                 <span>{new Date(appt.date).toLocaleDateString()}</span>
                 <Clock className="ml-4 mr-2 h-4 w-4 text-muted-foreground" />
-                <span>{formatTime(appt.time)}</span>
+                <span>{formatTimeStr(appt.time)}</span>
             </div>
             <div className="flex items-center text-sm pt-2 border-t border-dashed">
                 <User className="mr-2 h-4 w-4 text-muted-foreground" />
@@ -286,30 +286,30 @@ function AppointmentsPageContent() {
                         <MoreHorizontal className="ml-2 h-4 w-4" />
                     </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="glass-card">
-                        <DropdownMenuItem onSelect={() => handleViewDetails(appt)}><Eye /> View Contact Details</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={(e) => handleWhatsAppChat(e, appt)}><MessageSquare /> Chat on WhatsApp</DropdownMenuItem>
+                    <DropdownMenuContent align="end" className="bg-background">
+                        <DropdownMenuItem onSelect={() => handleViewDetails(appt)}><Eye className="mr-2 h-4 w-4"/> View Contact Details</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={(e) => handleWhatsAppChat(e, appt)}><MessageSquare className="mr-2 h-4 w-4"/> Chat on WhatsApp</DropdownMenuItem>
                          {appt.status === 'Scheduled' && (
-                          <DropdownMenuItem onSelect={(e) => handleAddToCalendar(e, appt)}><AddToCalendarIcon /> Add to Calendar</DropdownMenuItem>
+                          <DropdownMenuItem onSelect={(e) => handleAddToCalendar(e, appt)}><AddToCalendarIcon className="mr-2 h-4 w-4"/> Add to Calendar</DropdownMenuItem>
                          )}
                         {appt.status === 'Scheduled' && (
                             <>
                                 <DropdownMenuItem onSelect={() => handleOpenStatusUpdate(appt, 'Completed')}>
-                                    <Check />
+                                    <Check className="mr-2 h-4 w-4" />
                                     Mark as Completed
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onSelect={() => handleOpenStatusUpdate(appt, 'Cancelled')}>
-                                    <XCircle />
+                                    <XCircle className="mr-2 h-4 w-4" />
                                     Mark as Cancelled
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onSelect={() => handleReschedule(appt)}>
-                                    <Edit />
+                                    <Edit className="mr-2 h-4 w-4" />
                                     Reschedule
                                 </DropdownMenuItem>
                             </>
                         )}
                         <DropdownMenuItem onSelect={() => handleDeleteAppointment(appt)} className="text-destructive focus:text-destructive-foreground focus:bg-destructive">
-                            <Trash2 />
+                            <Trash2 className="mr-2 h-4 w-4" />
                             Delete
                         </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -326,7 +326,7 @@ function AppointmentsPageContent() {
                 {appointments.map(renderAppointmentCard)}
             </div>
         ) : (
-            <Card className="flex items-center justify-center h-32">
+            <Card className="flex items-center justify-center h-32 bg-background">
                 <p className="text-muted-foreground">{emptyMessage}</p>
             </Card>
         )}
@@ -346,7 +346,7 @@ function AppointmentsPageContent() {
           </p>
         </div>
         <Button className="glowing-btn" onClick={() => { setAppointmentToEdit(null); setIsAppointmentOpen(true); }}>
-            <PlusCircle />
+            <PlusCircle className="mr-2 h-4 w-4" />
             Add Appointment
         </Button>
       </div>
@@ -384,19 +384,20 @@ function AppointmentsPageContent() {
                 onUpdate={handleUpdateStatus}
             />
         )}
-        {contactForDetails && (contactForDetails as Buyer).serial_no?.startsWith('B') && (
-            <BuyerDetailsDialog
-                buyer={contactForDetails as Buyer}
-                isOpen={isDetailsOpen}
-                setIsOpen={setIsDetailsOpen}
-            />
-        )}
-        {contactForDetails && (contactForDetails as Property).serial_no?.startsWith('P') && (
-            <PropertyDetailsDialog
-                property={contactForDetails as Property}
-                isOpen={isDetailsOpen}
-                setIsOpen={setIsDetailsOpen}
-            />
+        {contactForDetails && (contactForDetails as any).serial_no && (
+             (contactForDetails as Buyer).serial_no.startsWith('B') || (contactForDetails as Buyer).serial_no.startsWith('RB') ? (
+                <BuyerDetailsDialog
+                    buyer={contactForDetails as Buyer}
+                    isOpen={isDetailsOpen}
+                    setIsOpen={setIsDetailsOpen}
+                />
+            ) : (
+                <PropertyDetailsDialog
+                    property={contactForDetails as Property}
+                    isOpen={isDetailsOpen}
+                    setIsOpen={setIsDetailsOpen}
+                />
+            )
         )}
 
     </div>

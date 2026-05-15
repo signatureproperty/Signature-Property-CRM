@@ -15,15 +15,15 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { buyerStatuses } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
-import { Edit, MoreHorizontal, PlusCircle, Trash2, Phone, Home, Filter, Wallet, Ruler, Eye, MessageSquare, ChevronLeft, ChevronRight, ArrowUpDown, Tag as TagIcon, Search, MapPin, Building, ChevronDown, UserPlus, CalendarPlus, Sparkles, MessageSquareText } from 'lucide-react';
-import { useState, useMemo, useEffect, Suspense } from 'react';
+import { Edit, MoreHorizontal, PlusCircle, Trash2, Wallet, Ruler, Eye, MessageSquare, ChevronLeft, ChevronRight, ArrowUpDown, Tag as TagIcon, MapPin, ChevronDown, UserPlus, CalendarPlus, Sparkles, MessageSquareText } from 'lucide-react';
+import { useState, useMemo, Suspense } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useIsMobile } from '@/hooks/use-is-mobile';
-import { Buyer, BuyerStatus, PriceUnit, SizeUnit, PropertyType, User, Activity, ListingType, Tag, Appointment, Property } from '@/lib/types';
+import { Buyer, PriceUnit, SizeUnit, PropertyType, User, Activity, ListingType, Tag, Appointment, Property } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useSearch } from '../layout';
 import { BuyerDetailsDialog } from '@/components/buyer-details-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -155,7 +155,6 @@ function BuyersPageContent() {
         serialNo: '',
         serialNoPrefix: 'All'
     });
-    const [areaSearch, setAreaSearch] = useState('');
 
     const activeAgents = useMemo(() => {
         return teamMembers?.filter(m => m.status === 'Active' && m.role === 'Agent') || [];
@@ -178,7 +177,6 @@ function BuyersPageContent() {
             serialNo: '',
             serialNoPrefix: 'All'
         });
-        setAreaSearch('');
     };
 
     const logActivity = async (action: string, target: string, targetType: Activity['targetType'], details: any = null) => {
@@ -328,7 +326,7 @@ function BuyersPageContent() {
         );
     };
 
-    const handleWhatsAppChat = (e: React.MouseEvent | any, buyer: Buyer) => {
+    const handleWhatsAppChat = (e: any, buyer: Buyer) => {
         if (e && e.stopPropagation) e.stopPropagation();
         const phoneNumber = formatPhoneNumberForWhatsApp(buyer.phone, buyer.country_code);
         window.open(`https://wa.me/${phoneNumber}`, '_blank');
@@ -456,7 +454,7 @@ function BuyersPageContent() {
                                         )}
                                     </div>
                                     <div className="flex gap-1 mt-1">
-                                        <Badge variant="outline" className={cn("text-[10px] border-primary/20", buyer.serial_no.startsWith('RB') ? "bg-emerald-100 text-emerald-700" : "bg-primary/10 text-primary")}>{buyer.serial_no}</Badge>
+                                        <Badge variant="outline" className={cn("text-[10px] border-primary/20", (buyer.serial_no || '').startsWith('RB') ? "bg-emerald-100 text-emerald-700" : "bg-primary/10 text-primary")}>{buyer.serial_no}</Badge>
                                         <span className="text-[10px] text-muted-foreground">{buyer.phone}</span>
                                     </div>
                                 </TableCell>
@@ -481,20 +479,20 @@ function BuyersPageContent() {
                                 <TableCell className="text-right" onClick={e => e.stopPropagation()}>
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild><Button size="icon" variant="ghost"><MoreHorizontal /></Button></DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="glass-card w-48">
-                                            <DropdownMenuItem onSelect={() => handleDetailsClick(buyer)}><Eye /> View Details</DropdownMenuItem>
-                                            <DropdownMenuItem onSelect={() => handleNotesClick(buyer)}><MessageSquareText /> Remarks Update</DropdownMenuItem>
-                                            <DropdownMenuItem onSelect={() => handleRecommendProperties(buyer)}><Sparkles /> Recommended Properties</DropdownMenuItem>
-                                            <DropdownMenuItem onSelect={() => handleManageTags(buyer)}><TagIcon /> Edit Tags</DropdownMenuItem>
-                                            <DropdownMenuItem onSelect={(e) => handleWhatsAppChat(e, buyer)}><MessageSquare /> WhatsApp Chat</DropdownMenuItem>
-                                            <DropdownMenuItem onSelect={() => handleSetAppointment(buyer)}><CalendarPlus /> Set Appointment</DropdownMenuItem>
+                                        <DropdownMenuContent align="end" className="bg-background w-48">
+                                            <DropdownMenuItem onSelect={() => handleDetailsClick(buyer)}><Eye className="mr-2 h-4 w-4" /> View Details</DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={() => handleNotesClick(buyer)}><MessageSquareText className="mr-2 h-4 w-4" /> Remarks Update</DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={() => handleRecommendProperties(buyer)}><Sparkles className="mr-2 h-4 w-4" /> Recommended Properties</DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={() => handleManageTags(buyer)}><TagIcon className="mr-2 h-4 w-4" /> Edit Tags</DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={(e) => handleWhatsAppChat(e, buyer)}><MessageSquare className="mr-2 h-4 w-4" /> WhatsApp Chat</DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={() => handleSetAppointment(buyer)}><CalendarPlus className="mr-2 h-4 w-4" /> Set Appointment</DropdownMenuItem>
                                             
                                             {profile.role === 'Admin' && (
                                                 <>
                                                     <DropdownMenuSub>
-                                                        <DropdownMenuSubTrigger><UserPlus /> Assign Agent</DropdownMenuSubTrigger>
+                                                        <DropdownMenuSubTrigger><UserPlus className="mr-2 h-4 w-4" /> Assign Agent</DropdownMenuSubTrigger>
                                                         <DropdownMenuPortal>
-                                                            <DropdownMenuSubContent>
+                                                            <DropdownMenuSubContent className="bg-background">
                                                                 {activeAgents.map(member => (
                                                                     <DropdownMenuItem key={member.id} onSelect={() => handleAssignAgent(buyer.id, member.user_id || member.id, member.name)}>
                                                                         {member.name}
@@ -506,10 +504,10 @@ function BuyersPageContent() {
                                                 </>
                                             )}
                                             {profile.role === 'Admin' && (
-                                                <DropdownMenuItem onSelect={() => handleEdit(buyer)}><Edit /> Edit Details</DropdownMenuItem>
+                                                <DropdownMenuItem onSelect={() => handleEdit(buyer)}><Edit className="mr-2 h-4 w-4" /> Edit Details</DropdownMenuItem>
                                             )}
                                             {profile.role === 'Admin' && (
-                                                <DropdownMenuItem onSelect={() => handleDelete(buyer)} className="text-destructive"><Trash2 /> Delete Buyer</DropdownMenuItem>
+                                                <DropdownMenuItem onSelect={() => handleDelete(buyer)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete Buyer</DropdownMenuItem>
                                             )}
                                         </DropdownMenuContent>
                                     </DropdownMenu>
@@ -528,7 +526,7 @@ function BuyersPageContent() {
                 const hasUnreadNotes = buyer.timeline_notes?.some(n => !n.readBy?.includes(profile.user_id));
 
                 return (
-                <Card key={buyer.id} className="overflow-hidden border-l-4 border-l-primary/40">
+                <Card key={buyer.id} className="overflow-hidden border-l-4 border-l-primary/40 bg-background">
                     <CardHeader className="p-4 pb-2 flex flex-row items-start justify-between space-y-0">
                         <div className="flex gap-3">
                             <Checkbox 
@@ -592,19 +590,19 @@ function BuyersPageContent() {
                                     <MoreHorizontal className="h-4 w-4" />
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="glass-card w-48">
-                                <DropdownMenuItem onSelect={() => handleDetailsClick(buyer)}><Eye /> View Details</DropdownMenuItem>
-                                <DropdownMenuItem onSelect={() => handleRecommendProperties(buyer)}><Sparkles /> Recommended Properties</DropdownMenuItem>
-                                <DropdownMenuItem onSelect={() => handleManageTags(buyer)}><TagIcon /> Edit Tags</DropdownMenuItem>
-                                <DropdownMenuItem onSelect={(e) => handleWhatsAppChat(e as any, buyer)}><MessageSquare /> WhatsApp Chat</DropdownMenuItem>
-                                <DropdownMenuItem onSelect={() => handleSetAppointment(buyer)}><CalendarPlus /> Set Appointment</DropdownMenuItem>
+                            <DropdownMenuContent align="end" className="bg-background w-48">
+                                <DropdownMenuItem onSelect={() => handleDetailsClick(buyer)}><Eye className="mr-2 h-4 w-4" /> View Details</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => handleRecommendProperties(buyer)}><Sparkles className="mr-2 h-4 w-4" /> Recommended Properties</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => handleManageTags(buyer)}><TagIcon className="mr-2 h-4 w-4" /> Edit Tags</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={(e) => handleWhatsAppChat(e as any, buyer)}><MessageSquare className="mr-2 h-4 w-4" /> WhatsApp Chat</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => handleSetAppointment(buyer)}><CalendarPlus className="mr-2 h-4 w-4" /> Set Appointment</DropdownMenuItem>
                                 
                                 {profile.role === 'Admin' && (
                                     <>
                                         <DropdownMenuSub>
-                                            <DropdownMenuSubTrigger><UserPlus /> Assign Agent</DropdownMenuSubTrigger>
+                                            <DropdownMenuSubTrigger><UserPlus className="mr-2 h-4 w-4" /> Assign Agent</DropdownMenuSubTrigger>
                                             <DropdownMenuPortal>
-                                                <DropdownMenuSubContent>
+                                                <DropdownMenuSubContent className="bg-background">
                                                     {activeAgents.map(member => (
                                                         <DropdownMenuItem key={member.id} onSelect={() => handleAssignAgent(buyer.id, member.user_id || member.id, member.name)}>
                                                             {member.name}
@@ -616,10 +614,10 @@ function BuyersPageContent() {
                                     </>
                                 )}
                                 {profile.role === 'Admin' && (
-                                    <DropdownMenuItem onSelect={() => handleEdit(buyer)}><Edit /> Edit Details</DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={() => handleEdit(buyer)}><Edit className="mr-2 h-4 w-4" /> Edit Details</DropdownMenuItem>
                                 )}
                                 {profile.role === 'Admin' && (
-                                    <DropdownMenuItem onSelect={() => handleDelete(buyer)} className="text-destructive"><Trash2 /> Delete Buyer</DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={() => handleDelete(buyer)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete Buyer</DropdownMenuItem>
                                 )}
                             </DropdownMenuContent>
                         </DropdownMenu>
@@ -646,7 +644,7 @@ function BuyersPageContent() {
                                 <UserPlus className="mr-2 h-4 w-4" /> Assign
                             </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent>
+                            <DropdownMenuContent className="bg-background">
                             {activeAgents.map((member) => (
                                 <DropdownMenuItem key={member.id} onSelect={() => handleBulkAssign(member.id)}>
                                 {member.name}
@@ -661,9 +659,9 @@ function BuyersPageContent() {
                     )}
                     <AlertDialog open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
                         <AlertDialogTrigger asChild>
-                            <Button variant="outline" className="rounded-full"><Filter className="mr-2 h-4 w-4" /> Filters {filters.area.length > 0 && `(${filters.area.length})`}</Button>
+                            <Button variant="outline" className="rounded-full"><Filter className="mr-2 h-4 w-4" /> Filters {filters.area.length > 0 ? `(${filters.area.length})` : ''}</Button>
                         </AlertDialogTrigger>
-                        <AlertDialogContent className="max-w-md">
+                        <AlertDialogContent className="max-w-md bg-background">
                             <AlertDialogHeader><AlertDialogTitle>Refine Buyer Search</AlertDialogTitle></AlertDialogHeader>
                             <div className="grid gap-4 py-4">
                                 <div className="grid grid-cols-3 items-center gap-4">
@@ -829,7 +827,7 @@ function BuyersPageContent() {
                 </div>
             </Card>
 
-            <div className="mt-4">{isMobile ? renderCards(paginatedBuyers) : <Card className="p-0 overflow-hidden">{renderTable(paginatedBuyers)}</Card>}</div>
+            <div className="mt-4">{isMobile ? renderCards(paginatedBuyers) : <Card className="p-0 overflow-hidden bg-background">{renderTable(paginatedBuyers)}</Card>}</div>
             
             {totalPages > 1 && (
                 <div className="flex justify-end items-center gap-2 py-4">
@@ -853,7 +851,7 @@ function BuyersPageContent() {
                         onSave={handleSaveAppointment}
                         appointmentDetails={{
                             contactType: 'Buyer',
-                            contactName: buyerToEdit?.name || selectedBuyerForDetails.name,
+                            contactName: selectedBuyerForDetails.name,
                             contactSerialNo: selectedBuyerForDetails.serial_no,
                             message: `Appointment with buyer ${selectedBuyerForDetails.name} for property viewing.`
                         }}

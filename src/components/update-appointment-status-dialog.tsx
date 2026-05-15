@@ -41,6 +41,7 @@ export function UpdateAppointmentStatusDialog({
   const { toast } = useToast();
   const form = useForm<StatusFormValues>({
     resolver: zodResolver(formSchema),
+    defaultValues: { notes: '' }
   });
 
   const onSubmit = (data: StatusFormValues) => {
@@ -54,9 +55,9 @@ export function UpdateAppointmentStatusDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md bg-background">
         <DialogHeader>
-          <DialogTitle className="font-headline">Update Appointment Status</DialogTitle>
+          <DialogTitle className="font-headline text-foreground">Update Appointment Status</DialogTitle>
           <DialogDescription>
             Mark appointment with {appointment.contactName} as {newStatus}.
           </DialogDescription>
@@ -70,7 +71,7 @@ export function UpdateAppointmentStatusDialog({
                 <FormItem>
                   <FormLabel>Reason / Notes (Optional)</FormLabel>
                   <FormControl>
-                    <Textarea {...field} placeholder={`Add any notes for marking this appointment as ${newStatus}...`} />
+                    <Textarea {...field} placeholder={`Add any notes for marking this appointment as ${newStatus}...`} className="bg-background" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

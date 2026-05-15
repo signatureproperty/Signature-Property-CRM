@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -69,7 +68,7 @@ import {
 } from '@/components/ui/select';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useIsMobile } from '@/hooks/use-is-mobile';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useSearch } from '../layout';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency, formatUnit, formatPhoneNumberForWhatsApp } from '@/lib/formatters';
@@ -517,14 +516,14 @@ function PropertiesPageContent() {
                     {prop.auto_title || `${prop.size_value} ${prop.size_unit} ${prop.property_type}`} 
                     {prop.is_recorded && <Video className="h-4 w-4 text-primary" />}
                     {hasUnreadNotes && (
-                        <span className="relative flex h-2 v-2">
+                        <span className="relative flex h-2 w-2">
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                           <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
                         </span>
                     )}
                 </div>
                 <div className="flex flex-wrap gap-1 mt-1">
-                    <Badge variant="default" className={cn('font-mono text-[10px]', prop.serial_no.startsWith('RP') ? 'bg-emerald-100 text-emerald-700' : 'bg-primary/20 text-primary')}>{prop.serial_no}</Badge>
+                    <Badge variant="default" className={cn('font-mono text-[10px]', (prop.serial_no || '').startsWith('RP') ? 'bg-emerald-100 text-emerald-700' : 'bg-primary/20 text-primary')}>{prop.serial_no}</Badge>
                 </div>
               </TableCell>
               <TableCell onClick={() => handleRowClick(prop)}>{prop.property_type}</TableCell>
@@ -541,21 +540,21 @@ function PropertiesPageContent() {
               <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="rounded-full"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="glass-card">
-                    <DropdownMenuItem onSelect={() => handleRowClick(prop)}><Eye />View Details</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => handleNotesClick(prop)}><MessageSquareText /> Remarks Update</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => handleShare(prop)}><Share2 />Share Details</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => handleManageTags(prop)}><TagIcon />Edit Tags</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={(e) => handleWhatsAppChat(e, prop)}><MessageSquare /> WhatsApp</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => handleSetAppointment(prop)}><CalendarPlus /> Set Appointment</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => handleMarkAsSoldOrRent(prop)}><Check /> {prop.is_for_rent ? 'Mark as Rent Out' : 'Mark as Sold'}</DropdownMenuItem>
+                  <DropdownMenuContent align="end" className="bg-background">
+                    <DropdownMenuItem onSelect={() => handleRowClick(prop)}><Eye className="mr-2 h-4 w-4" />View Details</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleNotesClick(prop)}><MessageSquareText className="mr-2 h-4 w-4" /> Remarks Update</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleShare(prop)}><Share2 className="mr-2 h-4 w-4" />Share Details</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleManageTags(prop)}><TagIcon className="mr-2 h-4 w-4" />Edit Tags</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={(e) => handleWhatsAppChat(e, prop)}><MessageSquare className="mr-2 h-4 w-4" /> WhatsApp</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleSetAppointment(prop)}><CalendarPlus className="mr-2 h-4 w-4" /> Set Appointment</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleMarkAsSoldOrRent(prop)}><Check className="mr-2 h-4 w-4" /> {prop.is_for_rent ? 'Mark as Rent Out' : 'Mark as Sold'}</DropdownMenuItem>
                     
                     {profile.role === 'Admin' && (
                         <>
                             <DropdownMenuSub>
-                                <DropdownMenuSubTrigger><UserPlus /> Assign to...</DropdownMenuSubTrigger>
+                                <DropdownMenuSubTrigger><UserPlus className="mr-2 h-4 w-4" /> Assign to...</DropdownMenuSubTrigger>
                                 <DropdownMenuPortal>
-                                    <DropdownMenuSubContent>
+                                    <DropdownMenuSubContent className="bg-background">
                                         {assignableMembers.map(member => {
                                             const isAssigned = Array.isArray(prop.assignedTo) 
                                                 ? prop.assignedTo.includes(member.user_id || member.id)
@@ -574,9 +573,9 @@ function PropertiesPageContent() {
                             </DropdownMenuSub>
                         </>
                     )}
-                    <DropdownMenuItem onSelect={() => handleEdit(prop)}><Edit />Edit</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleEdit(prop)}><Edit className="mr-2 h-4 w-4" />Edit</DropdownMenuItem>
                     {profile.role === 'Admin' && (
-                        <DropdownMenuItem onSelect={() => handleDelete(prop)} className="text-destructive"><Trash2 />Delete</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => handleDelete(prop)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -595,7 +594,7 @@ function PropertiesPageContent() {
           const hasUnreadNotes = prop.timeline_notes?.some(n => !n.readBy?.includes(profile.user_id));
           return (
           <motion.div key={prop.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, delay: index * 0.02 }}>
-            <Card className="overflow-hidden border-l-4 border-l-primary/40">
+            <Card className="overflow-hidden border-l-4 border-l-primary/40 bg-background">
               <CardHeader className="p-4 pb-2 flex flex-row items-start justify-between space-y-0">
                 <div className="flex gap-3">
                   <Checkbox 
@@ -660,20 +659,20 @@ function PropertiesPageContent() {
                       <MoreHorizontal className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="glass-card w-48">
-                    <DropdownMenuItem onSelect={() => handleRowClick(prop)}><Eye />View Details</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => handleShare(prop)}><Share2 />Share Details</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => handleManageTags(prop)}><TagIcon />Edit Tags</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={(e) => handleWhatsAppChat(e as any, prop)}><MessageSquare /> WhatsApp Chat</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => handleSetAppointment(prop)}><CalendarPlus /> Set Appointment</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => handleMarkAsSoldOrRent(prop)}><Check /> {prop.is_for_rent ? 'Mark as Rent Out' : 'Mark as Sold'}</DropdownMenuItem>
+                  <DropdownMenuContent align="end" className="bg-background w-48">
+                    <DropdownMenuItem onSelect={() => handleRowClick(prop)}><Eye className="mr-2 h-4 w-4" />View Details</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleShare(prop)}><Share2 className="mr-2 h-4 w-4" />Share Details</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleManageTags(prop)}><TagIcon className="mr-2 h-4 w-4" />Edit Tags</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={(e) => handleWhatsAppChat(e as any, prop)}><MessageSquare className="mr-2 h-4 w-4" /> WhatsApp Chat</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleSetAppointment(prop)}><CalendarPlus className="mr-2 h-4 w-4" /> Set Appointment</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleMarkAsSoldOrRent(prop)}><Check className="mr-2 h-4 w-4" /> {prop.is_for_rent ? 'Mark as Rent Out' : 'Mark as Sold'}</DropdownMenuItem>
                     
                     {profile.role === 'Admin' && (
                         <>
                             <DropdownMenuSub>
-                                <DropdownMenuSubTrigger><UserPlus /> Assign to...</DropdownMenuSubTrigger>
+                                <DropdownMenuSubTrigger><UserPlus className="mr-2 h-4 w-4" /> Assign to...</DropdownMenuSubTrigger>
                                 <DropdownMenuPortal>
-                                    <DropdownMenuSubContent>
+                                    <DropdownMenuSubContent className="bg-background">
                                         {assignableMembers.map(member => {
                                             const isAssigned = Array.isArray(prop.assignedTo) 
                                                 ? prop.assignedTo.includes(member.user_id || member.id)
@@ -692,9 +691,9 @@ function PropertiesPageContent() {
                             </DropdownMenuSub>
                         </>
                     )}
-                    <DropdownMenuItem onSelect={() => handleEdit(prop)}><Edit />Edit Details</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleEdit(prop)}><Edit className="mr-2 h-4 w-4" />Edit Details</DropdownMenuItem>
                     {profile.role === 'Admin' && (
-                        <DropdownMenuItem onSelect={() => handleDelete(prop)} className="text-destructive"><Trash2 />Delete Property</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => handleDelete(prop)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" />Delete Property</DropdownMenuItem>
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -720,16 +719,16 @@ function PropertiesPageContent() {
                 <div className="flex items-center gap-2">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild><Button variant="outline" className="rounded-full"><UserPlus className="mr-2 h-4 w-4" /> Assign</Button></DropdownMenuTrigger>
-                    <DropdownMenuContent>{assignableMembers.map((member) => <DropdownMenuItem key={member.id} onSelect={() => handleBulkAssign(member.id)}>{member.name}</DropdownMenuItem>)}</DropdownMenuContent>
+                    <DropdownMenuContent className="bg-background">{assignableMembers.map((member) => <DropdownMenuItem key={member.id} onSelect={() => handleBulkAssign(member.id)}>{member.name}</DropdownMenuItem>)}</DropdownMenuContent>
                   </DropdownMenu>
                   <Button variant="destructive" className="rounded-full" onClick={handleBulkDelete}><Trash2 className="mr-2 h-4 w-4" /> Delete ({selectedProperties.length})</Button>
                 </div>
               )}
               <AlertDialog open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
                 <AlertDialogTrigger asChild>
-                  <Button variant="outline" className="rounded-full"><Filter className="mr-2 h-4 w-4" /> Filters {filters.area.length > 0 && `(${filters.area.length})`}</Button>
+                  <Button variant="outline" className="rounded-full"><Filter className="mr-2 h-4 w-4" /> Filters {filters.area.length > 0 ? `(${filters.area.length})` : ''}</Button>
                 </AlertDialogTrigger>
-                <AlertDialogContent className="max-w-md">
+                <AlertDialogContent className="max-w-md bg-background">
                   <AlertDialogHeader><AlertDialogTitle>Refine Property Search</AlertDialogTitle></AlertDialogHeader>
                   <div className="grid gap-4 py-4">
                     <div className="grid grid-cols-3 items-center gap-4">
@@ -747,7 +746,7 @@ function PropertiesPageContent() {
                         <div className="col-span-2">
                         <Popover>
                             <PopoverTrigger asChild><Button variant="outline" className="w-full justify-between h-8">{filters.area.length > 0 ? `${filters.area.length} Selected` : "Select Areas"}<ChevronDown className="h-4 w-4 opacity-50" /></Button></PopoverTrigger>
-                            <PopoverContent className="p-0 w-[280px] shadow-2xl" align="start">
+                            <PopoverContent className="p-0 w-[280px] shadow-2xl bg-background" align="start">
                             <div className="p-2 border-b bg-muted/30"><Input placeholder="Search area..." className="h-8" value={areaSearch} onChange={(e) => setAreaSearch(e.target.value)} /></div>
                             <div className="max-h-[250px] overflow-y-auto p-2">
                                 {Array.from(new Set((allProperties || []).map(p => p.area))).filter(Boolean).filter(a => a.toLowerCase().includes(areaSearch.toLowerCase())).sort().map((areaName) => (
@@ -941,7 +940,7 @@ function PropertiesPageContent() {
             </div>
           </Card>
 
-          <div className="mt-4">{isMobile ? renderCards(paginatedProperties) : <Card className="p-0 overflow-hidden">{renderTable(paginatedProperties)}</Card>}</div>
+          <div className="mt-4">{isMobile ? renderCards(paginatedProperties) : <Card className="p-0 overflow-hidden bg-background">{renderTable(paginatedProperties)}</Card>}</div>
           {totalPages > 1 && (
             <div className="flex items-center justify-end space-x-2 py-4">
                 <span className="text-sm text-muted-foreground">Page {currentPage} of {totalPages}</span>

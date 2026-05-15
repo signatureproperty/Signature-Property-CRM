@@ -17,9 +17,9 @@ interface UpcomingEventsProps {
     isLoading: boolean;
     onAddAppointment: () => void;
     onAddEvent: () => void;
-    onUpdateStatus: (appointment: Appointment, status: 'Completed' | 'Cancelled') => void;
+    onUpdateStatus: (appointment: Appointment, status: AppointmentStatus) => void;
     onDelete: (appointment: Appointment) => void;
-    onAddToCalendar: (event: React.MouseEvent, appointment: Appointment) => void;
+    onAddToCalendar: (event: any, appointment: Appointment) => void;
     onAllEventsClick: () => void;
     onViewDetails: (appointment: Appointment) => void;
 }
@@ -85,15 +85,15 @@ export function UpcomingEvents({
                                     <Plus className="h-4 w-4" />
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="glass-card">
-                                <DropdownMenuItem onSelect={onAddAppointment}>
+                            <DropdownMenuContent align="end" className="bg-background">
+                                <DropdownMenuItem onSelect={() => onAddAppointment()}>
                                     <Briefcase className="mr-2 h-4 w-4" /> Add Appointment
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onSelect={onAddEvent}>
+                                <DropdownMenuItem onSelect={() => onAddEvent()}>
                                     <CalendarPlus className="mr-2 h-4 w-4" /> Custom Event
                                 </DropdownMenuItem>
                                 <Separator />
-                                <DropdownMenuItem onSelect={onAllEventsClick}>
+                                <DropdownMenuItem onSelect={() => onAllEventsClick()}>
                                     <CalendarIcon className="mr-2 h-4 w-4" /> View Full Calendar
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -136,7 +136,7 @@ export function UpcomingEvents({
                                         onClick={() => onViewDetails(appt)}
                                         className={cn(
                                             "group relative flex items-start gap-3 p-3 rounded-xl border border-border/40 transition-all cursor-pointer",
-                                            appt.status === 'Completed' ? "bg-emerald-50/30 dark:bg-emerald-500/5 opacity-60" : "bg-card hover:shadow-md hover:border-primary/20"
+                                            appt.status === 'Completed' ? "bg-emerald-50/30 dark:bg-emerald-500/5 opacity-60" : "bg-background hover:shadow-md hover:border-primary/20"
                                         )}
                                     >
                                         <div className={cn(
@@ -175,7 +175,7 @@ export function UpcomingEvents({
                                                         <MoreHorizontal className="h-3.5 w-3.5" />
                                                     </Button>
                                                 </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="glass-card" onClick={(e) => e.stopPropagation()}>
+                                                <DropdownMenuContent align="end" className="bg-background" onClick={(e) => e.stopPropagation()}>
                                                     <DropdownMenuItem onSelect={(e) => onAddToCalendar(e as any, appt)}>
                                                         <CalendarPlus className="mr-2 h-4 w-4" /> Sync Calendar
                                                     </DropdownMenuItem>

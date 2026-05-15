@@ -1,8 +1,7 @@
-
 'use client';
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
+import { SidebarTrigger } from '@/components/ui/sidebar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,11 +12,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Bell, ChevronDown, LogOut, Moon, Search, Settings, Sun, User, MessageSquare, Check, X, Loader2, Menu, CalendarClock, Phone, CheckCheck, Edit, RotateCw } from 'lucide-react';
+import { Bell, ChevronDown, LogOut, Moon, Search, Settings, Sun, User, MessageSquare, Check, X, Loader2, CalendarClock, Phone, CheckCheck, Edit, RotateCw } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Input } from '../ui/input';
 import { useProfile } from '@/context/profile-context';
-import { useAuth, useFirestore } from '@/firebase/provider';
+import { useAuth } from '@/firebase/provider';
 import { useUser } from '@/firebase/auth/use-user';
 import { signOut } from 'firebase/auth';
 import { useNotifications } from '@/hooks/use-notifications';
@@ -131,8 +130,8 @@ export function AppHeader({
     }
   };
   
-  const handleDeleteNotification = (e: React.MouseEvent, notificationId: string) => {
-    e.stopPropagation();
+  const handleDeleteNotification = (e: any, notificationId: string) => {
+    if(e && e.stopPropagation) e.stopPropagation();
     deleteNotification(notificationId);
   }
 
@@ -179,16 +178,16 @@ export function AppHeader({
                     <span className="sr-only">Notifications</span>
                 </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="glass-card w-96">
+            <DropdownMenuContent align="end" className="bg-background w-96">
                 <div className="flex items-center justify-between pr-2">
                     <DropdownMenuLabel>Notifications</DropdownMenuLabel>
                     <div className="flex items-center">
-                        <Button variant="ghost" size="sm" className="text-xs" onClick={forceRefresh}>
+                        <Button variant="ghost" size="sm" className="text-xs" onClick={() => forceRefresh()}>
                             <RotateCw className="mr-1 h-3 w-3" />
                             Refresh
                         </Button>
                         {unreadCount > 0 && (
-                            <Button variant="ghost" size="sm" className="text-xs" onClick={markAllAsRead}>
+                            <Button variant="ghost" size="sm" className="text-xs" onClick={() => markAllAsRead()}>
                                 <CheckCheck className="mr-1 h-3 w-3" />
                                 Mark all as read
                             </Button>
@@ -261,24 +260,24 @@ export function AppHeader({
               <ChevronDown className="h-4 w-4 text-muted-foreground" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="glass-card">
+          <DropdownMenuContent align="end" className="bg-background">
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {(profile.role === 'Admin' || profile.role === 'Agent') && (
+            {(profile.role === 'Admin' || profile.role === 'Agent' || (profile.role as string) === 'Super Admin') && (
               <DropdownMenuItem onClick={() => router.push('/settings')}>
-                  <Settings />
+                  <Settings className="mr-2 h-4 w-4" />
                   Settings
               </DropdownMenuItem>
             )}
             {(profile.role === 'Admin' || profile.role === 'Agent') && (
                 <DropdownMenuItem onClick={() => router.push('/support')}>
-                    <MessageSquare />
+                    <MessageSquare className="mr-2 h-4 w-4" />
                     Support
                 </DropdownMenuItem>
             )}
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout}>
-                <LogOut />
+            <DropdownMenuItem onClick={() => handleLogout()}>
+                <LogOut className="mr-2 h-4 w-4" />
                 Logout
             </DropdownMenuItem>
           </DropdownMenuContent>

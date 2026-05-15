@@ -1,7 +1,6 @@
-
 'use client';
 import React, { useMemo, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { 
     Building2, Users, DollarSign, Home, TrendingUp, Star, CalendarDays, 
     CheckCircle, Briefcase, Video, PlayCircle, Gem, ArrowRight, 
@@ -26,7 +25,6 @@ import { UpcomingEvents } from '@/components/upcoming-events';
 import { SetAppointmentDialog } from '@/components/set-appointment-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { AddEventDialog } from '@/components/add-event-dialog';
-import { UpdateAppointmentStatusDialog } from '@/components/update-appointment-status-dialog';
 import { AllEventsDialog } from '@/components/all-events-dialog';
 import { PerformanceChart } from '@/components/performance-chart';
 import { LeadsChart } from '@/components/leads-chart';
@@ -109,8 +107,6 @@ export default function OverviewPage() {
     const [isAppointmentOpen, setIsAppointmentOpen] = useState(false);
     const [isEventOpen, setIsEventOpen] = useState(false);
     const [isAllEventsOpen, setIsAllEventsOpen] = useState(false);
-    const [appointmentToUpdateStatus, setAppointmentToUpdateStatus] = useState<Appointment | null>(null);
-    const [newStatus, setNewStatus] = useState<AppointmentStatus | null>(null);
 
     // Details state
     const [selectedApptForDetails, setSelectedApptForDetails] = useState<Appointment | null>(null);
@@ -458,7 +454,7 @@ export default function OverviewPage() {
                 
                 // Logic for notification if assigned to another agent
                 const assignedAgent = teamMembers?.find(m => m.name === a.agentName);
-                if (assignedAgent && assignedAgent.id !== profile.user_id) {
+                if (assignedAgent && (assignedAgent.user_id || assignedAgent.id) !== profile.user_id) {
                     await addDoc(collection(firestore, 'agencies', profile.agency_id, 'activityLogs'), {
                         userName: profile.name,
                         action: 'assigned an appointment',
@@ -485,14 +481,14 @@ export default function OverviewPage() {
 
             {selectedApptForDetails && (
                 <Dialog open={!!selectedApptForDetails} onOpenChange={() => setSelectedApptForDetails(null)}>
-                    <DialogContent className="sm:max-w-md">
+                    <DialogContent className="sm:max-w-md bg-background">
                         <DialogHeader>
                             <div className="flex items-center gap-3">
                                 <div className={cn(
                                     "p-3 rounded-2xl",
                                     selectedApptForDetails.contactType === 'Buyer' ? "bg-sky-500/10 text-sky-600" : "bg-purple-500/10 text-purple-600"
                                 )}>
-                                    {selectedApptForDetails.contactType === 'Buyer' ? <Briefcase className="h-6 w-6" /> : <Building className="h-6 w-6" />}
+                                    {selectedApptForDetails.contactType === 'Buyer' ? <Briefcase className="h-6 w-6" /> : <Building2 className="h-6 w-6" />}
                                 </div>
                                 <div>
                                     <DialogTitle className="text-xl font-black font-headline">{selectedApptForDetails.contactName}</DialogTitle>
@@ -544,7 +540,7 @@ export default function OverviewPage() {
 
             {isLeadDetailsOpen && selectedLeadForFullDetails && (
                 <>
-                    {'serial_no' in selectedLeadForFullDetails && selectedLeadForFullDetails.serial_no.startsWith('B') ? (
+                    {'serial_no' in selectedLeadForFullDetails && (selectedLeadForFullDetails.serial_no.startsWith('B') || selectedLeadForFullDetails.serial_no.startsWith('RB')) ? (
                         <BuyerDetailsDialog 
                             buyer={selectedLeadForFullDetails as Buyer} 
                             isOpen={isLeadDetailsOpen} 
@@ -562,7 +558,7 @@ export default function OverviewPage() {
 
             {selectedLead && isRemarksOpen && (
                 <>
-                    { 'serial_no' in selectedLead && selectedLead.serial_no.startsWith('B') ? (
+                    { 'serial_no' in selectedLead && (selectedLead.serial_no.startsWith('B') || selectedLead.serial_no.startsWith('RB')) ? (
                         <BuyerNotesDialog 
                             buyer={selectedLead as Buyer} 
                             isOpen={isRemarksOpen} 

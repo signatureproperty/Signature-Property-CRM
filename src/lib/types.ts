@@ -1,4 +1,3 @@
-
 'use client';
 
 export type UserRole = 'Admin' | 'Agent' | 'Video Recorder' | 'Super Admin';
