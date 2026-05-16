@@ -128,7 +128,7 @@ export default function AgencyUpgradePage() {
                   <div className="flex items-baseline justify-center gap-1 mt-6">
                       <span className="text-sm font-black text-muted-foreground align-top">RS</span>
                       <span className="text-5xl font-black tracking-tighter">
-                          {priceData.monthly === 0 ? '0' : (isYearly ? (priceData.yearly / 12).toLocaleString() : priceData.monthly.toLocaleString())}
+                          {priceData.monthly === 0 ? '0' : (isYearly ? Math.floor(priceData.yearly / 12).toLocaleString() : priceData.monthly.toLocaleString())}
                       </span>
                       <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">/mo</span>
                   </div>
