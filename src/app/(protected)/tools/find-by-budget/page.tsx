@@ -26,7 +26,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Buyer, PriceUnit, Property, PropertyType, ListingType } from '@/lib/types';
 import { formatCurrency, formatUnit, formatPhoneNumberForWhatsApp } from '@/lib/formatters';
 import { useCurrency, Currency } from '@/context/currency-context';
-import { Download, Share2, Check, Phone, Wallet, Home, DollarSign, FileText, Video, RotateCcw, Search, ChevronDown, ChevronsUpDown, X, List, SlidersHorizontal, CheckSquare, ListChecks } from 'lucide-react';
+import { Download, Share2, Check, Phone, Wallet, Home, DollarSign, FileText, Video, RotateCcw, Search, ChevronDown, CheckSquare, ListChecks, X, SlidersHorizontal } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -49,7 +49,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { buyerStatuses } from '@/lib/data';
 
@@ -535,7 +534,7 @@ export default function FindByBudgetPage() {
                                                 {watchedAreas.length === uniqueAreas.length ? 'Deselect All' : 'Select All'}
                                             </Button>
                                         </div>
-                                        <ScrollArea className="h-[250px] pointer-events-auto">
+                                        <ScrollArea className="h-[250px] overflow-y-auto" onWheel={(e) => e.stopPropagation()}>
                                             <div className="p-2 space-y-1">
                                                 {filteredAreas.length > 0 ? (
                                                     filteredAreas.map((areaName) => (
@@ -564,7 +563,7 @@ export default function FindByBudgetPage() {
                                                                 {areaName}
                                                             </label>
                                                         </div>
-                                                    ))}
+                                                    ))
                                                 ) : (
                                                     <div className="py-10 text-center text-sm text-muted-foreground">
                                                         No matching areas.
@@ -905,5 +904,36 @@ ${utilities || 'N/A'}
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+    );
+}
+
+interface SlidersHorizontalProps {
+    className?: string;
+}
+
+function SlidersHorizontal({ className }: SlidersHorizontalProps) {
+    return (
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={className}
+        >
+            <line x1="21" x2="14" y1="4" y2="4" />
+            <line x1="10" x2="3" y1="4" y2="4" />
+            <line x1="21" x2="12" y1="12" y2="12" />
+            <line x1="8" x2="3" y1="12" y2="12" />
+            <line x1="21" x2="16" y1="20" y2="20" />
+            <line x1="12" x2="3" y1="20" y2="20" />
+            <line x1="14" x2="14" y1="2" y2="6" />
+            <line x1="8" x2="8" y1="10" y2="14" />
+            <line x1="16" x2="16" y1="18" y2="22" />
+        </svg>
     );
 }
