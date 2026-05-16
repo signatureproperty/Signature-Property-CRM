@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState } from 'react';
@@ -36,6 +35,8 @@ import { useCurrency } from '@/context/currency-context';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
 
 const COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
@@ -222,7 +223,7 @@ export default function AnalyticsPage() {
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <Card className="lg:col-span-2 border-none shadow-2xl rounded-2xl overflow-hidden bg-card/60 backdrop-blur-xl">
                             <CardHeader>
-                                <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                                <CardTitle className="text-sm font-black uppercase tracking-wider flex items-center gap-2">
                                     <TrendingUp className="h-4 w-4 text-primary" /> Inventory vs Leads Growth
                                 </CardTitle>
                             </CardHeader>
@@ -253,7 +254,7 @@ export default function AnalyticsPage() {
 
                         <Card className="border-none shadow-2xl rounded-2xl bg-card/60 backdrop-blur-xl">
                             <CardHeader>
-                                <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                                <CardTitle className="text-sm font-black uppercase tracking-wider flex items-center gap-2">
                                     <Building2 className="h-4 w-4 text-primary" /> Stock Distribution
                                 </CardTitle>
                                 <CardDescription>Top 8 Property Types</CardDescription>
@@ -313,7 +314,7 @@ export default function AnalyticsPage() {
                                                             {i + 1}
                                                         </div>
                                                         <div className="h-10 w-10 rounded-xl overflow-hidden border-2 border-primary/20">
-                                                            <img src={agent.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${agent.name}`} alt="" />
+                                                            <img src={agent.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${agent.name}`} alt="" className="h-full w-full object-cover" />
                                                         </div>
                                                     </div>
                                                     <div className="flex flex-col">
@@ -342,7 +343,7 @@ export default function AnalyticsPage() {
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <Card className="border-none shadow-xl rounded-2xl bg-card/60 backdrop-blur-xl">
                             <CardHeader>
-                                <CardTitle className="text-sm font-black uppercase tracking-widest">Inventory Status</CardTitle>
+                                <CardTitle className="text-sm font-black uppercase tracking-wider">Inventory Status</CardTitle>
                             </CardHeader>
                             <CardContent className="h-[350px]">
                                 <ResponsiveContainer width="100%" height="100%">
@@ -366,12 +367,12 @@ export default function AnalyticsPage() {
                         </Card>
                         <Card className="border-none shadow-xl rounded-2xl bg-card/60 backdrop-blur-xl">
                             <CardHeader>
-                                <CardTitle className="text-sm font-black uppercase tracking-widest">Listing Type</CardTitle>
+                                <CardTitle className="text-sm font-black uppercase tracking-wider">Listing Type</CardTitle>
                             </CardHeader>
                             <CardContent className="h-[350px] flex items-center justify-center">
                                 <div className="space-y-6 w-full max-w-[250px]">
                                     <div className="space-y-2">
-                                        <div className="flex justify-between text-xs font-bold uppercase tracking-widest opacity-60">
+                                        <div className="flex justify-between text-xs font-bold uppercase tracking-wider opacity-60">
                                             <span>For Sale</span>
                                             <span>{properties.filter(p => !p.is_for_rent).length}</span>
                                         </div>
@@ -383,7 +384,7 @@ export default function AnalyticsPage() {
                                         </div>
                                     </div>
                                     <div className="space-y-2">
-                                        <div className="flex justify-between text-xs font-bold uppercase tracking-widest opacity-60">
+                                        <div className="flex justify-between text-xs font-bold uppercase tracking-wider opacity-60">
                                             <span>For Rent</span>
                                             <span>{properties.filter(p => p.is_for_rent).length}</span>
                                         </div>
@@ -404,7 +405,7 @@ export default function AnalyticsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <Card className="border-none shadow-xl rounded-2xl bg-card/60 backdrop-blur-xl">
                             <CardHeader>
-                                <CardTitle className="text-sm font-black uppercase tracking-widest">Buyer Intentions</CardTitle>
+                                <CardTitle className="text-sm font-black uppercase tracking-wider">Buyer Intentions</CardTitle>
                             </CardHeader>
                             <CardContent className="h-[350px]">
                                 <ResponsiveContainer width="100%" height="100%">
@@ -429,17 +430,17 @@ export default function AnalyticsPage() {
                         </Card>
                         <Card className="border-none shadow-xl rounded-2xl bg-card/60 backdrop-blur-xl overflow-hidden flex flex-col">
                             <CardHeader className="bg-primary text-primary-foreground">
-                                <CardTitle className="text-sm font-black uppercase tracking-widest">Conversion Summary</CardTitle>
+                                <CardTitle className="text-sm font-black uppercase tracking-wider">Conversion Summary</CardTitle>
                             </CardHeader>
                             <CardContent className="flex-1 flex flex-col items-center justify-center gap-6 py-10">
                                 <div className="text-center">
                                     <div className="text-6xl font-black mb-1">{buyers.filter(b => b.status === 'Deal Closed').length}</div>
-                                    <p className="text-xs font-black uppercase tracking-widest opacity-60">Total Conversions</p>
+                                    <p className="text-xs font-black uppercase tracking-wider opacity-60">Total Conversions</p>
                                 </div>
                                 <Separator className="w-32 bg-primary-foreground/20" />
                                 <div className="text-center">
                                     <div className="text-4xl font-black mb-1 text-red-500">{buyers.filter(b => b.status === 'Deal Lost').length}</div>
-                                    <p className="text-xs font-black uppercase tracking-widest opacity-60">Leads Lost</p>
+                                    <p className="text-xs font-black uppercase tracking-wider opacity-60">Leads Lost</p>
                                 </div>
                             </CardContent>
                         </Card>
@@ -449,5 +450,3 @@ export default function AnalyticsPage() {
         </div>
     );
 }
-
-    
