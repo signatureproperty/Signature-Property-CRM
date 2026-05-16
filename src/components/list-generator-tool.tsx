@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
@@ -571,14 +570,6 @@ export function ListGeneratorTool({ allProperties }: ListGeneratorToolProps) {
                             
                             <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] font-bold text-amber-700 leading-relaxed">
                                 Tip: After copying, paste directly into WhatsApp or Telegram to share with your clients and partners.
-                            </div>
-
-                            <Separator />
-
-                            <div className="flex flex-col gap-2">
-                                <Button variant="outline" className="h-10 rounded-xl font-bold justify-start" onClick={() => window.print()}>
-                                    <FileText className="mr-2 h-4 w-4" /> Print List
-                                </Button>
                             </div>
                         </CardContent>
                     </Card>
