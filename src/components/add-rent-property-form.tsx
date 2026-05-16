@@ -100,7 +100,7 @@ export function AddRentPropertyForm({
       owner_number: propertyToEdit?.owner_number.replace(propertyToEdit.country_code || '+92', '') || '',
       city: propertyToEdit?.city || 'Lahore',
       area: propertyToEdit?.area || '',
-      address: propertyToEdit?.address || '',
+      address: propertyToEdit?.area || '',
       property_type: propertyToEdit?.property_type && propertyTypeValues.includes(propertyToEdit.property_type as any) ? (propertyToEdit.property_type as any) : (propertyToEdit ? 'Other' : 'House'),
       property_type_other: propertyToEdit?.property_type && !propertyTypeValues.includes(propertyToEdit.property_type as any) ? propertyToEdit.property_type : '',
       size_value: propertyToEdit?.size_value || 0,
@@ -478,6 +478,7 @@ export function AddRentPropertyForm({
                           <SelectItem value="New">New</SelectItem>
                           <SelectItem value="Available">Available</SelectItem>
                           <SelectItem value="Rent Out">Rent Out</SelectItem>
+                          <SelectItem value="Sold (External)">Sold By External</SelectItem>
                         </SelectContent>
                       </Select>
                     </FormItem>

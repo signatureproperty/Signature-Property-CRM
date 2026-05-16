@@ -530,6 +530,7 @@ export function AddSalePropertyForm({
                           <SelectItem value="New">New</SelectItem>
                           <SelectItem value="Available">Available</SelectItem>
                           <SelectItem value="Sold">Sold</SelectItem>
+                          <SelectItem value="Sold (External)">Sold By External</SelectItem>
                         </SelectContent>
                       </Select>
                     </FormItem>

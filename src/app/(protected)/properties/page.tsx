@@ -111,9 +111,11 @@ const statusOptions = [
   { value: 'Available', label: 'Available', color: 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800', listing: 'All' },
   { value: 'Sold', label: 'Sold', color: 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800', listing: 'For Sale' },
   { value: 'Rent Out', label: 'Rent Out', color: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800', listing: 'For Rent' },
+  { value: 'Sold (External)', label: 'Sold (External)', color: 'bg-slate-400 text-white border-slate-300 dark:bg-slate-600 dark:border-slate-500', listing: 'All' },
 ];
 
 const statusVariant = {
+  'New': 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800',
   'Available': 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800',
   'Sold': 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800',
   'Rent Out': 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800',
