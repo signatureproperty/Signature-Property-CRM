@@ -8,7 +8,6 @@ import {
     Building2, 
     Users, 
     DollarSign, 
-    PieChart as PieChartIcon, 
     BarChart3, 
     Target,
     Award,
@@ -19,20 +18,18 @@ import {
     MessageSquare,
     CheckCircle,
     Calendar,
-    XCircle,
     Clock,
-    TrendingDown,
     Zap
 } from 'lucide-react';
 import { 
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-    BarChart, Bar, Cell, PieChart, Pie, Legend, LineChart, Line
+    BarChart, Bar, Cell
 } from 'recharts';
 import { useProfile } from '@/context/profile-context';
 import { useFirestore } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useMemoFirebase } from '@/firebase/hooks';
-import { collection, query, orderBy, limit } from 'firebase/firestore';
+import { collection, query, orderBy } from 'firebase/firestore';
 import { Property, Buyer, Appointment, User, Activity } from '@/lib/types';
 import { format, parseISO, isAfter, subMonths, subDays, startOfMonth, eachMonthOfInterval } from 'date-fns';
 import { formatCurrency, formatUnit } from '@/lib/formatters';
@@ -41,7 +38,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Dialog, DialogContent, DialogTitle, DialogFooter, DialogHeader, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 
@@ -117,11 +114,12 @@ export default function AnalyticsPage() {
         return months.map(m => {
             const monthStr = format(m, 'MMM');
             const monthStart = startOfMonth(m);
-            const monthEnd = subDays(eachMonthOfInterval({ start: m, end: subDays(m, -32) })[1] || now, 0); // approx end of month
+            const nextMonth = new Date(m);
+            nextMonth.setMonth(nextMonth.getMonth() + 1);
 
             const monthRevenue = properties.filter(p => {
                 const date = parseISO(p.sale_date || p.rent_out_date || '');
-                return date >= monthStart && date <= monthEnd && (p.status === 'Sold' || p.status === 'Rent Out');
+                return date >= monthStart && date < nextMonth && (p.status === 'Sold' || p.status === 'Rent Out');
             }).reduce((acc, p) => acc + (p.total_commission || p.rent_total_commission || 0), 0);
 
             return { name: monthStr, revenue: monthRevenue };
@@ -147,9 +145,12 @@ export default function AnalyticsPage() {
         if (!properties) return [];
         const counts: Record<string, number> = {};
         properties.forEach(p => {
-            counts[p.property_type] = (counts[p.property_type] || 0) + 1;
+            const type = p.property_type || 'Other';
+            counts[type] = (counts[type] || 0) + 1;
         });
-        return Object.entries(counts).map(([name, value]) => ({ name, value }));
+        return Object.entries(counts)
+            .map(([name, value]) => ({ name, value }))
+            .sort((a, b) => b.value - a.value);
     }, [properties]);
 
     const appointmentChartData = useMemo(() => {
@@ -355,18 +356,21 @@ export default function AnalyticsPage() {
                                 <CardTitle className="text-sm font-black uppercase tracking-[0.2em] flex items-center gap-2">
                                     <Building2 className="h-4 w-4 text-primary" /> Inventory Type Breakdown
                                 </CardTitle>
+                                <CardDescription>Types with highest volume shown first.</CardDescription>
                             </CardHeader>
-                            <CardContent className="h-[300px]">
+                            <CardContent className="h-[350px]">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie data={propertyChartData} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={8} dataKey="value">
-                                            {propertyChartData.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                            ))}
-                                        </Pie>
+                                    <BarChart data={propertyChartData.slice(0, 10)} layout="vertical" margin={{ left: 40, right: 40 }}>
+                                        <CartesianGrid strokeDasharray="3 3" horizontal={false} strokeOpacity={0.1} />
+                                        <XAxis type="number" hide />
+                                        <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700 }} width={120} />
                                         <Tooltip />
-                                        <Legend verticalAlign="bottom" iconType="circle" />
-                                    </PieChart>
+                                        <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
+                                            {propertyChartData.map((_, index) => (
+                                                <Cell key={`bar-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Bar>
+                                    </BarChart>
                                 </ResponsiveContainer>
                             </CardContent>
                         </Card>
@@ -377,7 +381,7 @@ export default function AnalyticsPage() {
                                     <Users className="h-4 w-4 text-primary" /> Buyer Status
                                 </CardTitle>
                             </CardHeader>
-                            <CardContent className="h-[300px]">
+                            <CardContent className="h-[350px]">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={buyers?.reduce((acc: any[], b) => {
                                         const idx = acc.findIndex(i => i.name === b.status);
@@ -503,14 +507,18 @@ export default function AnalyticsPage() {
                             <CardTitle className="text-sm font-black uppercase tracking-[0.2em]">Property Type Distribution</CardTitle>
                             <CardDescription>Breakdown of all listings currently in system.</CardDescription>
                         </CardHeader>
-                        <CardContent className="h-[500px]">
+                        <CardContent className="h-[600px]">
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={propertyChartData} layout="vertical" margin={{ left: 20 }}>
+                                <BarChart data={propertyChartData} layout="vertical" margin={{ left: 20, right: 40 }}>
                                     <CartesianGrid strokeDasharray="3 3" horizontal={false} strokeOpacity={0.1} />
                                     <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
                                     <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} width={120} tick={{ fontSize: 10, fontWeight: 800 }} />
                                     <Tooltip />
-                                    <Bar dataKey="value" fill="#f59e0b" radius={[0, 6, 6, 0]} barSize={25} />
+                                    <Bar dataKey="value" fill="#f59e0b" radius={[0, 6, 6, 0]} barSize={25}>
+                                        {propertyChartData.map((_, index) => (
+                                            <Cell key={`prop-bar-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        ))}
+                                    </Bar>
                                 </BarChart>
                             </ResponsiveContainer>
                         </CardContent>
@@ -545,7 +553,7 @@ export default function AnalyticsPage() {
                                         <img src={selectedAgentForReport.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${selectedAgentForReport.name}`} alt="" className="h-full w-full object-cover" />
                                     </div>
                                     <div className="text-center md:text-left flex-1">
-                                        <DialogTitle className="text-4xl font-black font-headline tracking-tighter leading-none mb-2">{selectedAgentForReport.name}</DialogTitle>
+                                        <div className="text-4xl font-black font-headline tracking-tighter leading-none mb-2">{selectedAgentForReport.name}</div>
                                         <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
                                             <Badge className="font-black text-[10px] uppercase tracking-widest px-3 h-6 bg-primary">{selectedAgentForReport.role}</Badge>
                                             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/40 px-2 py-1 rounded-md">Agent ID: {selectedAgentForReport.id.substring(0, 8)}</span>
@@ -575,76 +583,78 @@ export default function AnalyticsPage() {
 
                             <Separator className="opacity-40" />
 
-                            <ScrollArea className="flex-1 px-10 py-8 h-full overflow-y-auto">
-                                <div className="space-y-12 pb-10">
-                                    {/* Timeline Section */}
-                                    <section className="space-y-6">
-                                        <div className="flex items-center justify-between">
-                                            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
-                                                <History className="h-4 w-4" /> Performance Timeline
-                                            </h3>
-                                            <span className="text-[10px] font-bold text-muted-foreground">Historical Status Changes</span>
-                                        </div>
-                                        <div className="space-y-4 relative before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-[2px] before:bg-border/30">
-                                            {selectedAgentForReport.statusChanges.length > 0 ? selectedAgentForReport.statusChanges.map((act: Activity) => (
-                                                <div key={act.id} className="relative pl-12 group">
-                                                    <div className="absolute left-0 top-2 h-10 w-10 rounded-2xl bg-background border border-orange-500/20 flex items-center justify-center z-10 shadow-sm group-hover:scale-110 transition-transform">
-                                                        <ActivityIcon className="h-5 w-5 text-orange-500" />
-                                                    </div>
-                                                    <div className="bg-muted/5 border border-border/60 p-5 rounded-3xl shadow-sm hover:border-primary/20 transition-all">
-                                                        <div className="flex flex-wrap items-center justify-between mb-3 gap-2">
-                                                            <span className="font-black text-sm text-foreground">{act.target}</span>
-                                                            <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-1 rounded-md">{format(parseISO(act.timestamp), 'PPp')}</span>
+                            <div className="flex-1 overflow-hidden">
+                                <ScrollArea className="h-full">
+                                    <div className="px-10 py-8 space-y-12 pb-10">
+                                        {/* Timeline Section */}
+                                        <section className="space-y-6">
+                                            <div className="flex items-center justify-between">
+                                                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
+                                                    <History className="h-4 w-4" /> Performance Timeline
+                                                </h3>
+                                                <span className="text-[10px] font-bold text-muted-foreground">Historical Status Changes</span>
+                                            </div>
+                                            <div className="space-y-4 relative before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-[2px] before:bg-border/30">
+                                                {selectedAgentForReport.statusChanges.length > 0 ? selectedAgentForReport.statusChanges.map((act: Activity) => (
+                                                    <div key={act.id} className="relative pl-12 group">
+                                                        <div className="absolute left-0 top-2 h-10 w-10 rounded-2xl bg-background border border-orange-500/20 flex items-center justify-center z-10 shadow-sm group-hover:scale-110 transition-transform">
+                                                            <ActivityIcon className="h-5 w-5 text-orange-500" />
                                                         </div>
-                                                        <div className="flex items-center gap-3">
-                                                            <Badge variant="secondary" className="text-[9px] font-bold bg-muted/40 uppercase tracking-widest">{act.details?.from}</Badge>
-                                                            <ChevronRight className="h-3 w-3 text-muted-foreground opacity-40" />
-                                                            <Badge className="text-[9px] font-black bg-emerald-600 text-white uppercase tracking-widest">{act.details?.to}</Badge>
+                                                        <div className="bg-muted/5 border border-border/60 p-5 rounded-3xl shadow-sm hover:border-primary/20 transition-all">
+                                                            <div className="flex flex-wrap items-center justify-between mb-3 gap-2">
+                                                                <span className="font-black text-sm text-foreground">{act.target}</span>
+                                                                <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-1 rounded-md">{format(parseISO(act.timestamp), 'PPp')}</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-3">
+                                                                <Badge variant="secondary" className="text-[9px] font-bold bg-muted/40 uppercase tracking-widest">{act.details?.from}</Badge>
+                                                                <ChevronRight className="h-3 w-3 text-muted-foreground opacity-40" />
+                                                                <Badge className="text-[9px] font-black bg-emerald-600 text-white uppercase tracking-widest">{act.details?.to}</Badge>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            )) : (
-                                                <div className="flex flex-col items-center justify-center py-16 opacity-30">
-                                                    <History className="h-10 w-10 mb-2" />
-                                                    <p className="text-[10px] font-black uppercase">No Status History</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </section>
+                                                )) : (
+                                                    <div className="flex flex-col items-center justify-center py-16 opacity-30">
+                                                        <History className="h-10 w-10 mb-2" />
+                                                        <p className="text-[10px] font-black uppercase">No Status History</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </section>
 
-                                    {/* Remarks Section */}
-                                    <section className="space-y-6">
-                                        <div className="flex items-center justify-between">
-                                            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
-                                                <MessageSquare className="h-4 w-4" /> Recent Lead Feedback
-                                            </h3>
-                                        </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            {selectedAgentForReport.leadsWithRemarks.length > 0 ? selectedAgentForReport.leadsWithRemarks.map((lead: any) => (
-                                                <div key={lead.serial} className="p-6 rounded-[2rem] border border-border/40 bg-muted/5 group hover:border-primary/30 hover:bg-primary/5 transition-all flex flex-col">
-                                                    <div className="flex items-center justify-between mb-4">
-                                                        <div className="min-w-0">
-                                                            <span className="text-[9px] font-black text-primary uppercase block mb-1 tracking-widest">{lead.serial}</span>
-                                                            <p className="text-sm font-black font-headline truncate">{lead.name}</p>
+                                        {/* Remarks Section */}
+                                        <section className="space-y-6">
+                                            <div className="flex items-center justify-between">
+                                                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
+                                                    <MessageSquare className="h-4 w-4" /> Recent Lead Feedback
+                                                </h3>
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                {selectedAgentForReport.leadsWithRemarks.length > 0 ? selectedAgentForReport.leadsWithRemarks.map((lead: any) => (
+                                                    <div key={lead.serial} className="p-6 rounded-[2rem] border border-border/40 bg-muted/5 group hover:border-primary/30 hover:bg-primary/5 transition-all flex flex-col">
+                                                        <div className="flex items-center justify-between mb-4">
+                                                            <div className="min-w-0">
+                                                                <span className="text-[9px] font-black text-primary uppercase block mb-1 tracking-widest">{lead.serial}</span>
+                                                                <div className="text-sm font-black font-headline truncate">{lead.name}</div>
+                                                            </div>
+                                                            <Badge variant="secondary" className="h-7 rounded-xl font-black text-[9px] bg-primary/10 text-primary border-none px-3">{lead.count} REMARKS</Badge>
                                                         </div>
-                                                        <Badge variant="secondary" className="h-7 rounded-xl font-black text-[9px] bg-primary/10 text-primary border-none px-3">{lead.count} REMARKS</Badge>
+                                                        <div className="p-5 rounded-2xl bg-background/80 shadow-inner text-xs font-medium text-muted-foreground leading-relaxed flex-1 italic relative">
+                                                            <span className="text-2xl absolute top-2 left-2 text-primary/10 font-black">"</span>
+                                                            {lead.latest.text}
+                                                            <div className="mt-4 text-[9px] font-black text-right uppercase opacity-60 border-t pt-2">{format(parseISO(lead.latest.timestamp), 'MMM d, p')}</div>
+                                                        </div>
                                                     </div>
-                                                    <div className="p-5 rounded-2xl bg-background/80 shadow-inner text-xs font-medium text-muted-foreground leading-relaxed flex-1 italic relative">
-                                                        <span className="text-2xl absolute top-2 left-2 text-primary/10 font-black">"</span>
-                                                        {lead.latest.text}
-                                                        <div className="mt-4 text-[9px] font-black text-right uppercase opacity-60 border-t pt-2">{format(parseISO(lead.latest.timestamp), 'MMM d, p')}</div>
+                                                )) : (
+                                                    <div className="col-span-2 flex flex-col items-center justify-center py-16 opacity-30 border-2 border-dashed rounded-3xl">
+                                                        <MessageSquare className="h-10 w-10 mb-2" />
+                                                        <p className="text-[10px] font-black uppercase">No Active Remarks</p>
                                                     </div>
-                                                </div>
-                                            )) : (
-                                                <div className="col-span-2 flex flex-col items-center justify-center py-16 opacity-30 border-2 border-dashed rounded-3xl">
-                                                    <MessageSquare className="h-10 w-10 mb-2" />
-                                                    <p className="text-[10px] font-black uppercase">No Active Remarks</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </section>
-                                </div>
-                            </ScrollArea>
+                                                )}
+                                            </div>
+                                        </section>
+                                    </div>
+                                </ScrollArea>
+                            </div>
 
                             <DialogFooter className="p-8 border-t bg-muted/10 shrink-0 flex justify-end">
                                 <Button variant="secondary" className="rounded-2xl px-10 font-black uppercase text-[10px] tracking-[0.2em] h-12 shadow-md hover:scale-105 transition-transform" onClick={() => setSelectedAgentForReport(null)}>Close Report</Button>
