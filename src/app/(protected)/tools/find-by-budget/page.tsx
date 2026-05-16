@@ -26,7 +26,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Buyer, PriceUnit, Property, PropertyType, ListingType } from '@/lib/types';
 import { formatCurrency, formatUnit, formatPhoneNumberForWhatsApp } from '@/lib/formatters';
 import { useCurrency, Currency } from '@/context/currency-context';
-import { Download, Share2, Check, Phone, Wallet, Home, DollarSign, FileText, Video, RotateCcw, Search, ChevronDown, ChevronsUpDown, X, List, SlidersHorizontal, CheckSquare } from 'lucide-react';
+import { Download, Share2, Check, Phone, Wallet, Home, DollarSign, FileText, Video, RotateCcw, Search, ChevronDown, ChevronsUpDown, X, List, SlidersHorizontal, CheckSquare, ListChecks } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -115,7 +115,6 @@ export default function FindByBudgetPage() {
   const { setValue, watch } = form;
   const watchedAreas = watch('area');
 
-  // Extract unique areas from buyers data for the dropdown
   const uniqueAreas = useMemo(() => {
     if (!buyers) return [];
     const areas = new Set<string>();
@@ -141,6 +140,14 @@ export default function FindByBudgetPage() {
       : [...current, area];
     form.setValue('area', next);
   }, [form]);
+
+  const handleSelectAllAreas = () => {
+    if (watchedAreas.length === uniqueAreas.length) {
+        form.setValue('area', []);
+    } else {
+        form.setValue('area', [...uniqueAreas]);
+    }
+  };
 
   useEffect(() => {
     if (buyers?.length) {
@@ -296,39 +303,42 @@ export default function FindByBudgetPage() {
 
 
   const renderCards = () => (
-    <ScrollArea className="h-64">
+    <ScrollArea className="h-[500px]">
       <div className="p-4 space-y-4">
         {foundBuyers.map((buyer, index) => (
-          <Card key={buyer.id}>
-            <CardHeader>
-              <CardTitle className="flex justify-between items-start text-sm">
+          <Card key={buyer.id} className="border-l-4 border-l-primary/40 bg-background hover:shadow-md transition-shadow">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex justify-between items-start text-base font-bold font-headline">
                 <span>{index + 1}. {buyer.name}</span>
-                <Badge variant="outline">{buyer.serial_no}</Badge>
+                <Badge variant="outline" className="font-mono text-[10px] bg-muted/30">{buyer.serial_no}</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-xs">
-              <div className="flex items-center gap-2"><Phone className="h-3 w-3 text-muted-foreground" /> {buyer.phone}</div>
-              <div className="flex items-center gap-2"><Wallet className="h-3 w-3 text-muted-foreground" /> {formatBuyerBudget(buyer)}</div>
-              <div className="flex items-center gap-2"><Home className="h-3 w-3 text-muted-foreground" /> {buyer.area_preference || 'N/A'}</div>
-              <div className="flex items-start gap-2"><FileText className="h-3 w-3 text-muted-foreground mt-1" /> <p className="whitespace-pre-wrap">{buyer.notes || 'No notes.'}</p></div>
+              <div className="flex items-center gap-2 font-medium"><Phone className="h-3.5 w-3.5 text-primary/60" /> {buyer.phone}</div>
+              <div className="flex items-center gap-2 font-bold text-primary"><Wallet className="h-3.5 w-3.5 opacity-60" /> {formatBuyerBudget(buyer)}</div>
+              <div className="flex items-center gap-2"><Home className="h-3.5 w-3.5 text-muted-foreground" /> {buyer.area_preference || 'N/A'}</div>
+              <div className="flex items-start gap-2 pt-1 border-t border-dashed mt-2">
+                <FileText className="h-3.5 w-3.5 text-muted-foreground mt-0.5" /> 
+                <p className="whitespace-pre-wrap text-muted-foreground italic line-clamp-2">{buyer.notes || 'No notes.'}</p>
+              </div>
             </CardContent>
             {isShareMode && (
-              <CardFooter className="justify-end pt-0">
+              <CardFooter className="justify-end pt-0 border-t bg-muted/5 p-2">
                 {shareStatus[buyer.id] === 'idle' && (
-                  <Button size="sm" className="h-7 text-[10px]" onClick={() => handleShareToBuyer(buyer)}>
-                    <Share2 className="mr-1 h-3 w-3" /> Share
+                  <Button size="sm" className="h-8 text-xs font-bold rounded-lg px-4" onClick={() => handleShareToBuyer(buyer)}>
+                    <Share2 className="mr-2 h-3 w-3" /> Share
                   </Button>
                 )}
                  {shareStatus[buyer.id] === 'confirming' && (
-                  <div className="flex gap-2 justify-end">
-                    <span className="text-[10px] text-muted-foreground self-center">Shared?</span>
-                    <Button size="sm" variant="destructive" className="h-7 px-2 text-[10px]" onClick={() => handleConfirmShare(buyer.id, false)}>No</Button>
-                    <Button size="sm" variant="default" className="bg-green-600 hover:bg-green-700 h-7 px-2 text-[10px]" onClick={() => handleConfirmShare(buyer.id, true)}>Yes</Button>
+                  <div className="flex gap-2 justify-end items-center">
+                    <span className="text-[10px] font-black uppercase text-muted-foreground mr-1">Shared?</span>
+                    <Button size="sm" variant="destructive" className="h-7 px-3 rounded-lg text-[10px] font-bold" onClick={() => handleConfirmShare(buyer.id, false)}>NO</Button>
+                    <Button size="sm" variant="default" className="bg-green-600 hover:bg-green-700 h-7 px-3 rounded-lg text-[10px] font-bold" onClick={() => handleConfirmShare(buyer.id, true)}>YES</Button>
                   </div>
                 )}
                 {shareStatus[buyer.id] === 'shared' && (
-                  <div className="flex items-center justify-end gap-1 text-green-600 font-bold text-[10px]">
-                    <Check className="h-3 w-3" /> Shared
+                  <div className="flex items-center justify-end gap-1.5 text-green-600 font-black text-[10px] uppercase tracking-wider pr-2">
+                    <Check className="h-3.5 w-3.5" /> Shared successfully
                   </div>
                 )}
               </CardFooter>
@@ -342,43 +352,46 @@ export default function FindByBudgetPage() {
   const renderTable = () => (
       <div className="overflow-x-auto">
         <Table>
-            <TableHeader>
+            <TableHeader className="bg-muted/30">
                 <TableRow>
-                    <TableHead className="w-12">#</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Budget</TableHead>
-                    <TableHead>Area</TableHead>
-                    <TableHead>Notes</TableHead>
-                    {isShareMode && <TableHead className="text-right">Action</TableHead>}
+                    <TableHead className="w-12 font-black text-[10px] uppercase">#</TableHead>
+                    <TableHead className="font-black text-[10px] uppercase">Name</TableHead>
+                    <TableHead className="font-black text-[10px] uppercase">Phone</TableHead>
+                    <TableHead className="font-black text-[10px] uppercase">Budget</TableHead>
+                    <TableHead className="font-black text-[10px] uppercase">Area Preference</TableHead>
+                    <TableHead className="font-black text-[10px] uppercase">Notes</TableHead>
+                    {isShareMode && <TableHead className="text-right font-black text-[10px] uppercase">WhatsApp Action</TableHead>}
                 </TableRow>
             </TableHeader>
             <TableBody>
                 {foundBuyers.map((buyer, index) => (
-                    <TableRow key={buyer.id}>
-                        <TableCell>{index + 1}</TableCell>
-                        <TableCell className="font-bold">{buyer.name}</TableCell>
-                        <TableCell>{buyer.phone}</TableCell>
-                        <TableCell>{formatBuyerBudget(buyer)}</TableCell>
-                        <TableCell>{buyer.area_preference || 'N/A'}</TableCell>
-                        <TableCell className="max-w-xs truncate">{buyer.notes || 'N/A'}</TableCell>
+                    <TableRow key={buyer.id} className="hover:bg-primary/5 transition-colors">
+                        <TableCell className="text-xs font-bold text-muted-foreground">{index + 1}</TableCell>
+                        <TableCell>
+                            <div className="font-bold font-headline">{buyer.name}</div>
+                            <div className="text-[10px] font-mono text-muted-foreground mt-0.5">{buyer.serial_no}</div>
+                        </TableCell>
+                        <TableCell className="text-xs font-medium">{buyer.phone}</TableCell>
+                        <TableCell className="text-xs font-black text-primary">{formatBuyerBudget(buyer)}</TableCell>
+                        <TableCell className="text-xs font-medium max-w-[150px] truncate">{buyer.area_preference || 'N/A'}</TableCell>
+                        <TableCell className="max-w-[200px] truncate text-xs text-muted-foreground italic">{buyer.notes || 'N/A'}</TableCell>
                         {isShareMode && (
                           <TableCell className="text-right">
                             {shareStatus[buyer.id] === 'idle' && (
-                              <Button size="sm" onClick={() => handleShareToBuyer(buyer)} className="glowing-btn h-8 rounded-lg">
-                                <Share2 className="mr-2 h-4 w-4" /> Share
+                              <Button size="sm" onClick={() => handleShareToBuyer(buyer)} className="glowing-btn h-8 rounded-lg font-bold text-[10px]">
+                                <Share2 className="mr-2 h-3 w-3" /> SHARE TO WA
                               </Button>
                             )}
                             {shareStatus[buyer.id] === 'confirming' && (
                                <div className="flex gap-2 justify-end items-center">
-                                <span className="text-xs font-bold text-muted-foreground uppercase">Shared?</span>
-                                <Button size="sm" variant="destructive" className="h-8 rounded-lg" onClick={() => handleConfirmShare(buyer.id, false)}>No</Button>
-                                <Button size="sm" variant="default" className="bg-green-600 hover:bg-green-700 h-8 rounded-lg" onClick={() => handleConfirmShare(buyer.id, true)}>Yes</Button>
+                                <span className="text-[10px] font-black text-muted-foreground uppercase mr-1">Shared?</span>
+                                <Button size="sm" variant="destructive" className="h-7 rounded-lg text-[10px] font-bold" onClick={() => handleConfirmShare(buyer.id, false)}>NO</Button>
+                                <Button size="sm" variant="default" className="bg-green-600 hover:bg-green-700 h-7 rounded-lg text-[10px] font-bold" onClick={() => handleConfirmShare(buyer.id, true)}>YES</Button>
                               </div>
                             )}
                             {shareStatus[buyer.id] === 'shared' && (
-                              <div className="flex items-center justify-end gap-2 text-green-600 font-bold">
-                                <Check className="h-5 w-5" /> Shared
+                              <div className="flex items-center justify-end gap-2 text-green-600 font-black text-[10px] uppercase pr-2">
+                                <Check className="h-4 w-4" /> SHARED
                               </div>
                             )}
                           </TableCell>
@@ -491,7 +504,7 @@ export default function FindByBudgetPage() {
                                 <Label className="text-xs font-black uppercase tracking-widest opacity-60">Area Preference</Label>
                                 <Popover>
                                     <PopoverTrigger asChild>
-                                        <Button variant="outline" className="w-full justify-between h-11 bg-background rounded-xl border-border/60 font-normal">
+                                        <Button variant="outline" className="w-full justify-between h-11 mt-1.5 bg-background rounded-xl border-border/60 font-normal">
                                             {watchedAreas.length > 0 ? (
                                                 <span className="font-bold text-primary truncate">{watchedAreas.length} Selected</span>
                                             ) : "Search Areas..."}
@@ -510,10 +523,22 @@ export default function FindByBudgetPage() {
                                                 />
                                             </div>
                                         </div>
-                                        <ScrollArea className="max-h-[300px] p-2">
-                                            {filteredAreas.length > 0 ? (
-                                                <div className="space-y-1">
-                                                    {filteredAreas.map((areaName) => (
+                                        <div className="p-2 border-b bg-muted/5 flex items-center justify-between">
+                                            <span className="text-[10px] font-black uppercase text-muted-foreground pl-1">Selection Options</span>
+                                            <Button 
+                                                variant="ghost" 
+                                                size="sm" 
+                                                className="h-7 text-[10px] font-black uppercase text-primary hover:bg-primary/10 gap-1.5"
+                                                onClick={handleSelectAllAreas}
+                                            >
+                                                <ListChecks className="h-3 w-3" />
+                                                {watchedAreas.length === uniqueAreas.length ? 'Deselect All' : 'Select All'}
+                                            </Button>
+                                        </div>
+                                        <ScrollArea className="h-[250px] pointer-events-auto">
+                                            <div className="p-2 space-y-1">
+                                                {filteredAreas.length > 0 ? (
+                                                    filteredAreas.map((areaName) => (
                                                         <div 
                                                             key={areaName} 
                                                             className={cn(
@@ -540,12 +565,12 @@ export default function FindByBudgetPage() {
                                                             </label>
                                                         </div>
                                                     ))}
-                                                </div>
-                                            ) : (
-                                                <div className="py-10 text-center text-sm text-muted-foreground">
-                                                    No matching areas.
-                                                </div>
-                                            )}
+                                                ) : (
+                                                    <div className="py-10 text-center text-sm text-muted-foreground">
+                                                        No matching areas.
+                                                    </div>
+                                                )}
+                                            </div>
                                         </ScrollArea>
                                         {watchedAreas.length > 0 && (
                                             <div className="p-2 border-t bg-muted/10 flex justify-between items-center">
