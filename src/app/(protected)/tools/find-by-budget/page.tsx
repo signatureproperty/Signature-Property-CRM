@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -26,7 +26,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Buyer, PriceUnit, Property, PropertyType, ListingType } from '@/lib/types';
 import { formatCurrency, formatUnit, formatPhoneNumberForWhatsApp } from '@/lib/formatters';
 import { useCurrency, Currency } from '@/context/currency-context';
-import { Download, Share2, Check, Phone, Wallet, Home, DollarSign, FileText, Video, RotateCcw } from 'lucide-react';
+import { Download, Share2, Check, Phone, Wallet, Home, DollarSign, FileText, Video, RotateCcw, Search, ChevronDown, ChevronsUpDown, X } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -48,9 +48,9 @@ import { useMemoFirebase } from '@/firebase/hooks';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
-import { ChevronsUpDown } from 'lucide-react';
 import { buyerStatuses } from '@/lib/data';
 
 const propertyTypeValues = [
@@ -65,7 +65,7 @@ const formSchema = z.object({
   minBudget: z.coerce.number().min(0).optional(),
   maxBudget: z.coerce.number().min(0).optional(),
   budgetUnit: z.enum(['Lacs', 'Crore', 'Thousand']).default('Lacs'),
-  area: z.string().optional(),
+  area: z.array(z.string()).default([]),
   status: z.string().optional(),
   propertyType: z.string().optional(),
 });
@@ -85,6 +85,7 @@ export default function FindByBudgetPage() {
   const firestore = useFirestore();
 
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [areaSearch, setAreaSearch] = useState('');
 
   const propertiesQuery = useMemoFirebase(
     () => (profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'properties') : null),
@@ -105,13 +106,44 @@ export default function FindByBudgetPage() {
       minBudget: 0,
       maxBudget: 0,
       budgetUnit: 'Lacs',
-      area: '',
+      area: [],
       status: 'All',
       propertyType: 'All',
     },
   });
 
-    useEffect(() => {
+  const { setValue, watch } = form;
+  const watchedAreas = watch('area');
+
+  // Extract unique areas from buyers data for the dropdown
+  const uniqueAreas = useMemo(() => {
+    if (!buyers) return [];
+    const areas = new Set<string>();
+    buyers.forEach(b => {
+      if (b.area_preference) {
+        // Split by comma and trim to handle cases like "Sabzazar, Samanabad"
+        b.area_preference.split(',').forEach(a => {
+          const trimmed = a.trim();
+          if (trimmed) areas.add(trimmed);
+        });
+      }
+    });
+    return Array.from(areas).sort();
+  }, [buyers]);
+
+  const filteredAreas = useMemo(() => {
+    return uniqueAreas.filter(a => a.toLowerCase().includes(areaSearch.toLowerCase()));
+  }, [uniqueAreas, areaSearch]);
+
+  const toggleArea = useCallback((area: string) => {
+    const current = form.getValues('area') || [];
+    const next = current.includes(area)
+      ? current.filter(a => a !== area)
+      : [...current, area];
+    form.setValue('area', next);
+  }, [form]);
+
+  useEffect(() => {
     if (buyers?.length) {
       try {
         const savedFilters = localStorage.getItem('findByBudgetFilters');
@@ -142,8 +174,8 @@ export default function FindByBudgetPage() {
   }
 
   function onSubmit(values: FormValues) {
-    if (!values.area && (!values.minBudget || !values.maxBudget)) {
-        toast({ title: 'Invalid Search', description: 'Please provide a budget range or an area to search.', variant: 'destructive'});
+    if (values.area.length === 0 && (!values.minBudget || !values.maxBudget)) {
+        toast({ title: 'Invalid Search', description: 'Please provide a budget range or select an area to search.', variant: 'destructive'});
         return;
     }
 
@@ -167,7 +199,11 @@ export default function FindByBudgetPage() {
             }
         }
         
-        const areaMatch = !values.area || (buyer.area_preference && buyer.area_preference.toLowerCase().includes(values.area.toLowerCase()));
+        // Smart area matching logic: split buyer area by comma and check if any match filter areas
+        const buyerAreas = buyer.area_preference?.split(',').map(a => a.trim().toLowerCase()).filter(Boolean) || [];
+        const filterAreas = values.area.map(a => a.toLowerCase());
+        const areaMatch = filterAreas.length === 0 || filterAreas.some(fa => buyerAreas.some(ba => ba.includes(fa) || fa.includes(ba)));
+
         const statusMatch = !values.status || values.status === 'All' || buyer.status === values.status;
         const propertyTypeMatch = !values.propertyType || values.propertyType === 'All' || buyer.property_type_preference === values.propertyType;
 
@@ -192,7 +228,7 @@ export default function FindByBudgetPage() {
         minBudget: 0,
         maxBudget: 0,
         budgetUnit: 'Lacs',
-        area: '',
+        area: [],
         status: 'All',
         propertyType: 'All'
     });
@@ -368,12 +404,12 @@ export default function FindByBudgetPage() {
       <Card>
         <CardHeader>
             <CardTitle>Find Buyers</CardTitle>
-            <CardDescription>Enter a budget range and/or an area to find matching buyer leads.</CardDescription>
+            <CardDescription>Enter a budget range and/or select areas to find matching buyer leads.</CardDescription>
         </CardHeader>
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)}>
                 <CardContent>
-                    <div className="space-y-4">
+                    <div className="space-y-6">
                     <FormField
                         control={form.control}
                         name="listing_type"
@@ -395,7 +431,7 @@ export default function FindByBudgetPage() {
                             </FormItem>
                         )}
                     />
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         <div className="flex items-end gap-2 lg:col-span-2">
                         <FormField
                             control={form.control}
@@ -404,7 +440,7 @@ export default function FindByBudgetPage() {
                             <FormItem className="flex-1">
                                 <FormLabel>Min Budget</FormLabel>
                                 <FormControl>
-                                    <Input type="number" {...field} />
+                                <Input type="number" {...field} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -417,7 +453,7 @@ export default function FindByBudgetPage() {
                             <FormItem className="flex-1">
                                 <FormLabel>Max Budget</FormLabel>
                                 <FormControl>
-                                    <Input type="number" {...field} />
+                                <Input type="number" {...field} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -445,21 +481,82 @@ export default function FindByBudgetPage() {
                             )}
                         />
                         </div>
-                        <FormField
-                            control={form.control}
-                            name="area"
-                            render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Area Preference</FormLabel>
-                                <FormControl>
-                                <Input {...field} placeholder="e.g. DHA, Bahria" />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
+
+                        {/* Searchable Area Dropdown */}
+                        <div className="space-y-2">
+                            <Label className="text-sm font-medium">Area Preference</Label>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant="outline" className="w-full justify-between h-10 bg-background font-normal">
+                                        {watchedAreas.length > 0 ? (
+                                            <span className="font-bold text-primary truncate">{watchedAreas.length} Areas Selected</span>
+                                        ) : "Search Areas..."}
+                                        <ChevronDown className="h-4 w-4 opacity-50" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="p-0 w-[300px] shadow-2xl bg-background border-none rounded-2xl overflow-hidden" align="start">
+                                    <div className="p-3 border-b bg-muted/30">
+                                        <div className="relative">
+                                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                            <Input 
+                                                placeholder="Search area name..." 
+                                                className="h-10 pl-9 rounded-lg bg-background border-none ring-1 ring-border focus-visible:ring-primary/40" 
+                                                value={areaSearch} 
+                                                onChange={(e) => setAreaSearch(e.target.value)} 
+                                            />
+                                        </div>
+                                    </div>
+                                    <ScrollArea className="max-h-[300px] p-2">
+                                        {filteredAreas.length > 0 ? (
+                                            <div className="space-y-1">
+                                                {filteredAreas.map((areaName) => (
+                                                    <div 
+                                                        key={areaName} 
+                                                        className={cn(
+                                                            "flex items-center space-x-3 p-2.5 rounded-xl cursor-pointer transition-all",
+                                                            watchedAreas.includes(areaName) ? "bg-primary/5 text-primary" : "hover:bg-accent"
+                                                        )}
+                                                        onClick={() => toggleArea(areaName)}
+                                                    >
+                                                        <Checkbox 
+                                                            id={`filter-area-${areaName}`} 
+                                                            checked={watchedAreas.includes(areaName)}
+                                                            onCheckedChange={() => toggleArea(areaName)}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        />
+                                                        <label 
+                                                            htmlFor={`filter-area-${areaName}`} 
+                                                            className="text-sm flex-1 cursor-pointer truncate font-bold"
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                toggleArea(areaName);
+                                                            }}
+                                                        >
+                                                            {areaName}
+                                                        </label>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="py-10 text-center text-sm text-muted-foreground">
+                                                No matching areas found.
+                                            </div>
+                                        )}
+                                    </ScrollArea>
+                                    {watchedAreas.length > 0 && (
+                                        <div className="p-2 border-t bg-muted/10 flex justify-between items-center">
+                                            <span className="text-[10px] font-black uppercase text-muted-foreground pl-2">{watchedAreas.length} Selected</span>
+                                            <Button variant="ghost" size="sm" className="h-8 text-[10px] font-black uppercase text-primary hover:bg-primary/10" onClick={() => setValue('area', [])}>
+                                                Clear All
+                                            </Button>
+                                        </div>
+                                    )}
+                                </PopoverContent>
+                            </Popover>
+                        </div>
                     </div>
-                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         <FormField
                             control={form.control}
                             name="status"
@@ -504,19 +601,21 @@ export default function FindByBudgetPage() {
                         <RotateCcw className="mr-2 h-4 w-4" />
                         Reset
                     </Button>
-                    <Button type="submit">Search</Button>
+                    <Button type="submit">Search Buyers</Button>
                 </CardFooter>
             </form>
         </Form>
         {foundBuyers.length > 0 && (
           <div className="mt-6 space-y-4 p-6 border-t">
-            <h4 className="font-semibold">Found {foundBuyers.length} Matching Buyers</h4>
-            <div className="border rounded-md">
-                {isMobile ? renderCards() : renderTable()}
+            <div className="flex justify-between items-center">
+                <h4 className="font-bold text-lg">Found {foundBuyers.length} Matching Buyers</h4>
+                <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={handleDownload}><Download className="mr-2 h-4 w-4" /> Download List</Button>
+                    <Button size="sm" onClick={() => setIsShareDialogOpen(true)}><Share2 className="mr-2 h-4 w-4"/> Share Property Detail</Button>
+                </div>
             </div>
-             <div className="flex justify-between items-center gap-2 pt-2">
-                <Button variant="outline" onClick={handleDownload}><Download className="mr-2 h-4 w-4" /> Download List</Button>
-                <Button onClick={() => setIsShareDialogOpen(true)}><Share2 className="mr-2 h-4 w-4"/> Share Detail</Button>
+            <div className="border rounded-xl overflow-hidden bg-muted/5">
+                {isMobile ? renderCards() : renderTable()}
             </div>
           </div>
         )}
