@@ -38,7 +38,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Dialog, DialogContent, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogFooter, DialogHeader, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 
@@ -299,7 +299,7 @@ export default function AnalyticsPage() {
                     <TabsTrigger value="team" className="rounded-full px-6">Team Stats</TabsTrigger>
                     <TabsTrigger value="properties" className="rounded-full px-6">Properties</TabsTrigger>
                     <TabsTrigger value="buyers" className="rounded-full px-6">Buyers</TabsTrigger>
-                    <TabsTrigger value="appointments" className="rounded-full px-6">Schedule</TabsTrigger>
+                    <TabsTrigger value="appointments" className="rounded-full px-6">Appointment</TabsTrigger>
                 </TabsList>
 
                 {/* --- Overview Tab --- */}
@@ -315,7 +315,7 @@ export default function AnalyticsPage() {
                                 <ResponsiveContainer width="100%" height="100%">
                                     <AreaChart data={revenueGrowthData}>
                                         <defs>
-                                            <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                                            <linearGradient id="colorRev" x1="0" x2="0" y2="1">
                                                 <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3}/>
                                                 <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
                                             </linearGradient>
