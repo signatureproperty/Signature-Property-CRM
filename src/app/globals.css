@@ -60,12 +60,10 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* Light mode is clean white/light-gray background */
   body {
     background-color: hsl(var(--background));
   }
 
-  /* Dark mode gets the premium blue gradient */
   .dark body {
     background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%);
     background-attachment: fixed;
@@ -89,4 +87,15 @@
 @keyframes fade-in {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(-25%);
+    animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+  }
+  50% {
+    transform: translateY(0);
+    animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+  }
 }
