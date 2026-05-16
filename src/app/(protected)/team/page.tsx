@@ -30,9 +30,9 @@ const roleConfig: Record<UserRole, { icon: React.ReactNode, color: string }> = {
 };
 
 const planLimits = {
-    Basic: { properties: 500, buyers: 500, team: 3 },
-    Standard: { properties: 2500, buyers: 2500, team: 10 },
-    Premium: { properties: Infinity, buyers: Infinity, team: Infinity },
+    Basic: { properties: 25, buyers: 25, team: 1 },
+    Standard: { properties: 1000, buyers: 1000, team: 10 },
+    Premium: { properties: 2500, buyers: 2500, team: 30 },
 };
 
 function TeamPageContent() {
@@ -57,7 +57,7 @@ function TeamPageContent() {
     const currentPlan = (profile?.planName as PlanName) || 'Basic';
     const limit = planLimits[currentPlan]?.team || 0;
     const currentCount = teamMembers ? teamMembers.filter(m => m.role !== 'Admin').length : 0;
-    const progress = limit === Infinity ? 100 : (currentCount / limit) * 100;
+    const progress = limit === Infinity ? 100 : Math.min(100, (currentCount / limit) * 100);
 
     const handleEdit = (member: TeamMember) => {
         setMemberToEdit(member);
@@ -195,7 +195,7 @@ function TeamPageContent() {
             return (
                 <Card 
                     key={member.id || member.email} 
-                    className="flex flex-col hover:shadow-lg transition-all cursor-pointer border-l-4 border-l-primary/40"
+                    className="flex flex-col hover:shadow-lg transition-all duration-300 cursor-pointer border-l-4 border-l-primary/40"
                     onClick={() => handleCardClick(member)}
                 >
                     <CardHeader className="flex flex-row items-center justify-between p-4 pb-2">

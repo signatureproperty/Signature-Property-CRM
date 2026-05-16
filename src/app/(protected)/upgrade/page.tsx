@@ -17,11 +17,11 @@ const agencyPlans: Plan[] = [
     {
         name: 'Basic',
         price: { monthly: 0, yearly: 0 },
-        description: 'Essential tools for individual dealers and small teams starting out.',
+        description: 'Perfect for individual dealers starting their digital journey.',
         features: [
-            '500 Property Listings',
-            '500 Buyer Leads',
-            'Up to 3 Team Members',
+            '25 Property Listings',
+            '25 Buyer Leads',
+            'Up to 1 Agent (Solo)',
             'Core CRM Tools',
             'Standard Support'
         ],
@@ -31,10 +31,10 @@ const agencyPlans: Plan[] = [
     {
         name: 'Standard',
         price: { monthly: 5000, yearly: 50000 },
-        description: 'Grow your agency with expanded limits and advanced tracking tools.',
+        description: 'Grow your agency with expanded limits and team collaboration.',
         features: [
-            '2,500 Property Listings',
-            '2,500 Buyer Leads',
+            '1,000 Property Listings',
+            '1,000 Buyer Leads',
             'Up to 10 Team Members',
             'Professional List Generator',
             'Performance Reports',
@@ -48,9 +48,9 @@ const agencyPlans: Plan[] = [
         price: { monthly: 15000, yearly: 150000 },
         description: 'The ultimate solution for high-volume agencies and large teams.',
         features: [
-            'Unlimited Property Listings',
-            'Unlimited Buyer Leads',
-            'Unlimited Team Members',
+            '2,500 Property Listings',
+            '2,500 Buyer Leads',
+            'Up to 30 Team Members',
             'Advanced Data Analytics',
             'Custom Document Branding',
             'Priority VIP Support'
@@ -124,7 +124,9 @@ export default function AgencyUpgradePage() {
                   </div>
               )}
               <CardHeader className="text-center pt-8">
-                <CardTitle className="text-2xl font-black font-headline uppercase tracking-tighter">{plan.name}</CardTitle>
+                <CardHeader className="p-0">
+                  <CardTitle className="text-2xl font-black font-headline uppercase tracking-tighter">{plan.name}</CardTitle>
+                </CardHeader>
                   <div className="flex items-baseline justify-center gap-1 mt-6">
                       <span className="text-sm font-black text-muted-foreground align-top">RS</span>
                       <span className="text-5xl font-black tracking-tighter">
@@ -175,7 +177,7 @@ export default function AgencyUpgradePage() {
             <Gem className="h-4 w-4 text-primary" />
             <span className="text-[10px] font-black uppercase tracking-widest text-primary">Enterprise Support</span>
          </div>
-         <h3 className="text-2xl font-black font-headline tracking-tight">Need a custom plan for 50+ members?</h3>
+         <h3 className="text-2xl font-black font-headline tracking-tight">Need a custom plan for 100+ members?</h3>
          <p className="text-muted-foreground font-medium">Contact our enterprise sales team for customized volume pricing and onboarding services.</p>
          <Button variant="link" className="font-black text-primary hover:no-underline">SALES@SIGNATURECRM.PK</Button>
       </div>
