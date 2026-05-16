@@ -156,6 +156,26 @@ function BuyersPageContent() {
         serialNoPrefix: 'All'
     });
 
+    const buyerCounts = useMemo(() => {
+        if (!allBuyers) return {};
+        const activeBuyers = allBuyers.filter(b => !b.is_deleted);
+        const counts: Record<string, number> = {
+            'For Sale': activeBuyers.filter(b => (b.listing_type || 'For Sale') === 'For Sale').length,
+            'For Rent': activeBuyers.filter(b => b.listing_type === 'For Rent').length,
+            'All': activeBuyers.length
+        };
+
+        buyerStatuses.forEach(status => {
+            counts[status] = activeBuyers.filter(b => b.status === status).length;
+        });
+
+        agencyTags?.forEach(tag => {
+            counts[tag.name] = activeBuyers.filter(b => b.tags?.includes(tag.name)).length;
+        });
+
+        return counts;
+    }, [allBuyers, agencyTags]);
+
     const activeAgents = useMemo(() => {
         return teamMembers?.filter(m => m.status === 'Active' && (m.role === 'Agent' || m.role === 'Admin')) || [];
     }, [teamMembers]);
@@ -733,7 +753,7 @@ function BuyersPageContent() {
                                         setIsTypesExpanded(!isTypesExpanded);
                                     }}
                                 >
-                                    All Types {isTypesExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                                    All Types ({buyerCounts['All'] || 0}) {isTypesExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
                                 </Badge>
                                 <AnimatePresence>
                                     {isTypesExpanded && (
@@ -744,8 +764,8 @@ function BuyersPageContent() {
                                             transition={{ duration: 0.15 }}
                                             className="flex items-center gap-2"
                                         >
-                                            <Badge variant={activeListingType === 'For Sale' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800", activeListingType === 'For Sale' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Sale')}>For Sale</Badge>
-                                            <Badge variant={activeListingType === 'For Rent' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800", activeListingType === 'For Rent' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Rent')}>For Rent</Badge>
+                                            <Badge variant={activeListingType === 'For Sale' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800", activeListingType === 'For Sale' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Sale')}>For Sale ({buyerCounts['For Sale'] || 0})</Badge>
+                                            <Badge variant={activeListingType === 'For Rent' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800", activeListingType === 'For Rent' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Rent')}>For Rent ({buyerCounts['For Rent'] || 0})</Badge>
                                         </motion.div>
                                     )}
                                 </AnimatePresence>
@@ -781,7 +801,7 @@ function BuyersPageContent() {
                                                     )} 
                                                     onClick={() => setActiveStatus(status)}
                                                 >
-                                                    {status}
+                                                    {status} ({buyerCounts[status] || 0})
                                                 </Badge>
                                             ))}
                                         </motion.div>
@@ -809,7 +829,7 @@ function BuyersPageContent() {
                                             className="flex items-center gap-2"
                                         >
                                             {agencyTags?.map(tag => (
-                                                <Badge key={tag.id} variant={activeCustomTags.includes(tag.name) ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full transition-all", tag.color, activeCustomTags.includes(tag.name) && "ring-2 ring-primary ring-offset-2")} onClick={() => handleToggleCustomTag(tag.name)}>{tag.name}</Badge>
+                                                <Badge key={tag.id} variant={activeCustomTags.includes(tag.name) ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full transition-all", tag.color, activeCustomTags.includes(tag.name) && "ring-2 ring-primary ring-offset-2")} onClick={() => handleToggleCustomTag(tag.name)}>{tag.name} ({buyerCounts[tag.name] || 0})</Badge>
                                             ))}
                                         </motion.div>
                                     )}
