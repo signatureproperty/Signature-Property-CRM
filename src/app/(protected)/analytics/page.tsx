@@ -17,7 +17,11 @@ import {
     ArrowUpRight,
     ArrowDownRight,
     Activity,
-    LineChart
+    LineChart,
+    Calendar,
+    CheckCircle,
+    XCircle,
+    Clock
 } from 'lucide-react';
 import { 
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
@@ -58,6 +62,9 @@ export default function AnalyticsPage() {
     const teamQuery = useMemoFirebase(() => profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'teamMembers') : null, [profile.agency_id, firestore]);
     const { data: teamMembers } = useCollection<User>(teamQuery);
 
+    const apptsQuery = useMemoFirebase(() => profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'appointments') : null, [profile.agency_id, firestore]);
+    const { data: appointments } = useCollection<Appointment>(apptsQuery);
+
     // Helpers
     const filteredByTime = (dateStr?: string) => {
         if (!dateStr) return false;
@@ -72,7 +79,7 @@ export default function AnalyticsPage() {
         return date >= start;
     };
 
-    // 1. Overview Calculations
+    // Overview Calculations
     const stats = useMemo(() => {
         if (!properties || !buyers) return null;
         const soldProps = properties.filter(p => p.status === 'Sold' && !p.is_for_rent);
@@ -93,7 +100,33 @@ export default function AnalyticsPage() {
         };
     }, [properties, buyers, timeRange]);
 
-    // 2. Growth Chart Data
+    // Appointments Data
+    const apptStats = useMemo(() => {
+        if (!appointments) return null;
+        const filtered = appointments.filter(a => filteredByTime(a.date));
+        return {
+            total: filtered.length,
+            scheduled: filtered.filter(a => a.status === 'Scheduled').length,
+            completed: filtered.filter(a => a.status === 'Completed').length,
+            cancelled: filtered.filter(a => a.status === 'Cancelled').length,
+            successRate: filtered.length > 0 ? ((filtered.filter(a => a.status === 'Completed').length / filtered.length) * 100).toFixed(1) : 0
+        };
+    }, [appointments, timeRange]);
+
+    const apptTimelineData = useMemo(() => {
+        if (!appointments) return [];
+        const now = new Date();
+        const start = timeRange === '6m' ? subMonths(now, 5) : subMonths(now, 11);
+        const interval = eachMonthOfInterval({ start: startOfMonth(start), end: now });
+
+        return interval.map(date => {
+            const monthLabel = format(date, 'MMM yy');
+            const count = appointments.filter(a => format(parseISO(a.date), 'MMM yy') === monthLabel).length;
+            return { name: monthLabel, Appointments: count };
+        });
+    }, [appointments, timeRange]);
+
+    // Growth Chart Data
     const growthData = useMemo(() => {
         if (!properties || !buyers) return [];
         const now = new Date();
@@ -108,7 +141,7 @@ export default function AnalyticsPage() {
         });
     }, [properties, buyers, timeRange]);
 
-    // 3. Property Type Data
+    // Property Type Data
     const typeData = useMemo(() => {
         if (!properties) return [];
         const counts: Record<string, number> = {};
@@ -116,7 +149,7 @@ export default function AnalyticsPage() {
         return Object.entries(counts).map(([name, value]) => ({ name, value })).sort((a,b) => b.value - a.value).slice(0, 8);
     }, [properties]);
 
-    // 4. Team Performance
+    // Team Performance
     const agentStats = useMemo(() => {
         if (!teamMembers || !properties || !buyers) return [];
         return teamMembers.map(member => {
@@ -201,21 +234,22 @@ export default function AnalyticsPage() {
                 </Card>
                 <Card className="border-none shadow-xl bg-card/60 backdrop-blur-sm">
                     <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                        <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Inventory Value</CardTitle>
-                        <div className="h-8 w-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-600"><Activity className="h-4 w-4" /></div>
+                        <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Meeting Success</CardTitle>
+                        <div className="h-8 w-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-600"><CalendarDays className="h-4 w-4" /></div>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-black">{stats?.activeListings}</div>
-                        <p className="text-[10px] text-muted-foreground mt-1 font-bold flex items-center gap-1">Current Active Stock</p>
+                        <div className="text-2xl font-black">{apptStats?.successRate}%</div>
+                        <p className="text-[10px] text-muted-foreground mt-1 font-bold flex items-center gap-1">Appt. Completion Rate</p>
                     </CardContent>
                 </Card>
             </div>
 
             <Tabs defaultValue="overview" className="w-full">
-                <TabsList className="bg-muted/50 p-1 rounded-full w-full lg:w-auto grid grid-cols-4 lg:inline-flex">
+                <TabsList className="bg-muted/50 p-1 rounded-full w-full lg:w-auto grid grid-cols-5 lg:inline-flex">
                     <TabsTrigger value="overview" className="rounded-full px-6">Overview</TabsTrigger>
                     <TabsTrigger value="properties" className="rounded-full px-6">Properties</TabsTrigger>
                     <TabsTrigger value="buyers" className="rounded-full px-6">Buyers</TabsTrigger>
+                    <TabsTrigger value="appointments" className="rounded-full px-6">Appointments</TabsTrigger>
                     <TabsTrigger value="team" className="rounded-full px-6">Team Stats</TabsTrigger>
                 </TabsList>
 
@@ -272,6 +306,100 @@ export default function AnalyticsPage() {
                                             ))}
                                         </Bar>
                                     </BarChart>
+                                </ResponsiveContainer>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </TabsContent>
+
+                <TabsContent value="appointments" className="space-y-8 mt-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+                        <Card className="border-none shadow-lg bg-card/60 backdrop-blur-sm">
+                            <CardContent className="pt-6 flex items-center gap-4">
+                                <div className="h-10 w-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-600"><Clock className="h-5 w-5" /></div>
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Scheduled</p>
+                                    <p className="text-xl font-black">{apptStats?.scheduled}</p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <Card className="border-none shadow-lg bg-card/60 backdrop-blur-sm">
+                            <CardContent className="pt-6 flex items-center gap-4">
+                                <div className="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600"><CheckCircle className="h-5 w-5" /></div>
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Completed</p>
+                                    <p className="text-xl font-black">{apptStats?.completed}</p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <Card className="border-none shadow-lg bg-card/60 backdrop-blur-sm">
+                            <CardContent className="pt-6 flex items-center gap-4">
+                                <div className="h-10 w-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-600"><XCircle className="h-5 w-5" /></div>
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Cancelled</p>
+                                    <p className="text-xl font-black">{apptStats?.cancelled}</p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <Card className="border-none shadow-lg bg-card/60 backdrop-blur-sm">
+                            <CardContent className="pt-6 flex items-center gap-4">
+                                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary"><Calendar className="h-5 w-5" /></div>
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Total (Range)</p>
+                                    <p className="text-xl font-black">{apptStats?.total}</p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <Card className="lg:col-span-2 border-none shadow-2xl rounded-2xl overflow-hidden bg-card/60 backdrop-blur-xl">
+                            <CardHeader>
+                                <CardTitle className="text-sm font-black uppercase tracking-wider flex items-center gap-2">
+                                    <LineChart className="h-4 w-4 text-primary" /> Monthly Appointment Volume
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="h-[400px]">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={apptTimelineData}>
+                                        <defs>
+                                            <linearGradient id="colorAppt" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8}/>
+                                                <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
+                                        <XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={10} fontStyle="bold" />
+                                        <YAxis axisLine={false} tickLine={false} fontSize={10} fontStyle="bold" />
+                                        <Tooltip />
+                                        <Area type="step" dataKey="Appointments" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorAppt)" strokeWidth={3} />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="border-none shadow-xl rounded-2xl bg-card/60 backdrop-blur-xl">
+                            <CardHeader>
+                                <CardTitle className="text-sm font-black uppercase tracking-wider">Status Distribution</CardTitle>
+                            </CardHeader>
+                            <CardContent className="h-[350px]">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={[
+                                                { name: 'Completed', value: apptStats?.completed },
+                                                { name: 'Scheduled', value: apptStats?.scheduled },
+                                                { name: 'Cancelled', value: apptStats?.cancelled },
+                                            ]}
+                                            cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value"
+                                        >
+                                            <Cell fill="#10b981" />
+                                            <Cell fill="#2563eb" />
+                                            <Cell fill="#ef4444" />
+                                        </Pie>
+                                        <Tooltip />
+                                        <Legend />
+                                    </PieChart>
                                 </ResponsiveContainer>
                             </CardContent>
                         </Card>

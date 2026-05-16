@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Check, Clock, PlusCircle, User, Briefcase, Building, MessageSquare, MoreHorizontal, Edit, Trash2, XCircle, Eye, CalendarPlus as AddToCalendarIcon } from 'lucide-react';
+import { Calendar, Check, Clock, PlusCircle, User, Briefcase, Building, MessageSquare, MoreHorizontal, Edit, Trash2, XCircle, Eye, CalendarPlus as AddToCalendarIcon, CheckCircle2 } from 'lucide-react';
 import { SetAppointmentDialog } from '@/components/set-appointment-dialog';
 import { useState, useMemo, Suspense } from 'react';
 import { Appointment, AppointmentStatus, Activity, Buyer, Property } from '@/lib/types';
@@ -17,19 +17,13 @@ import { useToast } from '@/hooks/use-toast';
 import { useMemoFirebase } from '@/firebase/hooks';
 import { useProfile } from '@/context/profile-context';
 import { formatPhoneNumberForWhatsApp } from '@/lib/formatters';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useIsMobile } from '@/hooks/use-is-mobile';
 import { BuyerDetailsDialog } from '@/components/buyer-details-dialog';
 import { PropertyDetailsDialog } from '@/components/property-details-dialog';
-import { isWithinInterval, subDays, parseISO, format } from 'date-fns';
-
+import { format, parseISO } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 function AppointmentsPageContent() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const activeTab = (searchParams ? searchParams.get('tab') : 'buyer') || 'buyer';
-
   const firestore = useFirestore();
   const { profile } = useProfile();
   const { toast } = useToast();
@@ -71,17 +65,15 @@ function AppointmentsPageContent() {
     if (!profile.agency_id) return;
     
     if (appointmentToEdit) {
-        // It's an update (reschedule)
         const docRef = doc(collection(firestore, 'agencies', profile.agency_id, 'appointments'), appointment.id);
         await setDoc(docRef, appointment, { merge: true });
-        toast({ title: 'Appointment Rescheduled', description: `Appointment with ${appointment.contactName} has been updated.` });
-        await logActivity('rescheduled appointment', appointment.contactName);
+        toast({ title: 'Appointment Updated' });
+        await logActivity('updated appointment', appointment.contactName);
     } else {
-        // It's a new appointment
         const { id, ...newAppointmentData } = appointment;
         const collectionRef = collection(firestore, 'agencies', profile.agency_id, 'appointments');
-        await addDoc(collectionRef, newAppointmentData);
-        toast({ title: 'Appointment Set', description: `Appointment with ${appointment.contactName} has been scheduled.` });
+        await addDoc(collectionRef, { ...newAppointmentData, status: 'Scheduled' });
+        toast({ title: 'Appointment Set' });
         await logActivity('set a new appointment', appointment.contactName);
     }
     setAppointmentToEdit(null);
@@ -114,7 +106,7 @@ function AppointmentsPageContent() {
       } else {
         toast({ title: 'Buyer not found', variant: 'destructive' });
       }
-    } else { // Owner or Property
+    } else {
       const property = propertiesData?.find(p => p.serial_no === serial);
       if (property) {
         setContactForDetails(property);
@@ -125,7 +117,6 @@ function AppointmentsPageContent() {
     }
   };
 
-
   const handleUpdateStatus = async (appointmentId: string, status: AppointmentStatus, notes?: string) => {
       if (!profile.agency_id) return;
       const appointment = appointmentsData?.find(a => a.id === appointmentId);
@@ -133,7 +124,7 @@ function AppointmentsPageContent() {
 
       const docRef = doc(firestore, 'agencies', profile.agency_id, 'appointments', appointmentId);
       await setDoc(docRef, { status, notes: notes || '' }, { merge: true });
-      toast({ title: 'Appointment Updated', description: `Status has been changed to ${status}.` });
+      toast({ title: `Appointment ${status}` });
       await logActivity('updated appointment status', appointment.contactName, { from: appointment.status, to: status });
   };
 
@@ -164,210 +155,143 @@ function AppointmentsPageContent() {
     }
   };
   
-    const handleAddToCalendar = (e: any, appointment: Appointment) => {
-        if (e && e.stopPropagation) e.stopPropagation();
-        
-        const startTimeStr = `${appointment.date}T${appointment.time}:00`;
-        const startTime = new Date(startTimeStr);
-        if (isNaN(startTime.getTime())) {
-            toast({ title: 'Invalid Date/Time', description: 'Cannot add to calendar due to invalid appointment time.', variant: 'destructive' });
-            return;
-        }
-        const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // Add 1 hour
-
-        const formatDateStr = (date: Date) => format(date, "yyyyMMdd'T'HHmmss");
-
-        const details = `Appointment with ${appointment.contactName}.\nPurpose: ${appointment.message}\nAssigned Agent: ${appointment.agentName}`;
-        
-        let location = 'N/A';
-        if(appointment.contactType === 'Owner' && propertiesData) {
-            const property = propertiesData.find(p => p.serial_no === appointment.contactSerialNo);
-            if(property) location = property.address;
-        }
-
-        const url = new URL('https://www.google.com/calendar/render');
-        url.searchParams.set('action', 'TEMPLATE');
-        url.searchParams.set('text', `Appointment: ${appointment.contactName}`);
-        url.searchParams.set('dates', `${formatDateStr(startTime)}/${formatDateStr(endTime)}`);
-        url.searchParams.set('details', details);
-        url.searchParams.set('location', location);
-        
-        window.open(url.toString(), '_blank');
-    };
-
-  const statusConfig: { [key in AppointmentStatus]: { variant: 'default' | 'secondary' | 'destructive', icon?: React.ComponentType<{ className?: string }> } } = {
-    Scheduled: { variant: 'secondary', icon: Clock },
-    Completed: { variant: 'default', icon: Check },
-    Cancelled: { variant: 'destructive', icon: XCircle },
+  const handleAddToCalendar = (e: any, appointment: Appointment) => {
+      if (e && e.stopPropagation) e.stopPropagation();
+      const startTimeStr = `${appointment.date}T${appointment.time}:00`;
+      const startTime = new Date(startTimeStr);
+      if (isNaN(startTime.getTime())) {
+          toast({ title: 'Invalid Date/Time', variant: 'destructive' });
+          return;
+      }
+      const endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
+      const formatDateStr = (date: Date) => format(date, "yyyyMMdd'T'HHmmss");
+      const url = new URL('https://www.google.com/calendar/render');
+      url.searchParams.set('action', 'TEMPLATE');
+      url.searchParams.set('text', `Appointment: ${appointment.contactName}`);
+      url.searchParams.set('dates', `${formatDateStr(startTime)}/${formatDateStr(endTime)}`);
+      url.searchParams.set('details', appointment.message);
+      window.open(url.toString(), '_blank');
   };
 
-  const { buyerAppointments, ownerAppointments, historicalAppointments } = useMemo(() => {
-    const allAppointments = (appointmentsData || []).filter(a => {
-        if (profile.role === 'Agent') {
-            return a.agentName === profile.name;
-        }
+  const sortedAppointments = useMemo(() => {
+    if (!appointmentsData) return [];
+    const all = appointmentsData.filter(a => {
+        if (profile.role === 'Agent') return a.agentName === profile.name;
         return true;
     });
+    // primary view: scheduled first, then others
+    return [...all].sort((a, b) => {
+        if (a.status === 'Scheduled' && b.status !== 'Scheduled') return -1;
+        if (a.status !== 'Scheduled' && b.status === 'Scheduled') return 1;
+        return parseISO(b.date).getTime() - parseISO(a.date).getTime();
+    });
+  }, [appointmentsData, profile]);
 
-    const now = new Date();
-    const sevenDaysAgo = subDays(now, 7);
-
-    const scheduled = allAppointments.filter(a => a.status === 'Scheduled');
-    const historical = allAppointments.filter(a => 
-        (a.status === 'Completed' || a.status === 'Cancelled') &&
-        isWithinInterval(parseISO(a.date), { start: sevenDaysAgo, end: now })
-    ).sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
-    
-    const buyers = scheduled.filter(a => a.contactType === 'Buyer');
-    const owners = scheduled.filter(a => a.contactType === 'Owner');
-    
-    return { buyerAppointments: buyers, ownerAppointments: owners, historicalAppointments: historical };
-}, [appointmentsData, profile.role, profile.name]);
-
-
-  const handleTabChange = (value: string) => {
-    const url = `${pathname}?tab=${value}`;
-    router.push(url);
-  };
-  
   const formatTimeStr = (time24: string) => {
     if (!time24) return '';
-    const [hours, minutes] = time24.split(':');
-    const date = new Date();
-    date.setHours(parseInt(hours));
-    date.setMinutes(parseInt(minutes));
-    return format(date, 'p'); 
+    try {
+        const [hours, minutes] = time24.split(':');
+        const date = new Date();
+        date.setHours(parseInt(hours));
+        date.setMinutes(parseInt(minutes));
+        return format(date, 'p'); 
+    } catch { return time24; }
   };
 
-
-  const renderAppointmentCard = (appt: Appointment) => {
-    const currentStatus = statusConfig[appt.status];
-    return(
-        <Card key={appt.id} className="hover:shadow-primary/10 transition-shadow flex flex-col bg-background">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <div className="flex items-center gap-3">
-                    <div className={`flex items-center justify-center rounded-full h-10 w-10 ${appt.contactType === 'Buyer' ? 'bg-emerald-100 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-300' : 'bg-sky-100 dark:bg-sky-900 text-sky-600 dark:text-sky-300'}`}>
-                        {appt.contactType === 'Buyer' ? <Briefcase className="h-5 w-5" /> : <Building className="h-5 w-5" />}
-                    </div>
-                    <CardTitle className="text-base font-semibold font-headline">
-                        {appt.contactName}
-                    </CardTitle>
-                </div>
-            <Badge 
-                variant={currentStatus.variant} 
-                className={`capitalize ${appt.status === 'Completed' ? 'bg-green-600' : ''}`}
-            >
-                {currentStatus.icon && <currentStatus.icon className="mr-1 h-3 w-3" />}
-                {appt.status}
-            </Badge>
-            </CardHeader>
-            <CardContent className="space-y-3 flex-1">
-            <div className="flex items-start text-sm min-h-[40px]">
-                <MessageSquare className="mr-2 mt-1 h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">{appt.notes ? `[${appt.status}]: ${appt.notes}` : appt.message}</p>
-            </div>
-            <div className="flex items-center text-sm pt-3 border-t">
-                <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
-                <span>{new Date(appt.date).toLocaleDateString()}</span>
-                <Clock className="ml-4 mr-2 h-4 w-4 text-muted-foreground" />
-                <span>{formatTimeStr(appt.time)}</span>
-            </div>
-            <div className="flex items-center text-sm pt-2 border-t border-dashed">
-                <User className="mr-2 h-4 w-4 text-muted-foreground" />
-                <span className="text-muted-foreground">Agent:</span>
-                <span className="ml-2 font-medium">{appt.agentName}</span>
-            </div>
-            </CardContent>
-             <CardFooter className="flex justify-end border-t pt-4">
-                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                    <Button aria-haspopup="true" size="sm" variant="ghost">
-                        Actions
-                        <MoreHorizontal className="ml-2 h-4 w-4" />
-                    </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-background">
-                        <DropdownMenuItem onSelect={() => handleViewDetails(appt) as any}><Eye className="mr-2 h-4 w-4"/> View Contact Details</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={(e: any) => handleWhatsAppChat(e, appt) as any}><MessageSquare className="mr-2 h-4 w-4"/> Chat on WhatsApp</DropdownMenuItem>
-                         {appt.status === 'Scheduled' && (
-                          <DropdownMenuItem onSelect={(e: any) => handleAddToCalendar(e, appt) as any}><AddToCalendarIcon className="mr-2 h-4 w-4"/> Add to Calendar</DropdownMenuItem>
-                         )}
-                        {appt.status === 'Scheduled' && (
-                            <>
-                                <DropdownMenuItem onSelect={() => handleOpenStatusUpdate(appt, 'Completed') as any}>
-                                    <Check className="mr-2 h-4 w-4" />
-                                    Mark as Completed
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onSelect={() => handleOpenStatusUpdate(appt, 'Cancelled') as any}>
-                                    <XCircle className="mr-2 h-4 w-4" />
-                                    Mark as Cancelled
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onSelect={() => handleReschedule(appt) as any}>
-                                    <Edit className="mr-2 h-4 w-4" />
-                                    Reschedule
-                                </DropdownMenuItem>
-                            </>
-                        )}
-                        <DropdownMenuItem onSelect={() => handleDeleteAppointment(appt) as any} className="text-destructive focus:text-destructive-foreground focus:bg-destructive">
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            </CardFooter>
-        </Card>
-    );
-  }
-
-  const renderAppointmentList = (appointments: Appointment[], emptyMessage: string) => (
-     <div className="space-y-4">
-        {isLoading ? <p className="text-muted-foreground text-center py-10">Loading...</p> : appointments.length > 0 ? (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {appointments.map(renderAppointmentCard)}
-            </div>
-        ) : (
-            <Card className="flex items-center justify-center h-32 bg-background">
-                <p className="text-muted-foreground">{emptyMessage}</p>
-            </Card>
-        )}
-    </div>
-  );
-
-
   return (
-    <div className="space-y-8">
+    <div className="space-y-10 pb-20">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight font-headline">
-            Appointments
+          <h1 className="text-3xl font-black tracking-tight font-headline flex items-center gap-3">
+            <Calendar className="h-8 w-8 text-primary" /> Schedule & Tasks
           </h1>
-          <p className="text-muted-foreground">
-            Manage and track all scheduled buyer and owner appointments.
+          <p className="text-muted-foreground font-medium">
+            Manage your daily meetings and client interactions.
           </p>
         </div>
-        <Button className="glowing-btn" onClick={() => { setAppointmentToEdit(null); setIsAppointmentOpen(true); }}>
+        <Button className="rounded-full glowing-btn font-bold px-6" onClick={() => { setAppointmentToEdit(null); setIsAppointmentOpen(true); }}>
             <PlusCircle className="mr-2 h-4 w-4" />
-            Add Appointment
+            New Appointment
         </Button>
       </div>
 
-      <Tabs defaultValue={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="buyer">Buyer</TabsTrigger>
-                <TabsTrigger value="owner">Owner</TabsTrigger>
-                <TabsTrigger value="history">History</TabsTrigger>
-            </TabsList>
-            <TabsContent value="buyer" className="mt-6">
-                {renderAppointmentList(buyerAppointments, 'No buyer appointments scheduled.')}
-            </TabsContent>
-            <TabsContent value="owner" className="mt-6">
-                 {renderAppointmentList(ownerAppointments, 'No owner appointments scheduled.')}
-            </TabsContent>
-            <TabsContent value="history" className="mt-6">
-                 {renderAppointmentList(historicalAppointments, 'No completed or cancelled appointments in the last 7 days.')}
-            </TabsContent>
-        </Tabs>
-
+      <div className="grid gap-6">
+        {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-20 opacity-40">
+                <PlusCircle className="h-10 w-10 animate-spin mb-4" />
+                <p className="font-bold uppercase tracking-widest text-xs">Loading Schedule...</p>
+            </div>
+        ) : sortedAppointments.length > 0 ? (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {sortedAppointments.map((appt) => (
+                    <Card key={appt.id} className={cn(
+                        "relative group overflow-hidden border-l-4 transition-all duration-300 hover:shadow-2xl bg-card/60 backdrop-blur-sm",
+                        appt.status === 'Scheduled' ? "border-l-primary" : appt.status === 'Completed' ? "border-l-emerald-500 opacity-80" : "border-l-destructive opacity-70"
+                    )}>
+                        <CardHeader className="pb-2">
+                            <div className="flex items-center justify-between">
+                                <Badge variant="outline" className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 border-primary/20 bg-primary/5">
+                                    {appt.contactType === 'Buyer' ? 'Meeting with Buyer' : 'Meeting with Owner'}
+                                </Badge>
+                                <Badge className={cn(
+                                    "text-[9px] font-black uppercase px-2",
+                                    appt.status === 'Scheduled' ? "bg-primary" : appt.status === 'Completed' ? "bg-emerald-600" : "bg-destructive"
+                                )}>
+                                    {appt.status}
+                                </Badge>
+                            </div>
+                            <CardTitle className="text-xl font-black font-headline pt-4 flex items-center gap-2">
+                                {appt.contactName}
+                                {appt.status === 'Completed' && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="p-3 rounded-xl bg-muted/20 border border-border/40">
+                                <p className="text-xs font-medium leading-relaxed italic">"{appt.message}"</p>
+                            </div>
+                            <div className="flex items-center justify-between text-xs pt-2">
+                                <div className="flex items-center gap-4">
+                                    <span className="flex items-center gap-1.5 font-bold"><Calendar className="h-3.5 w-3.5 text-primary" /> {format(parseISO(appt.date), 'MMM d, yyyy')}</span>
+                                    <span className="flex items-center gap-1.5 font-bold"><Clock className="h-3.5 w-3.5 text-primary" /> {formatTimeStr(appt.time)}</span>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2 text-[10px] font-black uppercase text-muted-foreground pt-2 border-t border-dashed">
+                                <User className="h-3 w-3" /> Agent: <span className="text-foreground">{appt.agentName}</span>
+                            </div>
+                        </CardContent>
+                        <CardFooter className="flex justify-end gap-2 border-t pt-4 bg-muted/5">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="h-8 rounded-full font-bold text-[10px] uppercase tracking-tighter">
+                                        Actions <MoreHorizontal className="ml-1 h-3 w-3" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48 bg-background">
+                                    <DropdownMenuItem onSelect={() => handleViewDetails(appt) as any}><Eye className="mr-2 h-4 w-4"/> View File</DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={(e: any) => handleWhatsAppChat(e, appt) as any}><MessageSquare className="mr-2 h-4 w-4"/> WhatsApp Chat</DropdownMenuItem>
+                                    {appt.status === 'Scheduled' && (
+                                        <>
+                                            <DropdownMenuItem onSelect={(e: any) => handleAddToCalendar(e, appt) as any}><AddToCalendarIcon className="mr-2 h-4 w-4"/> Sync Calendar</DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={() => handleOpenStatusUpdate(appt, 'Completed') as any} className="text-emerald-600"><Check className="mr-2 h-4 w-4" /> Mark Completed</DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={() => handleOpenStatusUpdate(appt, 'Cancelled') as any} className="text-destructive"><XCircle className="mr-2 h-4 w-4" /> Mark Cancelled</DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={() => handleReschedule(appt) as any}><Edit className="mr-2 h-4 w-4" /> Reschedule</DropdownMenuItem>
+                                        </>
+                                    )}
+                                    <DropdownMenuItem onSelect={() => handleDeleteAppointment(appt) as any} className="text-destructive font-bold"><Trash2 className="mr-2 h-4 w-4" /> Delete Task</DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </CardFooter>
+                    </Card>
+                ))}
+            </div>
+        ) : (
+            <div className="flex flex-col items-center justify-center py-32 text-center border-2 border-dashed rounded-[2rem] opacity-30 bg-muted/5">
+                <Calendar className="h-16 w-16 mb-4" />
+                <p className="text-xl font-black uppercase tracking-widest">No Active Appointments</p>
+                <p className="text-sm font-medium mt-1">Start by scheduling your first meeting.</p>
+            </div>
+        )}
+      </div>
 
        <SetAppointmentDialog 
             isOpen={isAppointmentOpen}
@@ -375,6 +299,7 @@ function AppointmentsPageContent() {
             onSave={handleSaveAppointment}
             appointmentToEdit={appointmentToEdit}
         />
+
         {appointmentToUpdateStatus && newStatus && (
             <UpdateAppointmentStatusDialog
                 isOpen={!!appointmentToUpdateStatus}
@@ -384,8 +309,9 @@ function AppointmentsPageContent() {
                 onUpdate={handleUpdateStatus}
             />
         )}
-        {contactForDetails && (contactForDetails as any).serial_no && (
-             (contactForDetails as Buyer).serial_no.startsWith('B') || (contactForDetails as Buyer).serial_no.startsWith('RB') ? (
+
+        {contactForDetails && (
+             (contactForDetails as any).serial_no.startsWith('B') || (contactForDetails as any).serial_no.startsWith('RB') ? (
                 <BuyerDetailsDialog
                     buyer={contactForDetails as Buyer}
                     isOpen={isDetailsOpen}
@@ -399,15 +325,13 @@ function AppointmentsPageContent() {
                 />
             )
         )}
-
     </div>
   );
 }
 
-
 export default function AppointmentsPage() {
     return (
-        <Suspense fallback={<div>Loading...</div>}>
+        <Suspense fallback={<div className="flex h-screen items-center justify-center">Loading...</div>}>
             <AppointmentsPageContent />
         </Suspense>
     );
