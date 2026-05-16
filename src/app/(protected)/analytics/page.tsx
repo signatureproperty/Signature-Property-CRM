@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState } from 'react';
@@ -49,6 +48,7 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
 
 const COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
@@ -338,7 +338,6 @@ export default function AnalyticsPage() {
                     </Card>
                 </TabsContent>
                 
-                {/* ... other TabsContent remain the same ... */}
                 <TabsContent value="overview" className="space-y-8 mt-6">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <Card className="lg:col-span-2 border-none shadow-2xl rounded-2xl overflow-hidden bg-card/60 backdrop-blur-xl">
@@ -348,7 +347,7 @@ export default function AnalyticsPage() {
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="h-[400px]">
-                                {/* Growth Chart content placeholder ... same as before ... */}
+                                {/* Growth Chart content placeholder */}
                             </CardContent>
                         </Card>
 
@@ -360,10 +359,9 @@ export default function AnalyticsPage() {
                                 <CardDescription>Inventory breakdown</CardDescription>
                             </CardHeader>
                             <CardContent className="h-[400px]">
-                                {/* Property Types Chart placeholder ... same as before ... */}
+                                {/* Property Types Chart placeholder */}
                             </CardContent>
-                        </Card>
-                    </div>
+                        </div>
                 </TabsContent>
             </Tabs>
 
@@ -477,4 +475,3 @@ export default function AnalyticsPage() {
         </div>
     );
 }
-
