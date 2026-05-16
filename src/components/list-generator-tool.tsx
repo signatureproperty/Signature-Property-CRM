@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import { Property, PropertyType, SizeUnit, PriceUnit } from '@/lib/types';
 import { useProfile } from '@/context/profile-context';
 import { useToast } from '@/hooks/use-toast';
@@ -106,7 +107,7 @@ export function ListGeneratorTool({ allProperties }: ListGeneratorToolProps) {
     const filtered = allProperties.filter(p => {
         const demandBase = formatUnit(p.demand_amount, p.demand_unit);
 
-        // Updated Area Match logic for array
+        // Area Match logic
         const areaMatch = areaFilters.length === 0 || areaFilters.includes(p.area);
         
         let typeMatch = true;
