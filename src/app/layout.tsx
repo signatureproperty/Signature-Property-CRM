@@ -1,47 +1,24 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Providers } from './providers';
-import { initializeFirebase } from '@/firebase';
-import { doc, getDoc } from 'firebase/firestore';
 
-export async function generateMetadata(): Promise<Metadata> {
-  let appName = 'Signature Property CRM';
-  let appDesc = 'The ultimate real-estate CRM, simplified.';
-  let iconUrl = '/icon-512x512.png';
-
-  try {
-    const { firestore } = initializeFirebase();
-    const docRef = doc(firestore, 'system_config', 'branding');
-    const docSnap = await getDoc(docRef);
-
-    if (docSnap.exists()) {
-        const data = docSnap.data();
-        appName = data.appName || appName;
-        appDesc = data.appDescription || appDesc;
-        iconUrl = data.pwaIconUrl || iconUrl;
-    }
-  } catch (error) {
-    console.error("Metadata generation error:", error);
-  }
-
-  return {
-    title: appName,
-    description: appDesc,
-    manifest: '/manifest.json',
-    appleWebApp: {
-        capable: true,
-        statusBarStyle: 'default',
-        title: appName,
-    },
-    icons: {
-        icon: iconUrl,
-        apple: iconUrl,
-    },
-    formatDetection: {
-        telephone: false,
-    },
-  }
-}
+export const metadata: Metadata = {
+  title: 'Signature Property CRM',
+  description: 'The ultimate real-estate CRM, simplified.',
+  manifest: '/manifest.json',
+  appleWebApp: {
+      capable: true,
+      statusBarStyle: 'default',
+      title: 'Signature Property CRM',
+  },
+  icons: {
+      icon: '/icon-512x512.png',
+      apple: '/icon-512x512.png',
+  },
+  formatDetection: {
+      telephone: false,
+  },
+};
 
 export const viewport: Viewport = {
   themeColor: '#3b82f6',

@@ -4,8 +4,6 @@ import { useUser } from '@/firebase/auth/use-user';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { AppLoader } from '@/components/ui/loader';
-import { FirebaseClientProvider } from '@/firebase/client-provider';
-import { ProfileProvider } from '@/context/profile-context';
 
 function HomePageContent() {
   const { user, isUserLoading } = useUser();
@@ -23,18 +21,17 @@ function HomePageContent() {
 
   return (
     <div className="flex h-screen w-full items-center justify-center bg-background">
-      <AppLoader />
+        <div className="flex flex-col items-center gap-4">
+            <AppLoader />
+            <p className="text-sm font-bold animate-pulse text-muted-foreground uppercase tracking-widest">
+                Signature CRM
+            </p>
+        </div>
     </div>
   );
 }
 
 
 export default function HomePage() {
-    return (
-        <FirebaseClientProvider>
-            <ProfileProvider>
-                <HomePageContent />
-            </ProfileProvider>
-        </FirebaseClientProvider>
-    )
+    return <HomePageContent />;
 }

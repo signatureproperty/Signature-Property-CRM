@@ -27,7 +27,7 @@ import { useAuth, useFirestore } from '@/firebase/provider';
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { ProfileProvider } from '@/context/profile-context';
+import { useProfile } from '@/context/profile-context';
 import { Separator } from '@/components/ui/separator';
 import { doc, getDoc } from 'firebase/firestore';
 import { useTheme } from 'next-themes';
@@ -234,9 +234,5 @@ function LoginPageContent() {
 }
 
 export default function LoginPage() {
-  return (
-    <ProfileProvider>
-      <LoginPageContent />
-    </ProfileProvider>
-  );
+  return <LoginPageContent />;
 }

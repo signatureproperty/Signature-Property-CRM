@@ -1,45 +1,23 @@
-
 import { MetadataRoute } from 'next';
-import { initializeFirebase } from '@/firebase';
-import { doc, getDoc } from 'firebase/firestore';
 
-export default async function manifest(): Promise<MetadataRoute.Manifest> {
-  let appName = 'Signature Property CRM';
-  let appDesc = 'The ultimate real-estate CRM, simplified.';
-  let iconUrl = '/icon-512x512.png';
-
-  try {
-    const { firestore } = initializeFirebase();
-    const docRef = doc(firestore, 'system_config', 'branding');
-    const docSnap = await getDoc(docRef);
-
-    if (docSnap.exists()) {
-        const data = docSnap.data();
-        appName = data.appName || appName;
-        appDesc = data.appDescription || appDesc;
-        iconUrl = data.pwaIconUrl || iconUrl;
-    }
-  } catch (error) {
-    console.error("Manifest generation error:", error);
-  }
-
+export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: appName,
-    short_name: appName,
-    description: appDesc,
+    name: 'Signature Property CRM',
+    short_name: 'Signature CRM',
+    description: 'The ultimate real-estate CRM, simplified.',
     start_url: '/',
     display: 'standalone',
     background_color: '#ffffff',
     theme_color: '#2563eb',
     icons: [
       {
-        src: iconUrl,
+        src: '/icon-512x512.png',
         sizes: '192x192',
         type: 'image/png',
         purpose: 'any',
       },
       {
-        src: iconUrl,
+        src: '/icon-512x512.png',
         sizes: '512x512',
         type: 'image/png',
         purpose: 'maskable',
