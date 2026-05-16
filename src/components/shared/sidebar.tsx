@@ -133,9 +133,9 @@ export function AppSidebar() {
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <Link href="/upgrade" onClick={() => setOpenMobile(false)}>
-                                <SidebarMenuButton className="bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary transition-all duration-150 py-2">
+                                <SidebarMenuButton className="bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary transition-all duration-150 h-10 md:h-14 md:justify-center">
                                     <Gem className="h-5 w-5" />
-                                    <span className="flex-1 truncate font-bold text-sm group-data-[state=collapsed]:hidden">Upgrade Plan</span>
+                                    <span className="font-bold text-sm group-data-[state=collapsed]:hidden">Upgrade Plan</span>
                                 </SidebarMenuButton>
                             </Link>
                         </TooltipTrigger>
