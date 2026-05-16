@@ -17,7 +17,7 @@ const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 const SIDEBAR_WIDTH = "16rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
-const SIDEBAR_WIDTH_ICON = "4rem"
+const SIDEBAR_WIDTH_ICON = "5rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 
 type SidebarContext = {
@@ -205,7 +205,7 @@ const Sidebar = React.forwardRef<
         <aside
         ref={ref}
         className={cn(
-            "group hidden h-screen transition-[width] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] md:flex flex-col will-change-[width] border-r dark:border-white/10", 
+            "group hidden h-screen transition-[width] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] md:flex flex-col border-r dark:border-white/10 bg-card/60 backdrop-blur-xl", 
             state === 'expanded' ? 'w-[--sidebar-width]' : 'w-[--sidebar-width-icon]',
             className
         )}
@@ -234,7 +234,7 @@ const SidebarTrigger = React.forwardRef<
       data-sidebar="trigger"
       variant="ghost"
       size="icon"
-      className={cn("h-7 w-7 transition-transform active:scale-90", className)}
+      className={cn("h-9 w-9 transition-all active:scale-90 hover:bg-primary/10 hover:text-primary rounded-xl", className)}
       onClick={(event) => {
         onClick?.(event)
         toggleSidebar()
@@ -305,7 +305,7 @@ const SidebarContent = React.forwardRef<
       ref={ref}
       data-sidebar="content"
       className={cn(
-        "flex min-h-0 flex-1 flex-col gap-0.5 p-2 overflow-y-auto overflow-x-hidden",
+        "flex min-h-0 flex-1 flex-col gap-0.5 p-2 overflow-y-auto overflow-x-hidden transition-all duration-300",
         state === 'collapsed' && "items-center",
         className
       )}
@@ -342,7 +342,7 @@ const SidebarMenuItem = React.forwardRef<
 SidebarMenuItem.displayName = "SidebarMenuItem"
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center gap-3 overflow-hidden rounded-lg px-3 py-2 text-left text-sm font-medium outline-none ring-primary/50 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 active:bg-accent/80 disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-primary data-[active=true]:text-primary-foreground data-[active=true]:shadow-md data-[active=true]:shadow-primary/30 group-data-[state=collapsed]:justify-center group-data-[state=collapsed]:h-10 group-data-[state=collapsed]:w-10 group-data-[state=collapsed]:p-0 [&>svg]:size-5 [&>svg]:shrink-0 will-change-transform",
+  "peer/menu-button flex w-full items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 text-left text-sm font-medium outline-none ring-primary/50 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] hover:bg-primary/10 hover:text-primary focus-visible:ring-2 active:bg-primary/15 disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-primary data-[active=true]:text-primary-foreground data-[active=true]:shadow-lg data-[active=true]:shadow-primary/20 group-data-[state=collapsed]:justify-center group-data-[state=collapsed]:h-12 group-data-[state=collapsed]:w-12 group-data-[state=collapsed]:p-0 [&>svg]:size-5 [&>svg]:shrink-0 will-change-transform",
   {
     variants: {
       size: {
@@ -370,7 +370,7 @@ const SidebarMenuButton = React.forwardRef<
       React.Children.count(children) === 1 ? (
         children
       ) : (
-        <div className="flex items-center gap-2">{children}</div>
+        <div className="flex items-center gap-3">{children}</div>
       );
 
     return (
