@@ -10,6 +10,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useProfile } from '@/context/profile-context';
 import { PaymentDialog } from '@/components/payment-dialog';
 import type { Plan } from '@/components/payment-dialog';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 
 const agencyPlans: Plan[] = [
     {
