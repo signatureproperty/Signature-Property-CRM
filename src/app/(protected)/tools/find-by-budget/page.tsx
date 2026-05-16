@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -52,6 +51,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { buyerStatuses } from '@/lib/data';
+import { useUser } from '@/firebase/auth/use-user';
 
 const propertyTypeValues = [
     'House', 'Flat', 'Farm House', 'Penthouse', 'Plot', 'Residential Plot', 'Commercial Plot', 'Agricultural Land', 'Industrial Land', 'Office', 'Shop', 'Warehouse', 'Factory', 'Building', 'Residential Property', 'Commercial Property', 'Semi Commercial'
@@ -82,41 +82,42 @@ export default function FindByBudgetPage() {
   const [shareStatus, setShareStatus] = useState<Record<string, ShareStatus>>({});
   const isMobile = useIsMobile();
   const { profile } = useProfile();
+  const { user } = useUser();
   const firestore = useFirestore();
 
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [areaSearch, setAreaSearch] = useState('');
 
   const propertiesQuery = useMemoFirebase(() => {
-      if (!profile.agency_id) return null;
+      if (!profile.agency_id || !user) return null;
       const ref = collection(firestore, 'agencies', profile.agency_id, 'properties');
       
       if (profile.role === 'Agent') {
           return query(ref, 
             or(
-                where('assignedTo', 'array-contains', profile.user_id),
-                where('created_by', '==', profile.user_id)
+                where('assignedTo', 'array-contains', user.uid),
+                where('created_by', '==', user.uid)
             )
           );
       }
       return ref;
-  }, [profile.agency_id, profile.role, profile.user_id, firestore]);
+  }, [profile.agency_id, profile.role, user, firestore]);
   const { data: allProperties } = useCollection<Property>(propertiesQuery);
 
   const buyersQuery = useMemoFirebase(() => {
-      if (!profile.agency_id) return null;
+      if (!profile.agency_id || !user) return null;
       const ref = collection(firestore, 'agencies', profile.agency_id, 'buyers');
       
       if (profile.role === 'Agent') {
           return query(ref, 
             or(
-                where('assignedTo', '==', profile.user_id),
-                where('created_by', '==', profile.user_id)
+                where('assignedTo', '==', user.uid),
+                where('created_by', '==', user.uid)
             )
           );
       }
       return ref;
-  }, [profile.agency_id, profile.role, profile.user_id, firestore]);
+  }, [profile.agency_id, profile.role, user, firestore]);
   const { data: buyers } = useCollection<Buyer>(buyersQuery);
 
   const form = useForm<FormValues>({
@@ -170,7 +171,7 @@ export default function FindByBudgetPage() {
   };
 
   useEffect(() => {
-    if (buyers?.length) {
+    if (buyers) {
       try {
         const savedFilters = localStorage.getItem('findByBudgetFilters');
         const savedBuyersJSON = localStorage.getItem('findByBudgetResults');
@@ -180,7 +181,10 @@ export default function FindByBudgetPage() {
         }
         
         if (savedBuyersJSON) {
-          setFoundBuyers(JSON.parse(savedBuyersJSON));
+          const cachedResults = JSON.parse(savedBuyersJSON) as Buyer[];
+          // Validation: Ensure the cached results belong to the current accessible pool (Crucial for Agents)
+          const validResults = cachedResults.filter(cr => buyers.some(b => b.id === cr.id));
+          setFoundBuyers(validResults);
         }
       } catch (error) {
         console.error("Failed to load state from localStorage", error);
