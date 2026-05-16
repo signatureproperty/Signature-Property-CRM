@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { AppLoader } from '@/components/ui/loader';
 
-function HomePageContent() {
+export default function HomePage() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
 
@@ -24,9 +24,4 @@ function HomePageContent() {
         <AppLoader />
     </div>
   );
-}
-
-
-export default function HomePage() {
-    return <HomePageContent />;
 }

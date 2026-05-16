@@ -27,7 +27,6 @@ import { useAuth, useFirestore } from '@/firebase/provider';
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { useProfile } from '@/context/profile-context';
 import { Separator } from '@/components/ui/separator';
 import { doc, getDoc } from 'firebase/firestore';
 import { useTheme } from 'next-themes';
@@ -40,7 +39,7 @@ const formSchema = z.object({
 
 type LoginFormValues = z.infer<typeof formSchema>;
 
-function LoginPageContent() {
+export default function LoginPage() {
   const router = useRouter();
   const auth = useAuth();
   const firestore = useFirestore();
@@ -231,8 +230,4 @@ function LoginPageContent() {
       </div>
     </div>
   );
-}
-
-export default function LoginPage() {
-  return <LoginPageContent />;
 }
