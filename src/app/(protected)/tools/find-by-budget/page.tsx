@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -41,7 +42,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, doc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { collection, doc, updateDoc, arrayUnion, query, where, or } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { useProfile } from '@/context/profile-context';
 import { useMemoFirebase } from '@/firebase/hooks';
@@ -86,16 +87,36 @@ export default function FindByBudgetPage() {
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [areaSearch, setAreaSearch] = useState('');
 
-  const propertiesQuery = useMemoFirebase(
-    () => (profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'properties') : null),
-    [profile.agency_id, firestore]
-  );
+  const propertiesQuery = useMemoFirebase(() => {
+      if (!profile.agency_id) return null;
+      const ref = collection(firestore, 'agencies', profile.agency_id, 'properties');
+      
+      if (profile.role === 'Agent') {
+          return query(ref, 
+            or(
+                where('assignedTo', 'array-contains', profile.user_id),
+                where('created_by', '==', profile.user_id)
+            )
+          );
+      }
+      return ref;
+  }, [profile.agency_id, profile.role, profile.user_id, firestore]);
   const { data: allProperties } = useCollection<Property>(propertiesQuery);
 
-  const buyersQuery = useMemoFirebase(
-    () => (profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'buyers') : null),
-    [profile.agency_id, firestore]
-  );
+  const buyersQuery = useMemoFirebase(() => {
+      if (!profile.agency_id) return null;
+      const ref = collection(firestore, 'agencies', profile.agency_id, 'buyers');
+      
+      if (profile.role === 'Agent') {
+          return query(ref, 
+            or(
+                where('assignedTo', '==', profile.user_id),
+                where('created_by', '==', profile.user_id)
+            )
+          );
+      }
+      return ref;
+  }, [profile.agency_id, profile.role, profile.user_id, firestore]);
   const { data: buyers } = useCollection<Buyer>(buyersQuery);
 
   const form = useForm<FormValues>({

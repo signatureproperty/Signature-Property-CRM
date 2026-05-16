@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
@@ -17,7 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { Property, PropertyType, SizeUnit, PriceUnit } from '@/lib/types';
 import { useProfile } from '@/context/profile-context';
 import { useToast } from '@/hooks/use-toast';
-import { ClipboardCopy, ClipboardCheck, List, SlidersHorizontal, CheckSquare, ChevronDown, Search, X, FileText, RotateCcw } from 'lucide-react';
+import { ClipboardCopy, ClipboardCheck, List, SlidersHorizontal, CheckSquare, ChevronDown, Search, X, FileText, RotateCcw, ListChecks } from 'lucide-react';
 import { Input } from './ui/input';
 import { ScrollArea } from './ui/scroll-area';
 import { Separator } from './ui/separator';
@@ -153,6 +154,14 @@ export function ListGeneratorTool({ allProperties }: ListGeneratorToolProps) {
           setSelectedProperties([]);
       }
   }
+
+  const handleSelectAllAreas = () => {
+    if (areaFilters.length === uniqueAreas.length) {
+        setAreaFilters([]);
+    } else {
+        setAreaFilters([...uniqueAreas]);
+    }
+  };
 
   const generateList = () => {
     if (selectedProperties.length === 0) {
@@ -295,7 +304,19 @@ export function ListGeneratorTool({ allProperties }: ListGeneratorToolProps) {
                                             />
                                         </div>
                                     </div>
-                                    <ScrollArea className="max-h-[300px] p-2">
+                                    <div className="p-2 border-b bg-muted/5 flex items-center justify-between">
+                                        <span className="text-[10px] font-black uppercase text-muted-foreground pl-1">Selection Options</span>
+                                        <Button 
+                                            variant="ghost" 
+                                            size="sm" 
+                                            className="h-7 text-[10px] font-black uppercase text-primary hover:bg-primary/10 gap-1.5"
+                                            onClick={(e) => { e.preventDefault(); handleSelectAllAreas(); }}
+                                        >
+                                            <ListChecks className="h-3 w-3" />
+                                            {areaFilters.length === uniqueAreas.length ? 'Deselect All' : 'Select All'}
+                                        </Button>
+                                    </div>
+                                    <ScrollArea className="max-h-[250px] p-2">
                                         {filteredAreas.length > 0 ? (
                                             <div className="space-y-1">
                                                 {filteredAreas.map((areaName) => (
