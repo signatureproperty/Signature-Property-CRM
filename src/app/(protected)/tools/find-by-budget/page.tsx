@@ -26,7 +26,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Buyer, PriceUnit, Property, PropertyType, ListingType } from '@/lib/types';
 import { formatCurrency, formatUnit, formatPhoneNumberForWhatsApp } from '@/lib/formatters';
 import { useCurrency, Currency } from '@/context/currency-context';
-import { Download, Share2, Check, Phone, Wallet, Home, DollarSign, FileText, Video, RotateCcw, Search, ChevronDown, ChevronsUpDown, X } from 'lucide-react';
+import { Download, Share2, Check, Phone, Wallet, Home, DollarSign, FileText, Video, RotateCcw, Search, ChevronDown, ChevronsUpDown, X, List, SlidersHorizontal, CheckSquare } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -121,7 +121,6 @@ export default function FindByBudgetPage() {
     const areas = new Set<string>();
     buyers.forEach(b => {
       if (b.area_preference) {
-        // Split by comma and trim to handle cases like "Sabzazar, Samanabad"
         b.area_preference.split(',').forEach(a => {
           const trimmed = a.trim();
           if (trimmed) areas.add(trimmed);
@@ -199,7 +198,6 @@ export default function FindByBudgetPage() {
             }
         }
         
-        // Smart area matching logic: split buyer area by comma and check if any match filter areas
         const buyerAreas = buyer.area_preference?.split(',').map(a => a.trim().toLowerCase()).filter(Boolean) || [];
         const filterAreas = values.area.map(a => a.toLowerCase());
         const areaMatch = filterAreas.length === 0 || filterAreas.some(fa => buyerAreas.some(ba => ba.includes(fa) || fa.includes(ba)));
@@ -359,7 +357,7 @@ export default function FindByBudgetPage() {
                 {foundBuyers.map((buyer, index) => (
                     <TableRow key={buyer.id}>
                         <TableCell>{index + 1}</TableCell>
-                        <TableCell>{buyer.name}</TableCell>
+                        <TableCell className="font-bold">{buyer.name}</TableCell>
                         <TableCell>{buyer.phone}</TableCell>
                         <TableCell>{formatBuyerBudget(buyer)}</TableCell>
                         <TableCell>{buyer.area_preference || 'N/A'}</TableCell>
@@ -367,15 +365,15 @@ export default function FindByBudgetPage() {
                         {isShareMode && (
                           <TableCell className="text-right">
                             {shareStatus[buyer.id] === 'idle' && (
-                              <Button size="sm" onClick={() => handleShareToBuyer(buyer)}>
+                              <Button size="sm" onClick={() => handleShareToBuyer(buyer)} className="glowing-btn h-8 rounded-lg">
                                 <Share2 className="mr-2 h-4 w-4" /> Share
                               </Button>
                             )}
                             {shareStatus[buyer.id] === 'confirming' && (
                                <div className="flex gap-2 justify-end items-center">
-                                <span className="text-sm text-muted-foreground">Shared?</span>
-                                <Button size="sm" variant="destructive" onClick={() => handleConfirmShare(buyer.id, false)}>No</Button>
-                                <Button size="sm" variant="default" className="bg-green-600 hover:bg-green-700" onClick={() => handleConfirmShare(buyer.id, true)}>Yes</Button>
+                                <span className="text-xs font-bold text-muted-foreground uppercase">Shared?</span>
+                                <Button size="sm" variant="destructive" className="h-8 rounded-lg" onClick={() => handleConfirmShare(buyer.id, false)}>No</Button>
+                                <Button size="sm" variant="default" className="bg-green-600 hover:bg-green-700 h-8 rounded-lg" onClick={() => handleConfirmShare(buyer.id, true)}>Yes</Button>
                               </div>
                             )}
                             {shareStatus[buyer.id] === 'shared' && (
@@ -394,233 +392,265 @@ export default function FindByBudgetPage() {
 
   return (
     <>
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight font-headline flex items-center gap-2"><DollarSign/> Find By Budget</h1>
-        <p className="text-muted-foreground">
-          Find buyers by budget and area to quickly match them with properties.
-        </p>
+    <div className="space-y-8 pb-20">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <h1 className="text-3xl font-black tracking-tight font-headline flex items-center gap-3">
+                <DollarSign className="h-8 w-8 text-primary" /> Find By Budget
+            </h1>
+            <p className="text-muted-foreground font-medium">
+            Match buyers with properties using advanced budget and area filters.
+            </p>
+        </div>
       </div>
-      <Card>
-        <CardHeader>
-            <CardTitle>Find Buyers</CardTitle>
-            <CardDescription>Enter a budget range and/or select areas to find matching buyer leads.</CardDescription>
-        </CardHeader>
-        <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)}>
-                <CardContent>
-                    <div className="space-y-6">
-                    <FormField
-                        control={form.control}
-                        name="listing_type"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Buyer Listing Type</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl>
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                <SelectItem value="For Sale">For Sale</SelectItem>
-                                <SelectItem value="For Rent">For Rent</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <div className="flex items-end gap-2 lg:col-span-2">
-                        <FormField
-                            control={form.control}
-                            name="minBudget"
-                            render={({ field }) => (
-                            <FormItem className="flex-1">
-                                <FormLabel>Min Budget</FormLabel>
-                                <FormControl>
-                                <Input type="number" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="maxBudget"
-                            render={({ field }) => (
-                            <FormItem className="flex-1">
-                                <FormLabel>Max Budget</FormLabel>
-                                <FormControl>
-                                <Input type="number" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="budgetUnit"
-                            render={({ field }) => (
-                            <FormItem className="w-28">
-                                <FormLabel>Unit</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl>
-                                        <SelectTrigger>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-1 space-y-6">
+            <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">1</div>
+                <h3 className="font-bold text-lg flex items-center gap-2"><SlidersHorizontal className="h-5 w-5" /> Search Criteria</h3>
+            </div>
+
+            <Card className="shadow-xl border-none bg-card/60 backdrop-blur-sm">
+                <CardContent className="pt-6">
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                            <FormField
+                                control={form.control}
+                                name="listing_type"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel className="text-xs font-black uppercase tracking-widest opacity-60">Lead Interest</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                        <FormControl>
+                                        <SelectTrigger className="h-11 rounded-xl bg-background border-border/60">
                                             <SelectValue />
                                         </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        <SelectItem value="Thousand">Thousand</SelectItem>
-                                        <SelectItem value="Lacs">Lacs</SelectItem>
-                                        <SelectItem value="Crore">Crore</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </FormItem>
-                            )}
-                        />
-                        </div>
+                                        </FormControl>
+                                        <SelectContent className="rounded-xl border-none shadow-xl">
+                                        <SelectItem value="For Sale">Buying (For Sale)</SelectItem>
+                                        <SelectItem value="For Rent">Renting (For Rent)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
 
-                        {/* Searchable Area Dropdown */}
-                        <div className="space-y-2">
-                            <Label className="text-sm font-medium">Area Preference</Label>
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button variant="outline" className="w-full justify-between h-10 bg-background font-normal">
-                                        {watchedAreas.length > 0 ? (
-                                            <span className="font-bold text-primary truncate">{watchedAreas.length} Areas Selected</span>
-                                        ) : "Search Areas..."}
-                                        <ChevronDown className="h-4 w-4 opacity-50" />
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="p-0 w-[300px] shadow-2xl bg-background border-none rounded-2xl overflow-hidden" align="start">
-                                    <div className="p-3 border-b bg-muted/30">
-                                        <div className="relative">
-                                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                            <Input 
-                                                placeholder="Search area name..." 
-                                                className="h-10 pl-9 rounded-lg bg-background border-none ring-1 ring-border focus-visible:ring-primary/40" 
-                                                value={areaSearch} 
-                                                onChange={(e) => setAreaSearch(e.target.value)} 
-                                            />
-                                        </div>
-                                    </div>
-                                    <ScrollArea className="max-h-[300px] p-2">
-                                        {filteredAreas.length > 0 ? (
-                                            <div className="space-y-1">
-                                                {filteredAreas.map((areaName) => (
-                                                    <div 
-                                                        key={areaName} 
-                                                        className={cn(
-                                                            "flex items-center space-x-3 p-2.5 rounded-xl cursor-pointer transition-all",
-                                                            watchedAreas.includes(areaName) ? "bg-primary/5 text-primary" : "hover:bg-accent"
-                                                        )}
-                                                        onClick={() => toggleArea(areaName)}
-                                                    >
-                                                        <Checkbox 
-                                                            id={`filter-area-${areaName}`} 
-                                                            checked={watchedAreas.includes(areaName)}
-                                                            onCheckedChange={() => toggleArea(areaName)}
-                                                            onClick={(e) => e.stopPropagation()}
-                                                        />
-                                                        <label 
-                                                            htmlFor={`filter-area-${areaName}`} 
-                                                            className="text-sm flex-1 cursor-pointer truncate font-bold"
-                                                            onClick={(e) => {
-                                                                e.preventDefault();
-                                                                toggleArea(areaName);
-                                                            }}
-                                                        >
-                                                            {areaName}
-                                                        </label>
-                                                    </div>
-                                                ))}
+                            <div className="space-y-3">
+                                <Label className="text-xs font-black uppercase tracking-widest opacity-60">Budget Range</Label>
+                                <div className="flex gap-2">
+                                    <FormField
+                                        control={form.control}
+                                        name="minBudget"
+                                        render={({ field }) => (
+                                        <FormItem className="flex-1">
+                                            <FormControl>
+                                                <Input type="number" placeholder="Min" className="h-11 rounded-xl bg-background border-border/60" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="maxBudget"
+                                        render={({ field }) => (
+                                        <FormItem className="flex-1">
+                                            <FormControl>
+                                                <Input type="number" placeholder="Max" className="h-11 rounded-xl bg-background border-border/60" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                        )}
+                                    />
+                                </div>
+                                <FormField
+                                    control={form.control}
+                                    name="budgetUnit"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <Select onValueChange={field.onChange} value={field.value}>
+                                            <FormControl>
+                                                <SelectTrigger className="h-11 rounded-xl bg-background border-border/60">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent className="rounded-xl border-none shadow-xl">
+                                                <SelectItem value="Thousand">Thousand</SelectItem>
+                                                <SelectItem value="Lacs">Lacs</SelectItem>
+                                                <SelectItem value="Crore">Crore</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </FormItem>
+                                    )}
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-xs font-black uppercase tracking-widest opacity-60">Area Preference</Label>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="outline" className="w-full justify-between h-11 bg-background rounded-xl border-border/60 font-normal">
+                                            {watchedAreas.length > 0 ? (
+                                                <span className="font-bold text-primary truncate">{watchedAreas.length} Selected</span>
+                                            ) : "Search Areas..."}
+                                            <ChevronDown className="h-4 w-4 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="p-0 w-[300px] shadow-2xl bg-background border-none rounded-2xl overflow-hidden" align="start">
+                                        <div className="p-3 border-b bg-muted/30">
+                                            <div className="relative">
+                                                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                                <Input 
+                                                    placeholder="Search area name..." 
+                                                    className="h-10 pl-9 rounded-lg bg-background border-none ring-1 ring-border focus-visible:ring-primary/40" 
+                                                    value={areaSearch} 
+                                                    onChange={(e) => setAreaSearch(e.target.value)} 
+                                                />
                                             </div>
-                                        ) : (
-                                            <div className="py-10 text-center text-sm text-muted-foreground">
-                                                No matching areas found.
+                                        </div>
+                                        <ScrollArea className="max-h-[300px] p-2">
+                                            {filteredAreas.length > 0 ? (
+                                                <div className="space-y-1">
+                                                    {filteredAreas.map((areaName) => (
+                                                        <div 
+                                                            key={areaName} 
+                                                            className={cn(
+                                                                "flex items-center space-x-3 p-2.5 rounded-xl cursor-pointer transition-all",
+                                                                watchedAreas.includes(areaName) ? "bg-primary/5 text-primary" : "hover:bg-accent"
+                                                            )}
+                                                            onClick={() => toggleArea(areaName)}
+                                                        >
+                                                            <Checkbox 
+                                                                id={`filter-area-${areaName}`} 
+                                                                checked={watchedAreas.includes(areaName)}
+                                                                onCheckedChange={() => toggleArea(areaName)}
+                                                                onClick={(e) => e.stopPropagation()}
+                                                            />
+                                                            <label 
+                                                                htmlFor={`filter-area-${areaName}`} 
+                                                                className="text-sm flex-1 cursor-pointer truncate font-bold"
+                                                                onClick={(e) => {
+                                                                    e.preventDefault();
+                                                                    toggleArea(areaName);
+                                                                }}
+                                                            >
+                                                                {areaName}
+                                                            </label>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="py-10 text-center text-sm text-muted-foreground">
+                                                    No matching areas.
+                                                </div>
+                                            )}
+                                        </ScrollArea>
+                                        {watchedAreas.length > 0 && (
+                                            <div className="p-2 border-t bg-muted/10 flex justify-between items-center">
+                                                <span className="text-[10px] font-black uppercase text-muted-foreground pl-2">{watchedAreas.length} Selected</span>
+                                                <Button variant="ghost" size="sm" className="h-8 text-[10px] font-black uppercase text-primary hover:bg-primary/10" onClick={() => setValue('area', [])}>
+                                                    Clear All
+                                                </Button>
                                             </div>
                                         )}
-                                    </ScrollArea>
-                                    {watchedAreas.length > 0 && (
-                                        <div className="p-2 border-t bg-muted/10 flex justify-between items-center">
-                                            <span className="text-[10px] font-black uppercase text-muted-foreground pl-2">{watchedAreas.length} Selected</span>
-                                            <Button variant="ghost" size="sm" className="h-8 text-[10px] font-black uppercase text-primary hover:bg-primary/10" onClick={() => setValue('area', [])}>
-                                                Clear All
-                                            </Button>
-                                        </div>
-                                    )}
-                                </PopoverContent>
-                            </Popover>
-                        </div>
-                    </div>
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
 
-                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <FormField
-                            control={form.control}
-                            name="status"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Buyer Status</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                                        <SelectContent>
-                                            <SelectItem value="All">All Statuses</SelectItem>
-                                            {buyerStatuses.map(status => (
-                                                <SelectItem key={status} value={status}>{status}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </FormItem>
-                            )}
-                        />
-                         <FormField
-                            control={form.control}
-                            name="propertyType"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Property Type</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                                        <SelectContent>
-                                            <SelectItem value="All">All Types</SelectItem>
-                                            {propertyTypeValues.map(type => (
-                                                <SelectItem key={type} value={type}>{type}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </FormItem>
-                            )}
-                        />
-                    </div>
-                    </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <FormField
+                                    control={form.control}
+                                    name="status"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="text-xs font-black uppercase tracking-widest opacity-60">Status</FormLabel>
+                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                <FormControl>
+                                                    <SelectTrigger className="h-11 rounded-xl bg-background border-border/60">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent className="rounded-xl border-none shadow-xl">
+                                                    <SelectItem value="All">All Status</SelectItem>
+                                                    {buyerStatuses.map(status => (
+                                                        <SelectItem key={status} value={status}>{status}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="propertyType"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="text-xs font-black uppercase tracking-widest opacity-60">Type</FormLabel>
+                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                <FormControl>
+                                                    <SelectTrigger className="h-11 rounded-xl bg-background border-border/60">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent className="rounded-xl border-none shadow-xl">
+                                                    <SelectItem value="All">All Types</SelectItem>
+                                                    {propertyTypeValues.map(type => (
+                                                        <SelectItem key={type} value={type}>{type}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+
+                            <div className="flex gap-2 pt-2">
+                                <Button type="button" variant="outline" onClick={handleReset} className="flex-1 h-12 rounded-xl font-bold">
+                                    <RotateCcw className="mr-2 h-4 w-4" /> Reset
+                                </Button>
+                                <Button type="submit" className="flex-[2] h-12 rounded-xl font-bold glowing-btn">
+                                    Search Buyers
+                                </Button>
+                            </div>
+                        </form>
+                    </Form>
                 </CardContent>
-                <CardFooter className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={handleReset}>
-                        <RotateCcw className="mr-2 h-4 w-4" />
-                        Reset
-                    </Button>
-                    <Button type="submit">Search Buyers</Button>
-                </CardFooter>
-            </form>
-        </Form>
-        {foundBuyers.length > 0 && (
-          <div className="mt-6 space-y-4 p-6 border-t">
-            <div className="flex justify-between items-center">
-                <h4 className="font-bold text-lg">Found {foundBuyers.length} Matching Buyers</h4>
-                <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={handleDownload}><Download className="mr-2 h-4 w-4" /> Download List</Button>
-                    <Button size="sm" onClick={() => setIsShareDialogOpen(true)}><Share2 className="mr-2 h-4 w-4"/> Share Property Detail</Button>
+            </Card>
+        </div>
+
+        <div className="lg:col-span-2 space-y-6">
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">2</div>
+                    <h3 className="font-bold text-lg flex items-center gap-2"><CheckSquare className="h-5 w-5" /> Search Results</h3>
                 </div>
+                {foundBuyers.length > 0 && (
+                     <div className="flex gap-2">
+                        <Button variant="outline" size="sm" className="rounded-lg h-9 font-bold" onClick={handleDownload}><Download className="mr-2 h-4 w-4" /> Export CSV</Button>
+                        <Button size="sm" className="rounded-lg h-9 font-bold glowing-btn" onClick={() => setIsShareDialogOpen(true)}><Share2 className="mr-2 h-4 w-4"/> Share Property</Button>
+                    </div>
+                )}
             </div>
-            <div className="border rounded-xl overflow-hidden bg-muted/5">
-                {isMobile ? renderCards() : renderTable()}
-            </div>
-          </div>
-        )}
-      </Card>
+
+            {foundBuyers.length > 0 ? (
+                <Card className="shadow-2xl border-none overflow-hidden bg-card/60 backdrop-blur-sm rounded-2xl">
+                    <CardContent className="p-0">
+                        {isMobile ? renderCards() : renderTable()}
+                    </CardContent>
+                </Card>
+            ) : (
+                <div className="flex flex-col items-center justify-center h-[500px] border-2 border-dashed rounded-3xl opacity-40 bg-muted/5">
+                    <Search className="h-16 w-16 mb-4 text-muted-foreground" />
+                    <p className="text-xl font-black uppercase tracking-widest">No matching leads</p>
+                    <p className="text-sm font-medium mt-1">Adjust filters and click "Search" to find buyers.</p>
+                </div>
+            )}
+        </div>
+      </div>
     </div>
+    
     <ShareDetailsDialog 
         isOpen={isShareDialogOpen} 
         setIsOpen={setIsShareDialogOpen}
@@ -646,7 +676,7 @@ interface ShareDetailsDialogProps {
 }
 
 function ShareDetailsDialog({ isOpen, setIsOpen, onSetMessage, startSharing, allProperties, currency }: ShareDetailsDialogProps) {
-    const [activeTab, setActiveTab] = useState('custom');
+    const [activeTab, setActiveTab] = useState('property');
     const [customMessage, setCustomMessage] = useState('');
     const [propertySearch, setPropertySearch] = useState('');
     const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
@@ -758,58 +788,69 @@ ${utilities || 'N/A'}
 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogContent className="sm:max-w-xl">
+            <DialogContent className="sm:max-w-xl border-none shadow-2xl rounded-3xl overflow-hidden bg-background">
                 <DialogHeader>
-                    <DialogTitle>Share Property Details</DialogTitle>
-                    <DialogDescription>Create a message to share with the found buyers.</DialogDescription>
+                    <DialogTitle className="font-headline text-2xl font-black tracking-tight">Share Property Details</DialogTitle>
+                    <DialogDescription className="font-medium">Create a message to share with matching buyer leads.</DialogDescription>
                 </DialogHeader>
-                <Tabs value={activeTab} onValueChange={setActiveTab}>
-                    <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="custom">Custom Message</TabsTrigger>
-                        <TabsTrigger value="property">From Property</TabsTrigger>
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
+                    <TabsList className="grid w-full grid-cols-2 rounded-full h-12 p-1 bg-muted/50">
+                        <TabsTrigger value="property" className="rounded-full font-bold">Pick Property</TabsTrigger>
+                        <TabsTrigger value="custom" className="rounded-full font-bold">Custom Msg</TabsTrigger>
                     </TabsList>
-                    <TabsContent value="custom" className="mt-4">
+                    <TabsContent value="custom" className="mt-6">
                         <Textarea 
                             value={customMessage}
                             onChange={(e) => setCustomMessage(e.target.value)}
                             rows={10}
                             placeholder="Type your custom message here..."
+                            className="rounded-2xl bg-muted/30 border-border/60 focus-visible:ring-primary/20 p-4"
                         />
                     </TabsContent>
-                    <TabsContent value="property" className="mt-4 space-y-4">
+                    <TabsContent value="property" className="mt-6 space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="prop-search">Search Property (by SN, Title, Area)</Label>
-                            <Input id="prop-search" value={propertySearch} onChange={(e) => setPropertySearch(e.target.value)} />
+                            <Label htmlFor="prop-search" className="text-[10px] font-black uppercase tracking-widest opacity-60">Search Property (by SN, Title, Area)</Label>
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input id="prop-search" value={propertySearch} onChange={(e) => setPropertySearch(e.target.value)} className="h-11 pl-10 rounded-xl bg-muted/30 border-border/60" placeholder="e.g. P-10 or DHA" />
+                            </div>
                         </div>
                         {propertySearch && (
-                            <ScrollArea className="h-40 border rounded-md">
+                            <ScrollArea className="h-48 border rounded-2xl bg-background shadow-inner">
                                 <div className="p-2 space-y-1">
                                     {filteredProperties.length > 0 ? (
                                         filteredProperties.map(prop => (
                                             <Button
                                                 key={prop.id}
                                                 variant="ghost"
-                                                className="w-full justify-start text-xs h-8"
+                                                className="w-full justify-start text-xs h-10 rounded-lg hover:bg-primary/5 hover:text-primary font-bold"
                                                 onClick={() => {
                                                     setSelectedProperty(prop);
                                                     setPropertySearch('');
                                                 }}
                                             >
-                                                <span>{prop.auto_title} ({prop.serial_no})</span>
+                                                <Badge variant="outline" className="mr-2 font-mono text-[9px] uppercase px-1.5">{prop.serial_no}</Badge>
+                                                <span className="truncate">{prop.auto_title}</span>
                                             </Button>
                                         ))
                                     ) : (
-                                        <p className="text-center text-xs text-muted-foreground p-4">No properties found.</p>
+                                        <p className="text-center text-xs text-muted-foreground p-10 font-medium">No properties found matching your search.</p>
                                     )}
                                 </div>
                             </ScrollArea>
                         )}
                         {selectedProperty && (
-                             <div className="p-4 border rounded-lg bg-muted/50 space-y-3">
-                                <p><span className="font-semibold">Selected:</span> {selectedProperty.auto_title} ({selectedProperty.serial_no})</p>
-                                {availableLinks.length > 0 && (
+                             <div className="p-5 border rounded-2xl bg-primary/5 space-y-4 border-primary/20 animate-fade-in">
+                                <div className="flex items-center justify-between">
                                     <div>
-                                        <Label className="font-semibold flex items-center gap-2 mb-2"><Video className="h-4 w-4" /> Include Video Links</Label>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-primary">Selected Inventory</p>
+                                        <p className="font-bold text-sm">{selectedProperty.auto_title}</p>
+                                    </div>
+                                    <Badge variant="outline" className="bg-background font-mono px-2 py-0.5">{selectedProperty.serial_no}</Badge>
+                                </div>
+                                {availableLinks.length > 0 && (
+                                    <div className="bg-background/60 p-3 rounded-xl border border-border/40">
+                                        <Label className="font-black text-[10px] uppercase tracking-widest flex items-center gap-2 mb-3 opacity-70"><Video className="h-3 w-3" /> Include Video Links</Label>
                                         <div className="flex flex-wrap gap-x-4 gap-y-2">
                                             {availableLinks.map(platform => (
                                                 <div key={platform} className="flex items-center space-x-2">
@@ -818,7 +859,7 @@ ${utilities || 'N/A'}
                                                         checked={selectedLinks[platform as VideoLinkPlatform]}
                                                         onCheckedChange={() => handleLinkSelectionChange(platform as VideoLinkPlatform)}
                                                     />
-                                                    <Label htmlFor={`share-${platform}`} className="text-sm font-normal capitalize cursor-pointer">
+                                                    <Label htmlFor={`share-${platform}`} className="text-xs font-bold capitalize cursor-pointer opacity-80">
                                                         {platform}
                                                     </Label>
                                                 </div>
@@ -826,14 +867,16 @@ ${utilities || 'N/A'}
                                         </div>
                                     </div>
                                 )}
-                                <Textarea readOnly value={generatedMessage} rows={8} />
+                                <Textarea readOnly value={generatedMessage} rows={8} className="text-xs font-mono bg-background/80 border-border/40" />
                             </div>
                         )}
                     </TabsContent>
                 </Tabs>
-                <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-                    <Button onClick={handleSetMessage}>Set Message & Start Sharing</Button>
+                <DialogFooter className="mt-6 gap-2">
+                    <Button variant="outline" onClick={() => setIsOpen(false)} className="rounded-xl h-11 px-6">Cancel</Button>
+                    <Button onClick={handleSetMessage} className="rounded-xl h-11 px-8 glowing-btn">
+                        Set Message & Start Matching
+                    </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
