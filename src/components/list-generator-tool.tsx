@@ -1,8 +1,7 @@
 
-
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Card,
   CardContent,
@@ -18,12 +17,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Property, PropertyType, SizeUnit, PriceUnit } from '@/lib/types';
 import { useProfile } from '@/context/profile-context';
 import { useToast } from '@/hooks/use-toast';
-import { ClipboardCopy, ClipboardCheck, Settings, FileText, List, SlidersHorizontal, CheckSquare } from 'lucide-react';
+import { ClipboardCopy, ClipboardCheck, List, SlidersHorizontal, CheckSquare, ChevronDown, Search, X } from 'lucide-react';
 import { Input } from './ui/input';
 import { ScrollArea } from './ui/scroll-area';
 import { Separator } from './ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { formatUnit } from '@/lib/formatters';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { cn } from '@/lib/utils';
 
 interface ListGeneratorToolProps {
   allProperties: Property[];
@@ -59,7 +60,11 @@ export function ListGeneratorTool({ allProperties }: ListGeneratorToolProps) {
     'serial_no', 'area', 'address', 'size', 'demand', 'property_type',
     'status', 'road_size_ft', 'storey', 'utilities', 'documents'
   ]);
-  const [areaFilter, setAreaFilter] = useState('');
+  
+  // Area Filter State
+  const [areaFilters, setAreaFilters] = useState<string[]>([]);
+  const [areaSearch, setAreaSearch] = useState('');
+  
   const [propertyTypeFilter, setPropertyTypeFilter] = useState<PropertyType | 'All' | 'Other'>('All');
   const [otherPropertyTypeFilter, setOtherPropertyTypeFilter] = useState('');
   const [minSizeFilter, setMinSizeFilter] = useState('');
@@ -73,6 +78,17 @@ export function ListGeneratorTool({ allProperties }: ListGeneratorToolProps) {
   const [selectedProperties, setSelectedProperties] = useState<string[]>([]);
   const [generatedList, setGeneratedList] = useState('');
   const [copied, setCopied] = useState(false);
+
+  // Get unique areas from all properties for the dropdown
+  const uniqueAreas = useMemo(() => {
+    return Array.from(new Set(allProperties.map(p => p.area)))
+      .filter(Boolean)
+      .sort();
+  }, [allProperties]);
+
+  const filteredAreas = useMemo(() => {
+    return uniqueAreas.filter(a => a.toLowerCase().includes(areaSearch.toLowerCase()));
+  }, [uniqueAreas, areaSearch]);
 
   const handleFieldChange = (field: SelectableField) => {
     setSelectedFields((prev) =>
@@ -91,7 +107,8 @@ export function ListGeneratorTool({ allProperties }: ListGeneratorToolProps) {
     const filtered = allProperties.filter(p => {
         const demandBase = formatUnit(p.demand_amount, p.demand_unit);
 
-        const areaMatch = !areaFilter || p.area.toLowerCase().includes(areaFilter.toLowerCase());
+        // Updated Area Match logic for array
+        const areaMatch = areaFilters.length === 0 || areaFilters.includes(p.area);
         
         let typeMatch = true;
         if (propertyTypeFilter !== 'All') {
@@ -113,6 +130,10 @@ export function ListGeneratorTool({ allProperties }: ListGeneratorToolProps) {
     setFilteredProperties(filtered);
     setSelectedProperties([]); // Reset selection
     setGeneratedList('');
+    
+    if (filtered.length === 0) {
+        toast({ title: "No properties found", description: "Try adjusting your filters.", variant: "destructive" });
+    }
   }
 
   const handlePropertySelection = (propertyId: string) => {
@@ -205,6 +226,12 @@ export function ListGeneratorTool({ allProperties }: ListGeneratorToolProps) {
     }
   };
 
+  const toggleArea = (area: string) => {
+    setAreaFilters(prev => 
+      prev.includes(area) ? prev.filter(a => a !== area) : [...prev, area]
+    );
+  };
+
   return (
     <Card className="shadow-lg">
       <CardHeader>
@@ -222,21 +249,73 @@ export function ListGeneratorTool({ allProperties }: ListGeneratorToolProps) {
             <div className="space-y-4">
                 <h3 className="font-semibold flex items-center gap-2"><SlidersHorizontal className="h-5 w-5" />Step 1: Filters & Options</h3>
                 <div className="p-4 border rounded-lg space-y-4 bg-muted/30 h-full">
-                    <form onSubmit={handleFilterProperties} className="space-y-4">
+                    <div className="space-y-4">
                          <div>
-                            <Label htmlFor="area-filter">Filter by Area</Label>
-                            <Input 
-                                id="area-filter"
-                                value={areaFilter}
-                                onChange={(e) => setAreaFilter(e.target.value)}
-                                placeholder="e.g., DHA, Bahria"
-                                className="mt-1"
-                            />
+                            <Label>Filter by Area</Label>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant="outline" className="w-full justify-between h-10 mt-1 bg-background">
+                                        {areaFilters.length > 0 ? `${areaFilters.length} Areas Selected` : "Select Areas"}
+                                        <ChevronDown className="h-4 w-4 opacity-50" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="p-0 w-[300px] shadow-2xl bg-background" align="start">
+                                    <div className="p-2 border-b bg-muted/30">
+                                        <div className="relative">
+                                            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                            <Input 
+                                                placeholder="Search area..." 
+                                                className="h-9 pl-8" 
+                                                value={areaSearch} 
+                                                onChange={(e) => setAreaSearch(e.target.value)} 
+                                            />
+                                        </div>
+                                    </div>
+                                    <ScrollArea className="max-h-[300px] p-2">
+                                        {filteredAreas.length > 0 ? (
+                                            <div className="space-y-1">
+                                                {filteredAreas.map((areaName) => (
+                                                    <div 
+                                                        key={areaName} 
+                                                        className="flex items-center space-x-2 p-2 hover:bg-accent rounded-md cursor-pointer transition-colors"
+                                                        onClick={() => toggleArea(areaName)}
+                                                    >
+                                                        <Checkbox 
+                                                            id={`area-${areaName}`} 
+                                                            checked={areaFilters.includes(areaName)}
+                                                            onCheckedChange={() => toggleArea(areaName)}
+                                                        />
+                                                        <label 
+                                                            htmlFor={`area-${areaName}`} 
+                                                            className="text-sm flex-1 cursor-pointer truncate font-medium"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        >
+                                                            {areaName}
+                                                        </label>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="py-6 text-center text-sm text-muted-foreground">
+                                                No areas found.
+                                            </div>
+                                        )}
+                                    </ScrollArea>
+                                    {areaFilters.length > 0 && (
+                                        <div className="p-2 border-t bg-muted/10 flex justify-between items-center">
+                                            <span className="text-[10px] font-bold uppercase text-muted-foreground">{areaFilters.length} Selected</span>
+                                            <Button variant="ghost" size="sm" className="h-7 text-[10px] uppercase font-bold" onClick={() => setAreaFilters([])}>
+                                                Clear All
+                                            </Button>
+                                        </div>
+                                    )}
+                                </PopoverContent>
+                            </Popover>
                         </div>
                         <div>
                            <Label>Property Type</Label>
                            <Select value={propertyTypeFilter} onValueChange={(v) => setPropertyTypeFilter(v as any)}>
-                               <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                               <SelectTrigger className="mt-1 bg-background"><SelectValue /></SelectTrigger>
                                <SelectContent>{propertyTypesForFilter.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
                            </Select>
                            {propertyTypeFilter === 'Other' && (
@@ -251,10 +330,10 @@ export function ListGeneratorTool({ allProperties }: ListGeneratorToolProps) {
                         <div>
                             <Label>Size</Label>
                             <div className="flex gap-2 items-center mt-1">
-                                <Input type="number" placeholder="Min" value={minSizeFilter} onChange={e => setMinSizeFilter(e.target.value)} />
-                                <Input type="number" placeholder="Max" value={maxSizeFilter} onChange={e => setMaxSizeFilter(e.target.value)} />
+                                <Input type="number" placeholder="Min" value={minSizeFilter} onChange={e => setMinSizeFilter(e.target.value)} className="bg-background" />
+                                <Input type="number" placeholder="Max" value={maxSizeFilter} onChange={e => setMaxSizeFilter(e.target.value)} className="bg-background" />
                                 <Select value={sizeUnitFilter} onValueChange={v => setSizeUnitFilter(v as any)}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                    <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
                                     <SelectContent>{sizeUnits.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
                                 </Select>
                             </div>
@@ -262,16 +341,16 @@ export function ListGeneratorTool({ allProperties }: ListGeneratorToolProps) {
                          <div>
                             <Label>Demand</Label>
                             <div className="flex gap-2 items-center mt-1">
-                                <Input type="number" placeholder="Min" value={minDemandFilter} onChange={e => setMinDemandFilter(e.target.value)} />
-                                <Input type="number" placeholder="Max" value={maxDemandFilter} onChange={e => setMaxDemandFilter(e.target.value)} />
+                                <Input type="number" placeholder="Min" value={minDemandFilter} onChange={e => setMinDemandFilter(e.target.value)} className="bg-background" />
+                                <Input type="number" placeholder="Max" value={maxDemandFilter} onChange={e => setMaxDemandFilter(e.target.value)} className="bg-background" />
                                 <Select value={demandUnitFilter} onValueChange={v => setDemandUnitFilter(v as any)}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                    <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
                                     <SelectContent>{demandUnits.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
                                 </Select>
                             </div>
                         </div>
-                        <Button type="submit" className="w-full">Filter Properties</Button>
-                    </form>
+                        <Button onClick={() => handleFilterProperties()} className="w-full">Filter Properties</Button>
+                    </div>
                     <Separator />
                     <div>
                         <Label>Fields to Include</Label>
@@ -283,7 +362,7 @@ export function ListGeneratorTool({ allProperties }: ListGeneratorToolProps) {
                                 checked={selectedFields.includes(field)}
                                 onCheckedChange={() => handleFieldChange(field)}
                             />
-                            <Label htmlFor={`field-${field}`} className="text-sm font-normal">
+                            <Label htmlFor={`field-${field}`} className="text-sm font-normal cursor-pointer">
                                 {fieldLabels[field]}
                             </Label>
                             </div>
@@ -296,33 +375,38 @@ export function ListGeneratorTool({ allProperties }: ListGeneratorToolProps) {
             {/* Column 2: Select Properties */}
             <div className="space-y-4">
                 <h3 className="font-semibold flex items-center gap-2"><CheckSquare className="h-5 w-5" />Step 2: Select Properties</h3>
-                <ScrollArea className="h-80 border rounded-lg p-4 bg-muted/30">
+                <ScrollArea className="h-[500px] border rounded-lg p-4 bg-muted/30">
                     {filteredProperties.length > 0 ? (
                         <div className="space-y-2">
-                            <div className="flex items-center space-x-2 pb-2 border-b">
+                            <div className="flex items-center space-x-2 pb-2 border-b sticky top-0 bg-muted/10 backdrop-blur-sm z-10">
                                 <Checkbox
                                     id="select-all"
                                     onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
                                     checked={selectedProperties.length === filteredProperties.length && filteredProperties.length > 0}
                                 />
-                                <Label htmlFor="select-all" className="font-semibold">Select All</Label>
+                                <Label htmlFor="select-all" className="font-semibold cursor-pointer">Select All ({filteredProperties.length})</Label>
                             </div>
                             {filteredProperties.map(prop => (
-                                <div key={prop.id} className="flex items-center space-x-2">
+                                <div key={prop.id} className="flex items-center space-x-2 p-1 hover:bg-background/50 rounded transition-colors">
                                     <Checkbox 
                                         id={prop.id}
                                         checked={selectedProperties.includes(prop.id)}
                                         onCheckedChange={() => handlePropertySelection(prop.id)}
                                     />
-                                    <Label htmlFor={prop.id} className="text-sm font-normal cursor-pointer">
-                                        {prop.auto_title}
+                                    <Label htmlFor={prop.id} className="text-sm font-normal cursor-pointer flex-1 py-1">
+                                        <div className="flex justify-between items-center gap-2">
+                                            <span className="truncate">{prop.auto_title}</span>
+                                            <Badge variant="outline" className="text-[10px] shrink-0 font-mono">{prop.serial_no}</Badge>
+                                        </div>
                                     </Label>
                                 </div>
                             ))}
                         </div>
                     ) : (
-                        <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
-                            {areaFilter || propertyTypeFilter !== 'All' || minSizeFilter || minDemandFilter ? 'No properties found for these filters.' : 'Filter properties to see a list.'}
+                        <div className="flex flex-col items-center justify-center h-full text-center p-8 opacity-40">
+                            <Search className="h-10 w-10 mb-2" />
+                            <p className="text-sm font-medium">No properties found.</p>
+                            <p className="text-xs">Adjust your filters and click "Filter Properties".</p>
                         </div>
                     )}
                 </ScrollArea>
@@ -340,15 +424,15 @@ export function ListGeneratorTool({ allProperties }: ListGeneratorToolProps) {
                     readOnly
                     value={generatedList}
                     placeholder="Your generated property list will appear here..."
-                    className="h-80 text-xs whitespace-pre-wrap bg-muted/30"
+                    className="h-80 text-xs whitespace-pre-wrap bg-muted/30 font-mono"
                 />
                 <div className="flex gap-2">
-                    <Button onClick={generateList} className="w-full">
+                    <Button onClick={generateList} className="w-full h-12 text-base font-bold">
                         Generate List
                     </Button>
-                    <Button onClick={handleCopy} disabled={!generatedList} variant="outline" className="w-full">
-                        {copied ? <ClipboardCheck /> : <ClipboardCopy />}
-                        {copied ? 'Copied!' : 'Copy List'}
+                    <Button onClick={handleCopy} disabled={!generatedList} variant="outline" className="w-full h-12 text-base font-bold">
+                        {copied ? <ClipboardCheck className="text-emerald-500" /> : <ClipboardCopy />}
+                        {copied ? 'Copied to Clipboard!' : 'Copy to Clipboard'}
                     </Button>
                 </div>
             </div>
