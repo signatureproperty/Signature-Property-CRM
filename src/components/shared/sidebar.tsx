@@ -31,7 +31,8 @@ import {
   Edit,
   Mail,
   ShieldAlert,
-  Palette
+  Palette,
+  BarChart3
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -49,6 +50,7 @@ const allMenuItems = [
   { href: '/properties', label: 'Properties', icon: <Building2 />, roles: ['Admin', 'Agent'] },
   { href: '/buyers', label: 'Buyers', icon: <Users />, roles: ['Admin', 'Agent'] },
   { href: '/team', label: 'Team', icon: <UserCog />, roles: ['Admin'] },
+  { href: '/analytics', label: 'Analytics', icon: <BarChart3 />, roles: ['Admin'] },
   { href: '/appointments', label: 'Appointments', icon: <Calendar />, roles: ['Admin', 'Agent']},
   { href: '/tools', label: 'Tools', icon: <Rocket />, roles: ['Admin', 'Agent'] },
   { href: '/reports', label: 'Reports', icon: <ClipboardList />, roles: ['Admin'] },
