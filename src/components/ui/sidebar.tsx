@@ -187,7 +187,7 @@ const Sidebar = React.forwardRef<
             data-mobile="true"
             data-state="expanded"
             data-collapsible={collapsible}
-            className="w-[--sidebar-width] glass-card p-0 text-foreground [&>button]:hidden rounded-r-[2rem] overflow-hidden"
+            className="w-[--sidebar-width] glass-card p-0 text-foreground [&>button]:hidden rounded-r-[2rem] overflow-hidden border-none shadow-2xl"
             style={
               {
                 "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
@@ -204,7 +204,8 @@ const Sidebar = React.forwardRef<
     return (
         <aside
         ref={ref}
-        className={cn("group hidden h-screen transition-all duration-300 ease-in-out md:flex flex-col", 
+        className={cn(
+            "group hidden h-screen transition-[width] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] md:flex flex-col will-change-[width] border-r dark:border-white/10", 
             state === 'expanded' ? 'w-[--sidebar-width]' : 'w-[--sidebar-width-icon]',
             className
         )}
@@ -233,14 +234,14 @@ const SidebarTrigger = React.forwardRef<
       data-sidebar="trigger"
       variant="ghost"
       size="icon"
-      className={cn("h-7 w-7", className)}
+      className={cn("h-7 w-7 transition-transform active:scale-90", className)}
       onClick={(event) => {
         onClick?.(event)
         toggleSidebar()
       }}
       {...props}
     >
-      <Menu />
+      <Menu className="h-5 w-5" />
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   )
@@ -341,7 +342,7 @@ const SidebarMenuItem = React.forwardRef<
 SidebarMenuItem.displayName = "SidebarMenuItem"
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center gap-3 overflow-hidden rounded-lg px-3 py-1.5 text-left text-sm font-medium outline-none ring-primary/50 transition-all duration-200 ease-in-out hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 active:bg-accent/80 disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-primary data-[active=true]:text-primary-foreground data-[active=true]:shadow-md data-[active=true]:shadow-primary/30 group-data-[state=collapsed]:justify-center group-data-[state=collapsed]:h-10 group-data-[state=collapsed]:w-10 group-data-[state=collapsed]:p-0 [&>svg]:size-5 [&>svg]:shrink-0",
+  "peer/menu-button flex w-full items-center gap-3 overflow-hidden rounded-lg px-3 py-2 text-left text-sm font-medium outline-none ring-primary/50 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 active:bg-accent/80 disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-primary data-[active=true]:text-primary-foreground data-[active=true]:shadow-md data-[active=true]:shadow-primary/30 group-data-[state=collapsed]:justify-center group-data-[state=collapsed]:h-10 group-data-[state=collapsed]:w-10 group-data-[state=collapsed]:p-0 [&>svg]:size-5 [&>svg]:shrink-0 will-change-transform",
   {
     variants: {
       size: {
