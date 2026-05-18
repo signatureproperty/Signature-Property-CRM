@@ -15,7 +15,7 @@ import { useFirestore } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useMemoFirebase } from '@/firebase/hooks';
 import { collection, query, where, addDoc, doc, setDoc, deleteDoc, orderBy, limit, or } from 'firebase/firestore';
-import type { Property, Buyer, Appointment, AppointmentContactType, Activity, User as TeamMember } from '@/lib/types';
+import type { Property, Buyer, Appointment, AppointmentContactType, Activity, User as UserType } from '@/lib/types';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { subDays, parseISO, format, formatDistanceToNow } from 'date-fns';
