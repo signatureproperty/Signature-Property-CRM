@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import {
   Table,
   TableBody,
@@ -44,14 +45,9 @@ import {
   DropdownMenuPortal,
   DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu';
-import { AddPropertyDialog } from '@/components/add-property-dialog';
 import { Input } from '@/components/ui/input';
 import type { Property, PropertyType, SizeUnit, PriceUnit, ListingType, User, Activity, Tag, Appointment } from '@/lib/types';
 import { useState, useMemo, useEffect, Suspense } from 'react';
-import { PropertyDetailsDialog } from '@/components/property-details-dialog';
-import { MarkAsSoldDialog } from '@/components/mark-as-sold-dialog';
-import { MarkAsRentOutDialog } from '@/components/mark-as-rent-out-dialog';
-import { RecordVideoDialog } from '@/components/record-video-dialog';
 import { Card, CardHeader, CardTitle, CardFooter, CardContent } from '@/components/ui/card';
 import {
   Popover,
@@ -83,12 +79,18 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Checkbox } from '@/components/ui/checkbox';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { ManageTagsDialog } from '@/components/manage-tags-dialog';
-import { EditPropertyTagsDialog } from '@/components/edit-property-tags-dialog';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { SetAppointmentDialog } from '@/components/set-appointment-dialog';
-import { SharePropertyDialog } from '@/components/share-property-dialog';
-import { PropertyNotesDialog } from '@/components/property-notes-dialog';
+
+// --- Lazy Loaded Dialogs ---
+const AddPropertyDialog = dynamic(() => import('@/components/add-property-dialog').then(mod => mod.AddPropertyDialog), { ssr: false });
+const ManageTagsDialog = dynamic(() => import('@/components/manage-tags-dialog').then(mod => mod.ManageTagsDialog), { ssr: false });
+const PropertyDetailsDialog = dynamic(() => import('@/components/property-details-dialog').then(mod => mod.PropertyDetailsDialog), { ssr: false });
+const EditPropertyTagsDialog = dynamic(() => import('@/components/edit-property-tags-dialog').then(mod => mod.EditPropertyTagsDialog), { ssr: false });
+const MarkAsSoldDialog = dynamic(() => import('@/components/mark-as-sold-dialog').then(mod => mod.MarkAsSoldDialog), { ssr: false });
+const MarkAsRentOutDialog = dynamic(() => import('@/components/mark-as-rent-out-dialog').then(mod => mod.MarkAsRentOutDialog), { ssr: false });
+const SharePropertyDialog = dynamic(() => import('@/components/share-property-dialog').then(mod => mod.SharePropertyDialog), { ssr: false });
+const PropertyNotesDialog = dynamic(() => import('@/components/property-notes-dialog').then(mod => mod.PropertyNotesDialog), { ssr: false });
+const SetAppointmentDialog = dynamic(() => import('@/components/set-appointment-dialog').then(mod => mod.SetAppointmentDialog), { ssr: false });
 
 const ITEMS_PER_PAGE = 50;
 
@@ -150,7 +152,7 @@ function PropertiesPageContent() {
   const { data: allProperties, isLoading: isAgencyLoading } = useCollection<Property>(agencyPropertiesQuery);
 
   const teamMembersQuery = useMemoFirebase(() => profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'teamMembers') : null, [profile.agency_id, firestore]);
-  const { data: teamMembers } = useCollection<User>(teamMembersQuery);
+  const { data: teamMembers } = useCollection<any>(teamMembersQuery);
 
   const tagsQuery = useMemoFirebase(() => 
     profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'tags') : null,
@@ -162,7 +164,6 @@ function PropertiesPageContent() {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isSoldOpen, setIsSoldOpen] = useState(false);
   const [isRentOutOpen, setIsRentOutOpen] = useState(false);
-  const [isRecordVideoOpen, setIsRecordVideoOpen] = useState(false);
   const [isAddPropertyOpen, setIsAddPropertyOpen] = useState(false);
   const [isManageTagsOpen, setIsManageTagsOpen] = useState(false);
   const [isEditTagsOpen, setIsEditTagsOpen] = useState(false);
@@ -220,7 +221,8 @@ function PropertiesPageContent() {
   }, [allProperties, agencyTags]);
 
   const assignableMembers = useMemo(() => {
-    return teamMembers?.filter(m => m.status === 'Active' && (m.role === 'Agent' || m.role === 'Admin')) || [];
+    if (!teamMembers) return [];
+    return teamMembers.filter((m: any) => m.status === 'Active' && (m.role === 'Agent' || m.role === 'Admin'));
   }, [teamMembers]);
 
   const handleFilterChange = (key: keyof Filters, value: any) => {
@@ -442,7 +444,7 @@ function PropertiesPageContent() {
   const handleBulkAssign = async (agentDocId: string) => {
     if (selectedProperties.length === 0 || !agentDocId || !profile.agency_id) return;
     
-    const agent = assignableMembers.find(a => a.id === agentDocId);
+    const agent = assignableMembers.find((a: any) => a.id === agentDocId);
     if(!agent) return;
 
     const actualAgentUid = agent.user_id || agent.id;
@@ -577,7 +579,7 @@ function PropertiesPageContent() {
                                 <DropdownMenuSubTrigger><UserPlus className="mr-2 h-4 w-4" /> Assign to...</DropdownMenuSubTrigger>
                                 <DropdownMenuPortal>
                                     <DropdownMenuSubContent className="bg-background">
-                                        {assignableMembers.map(member => {
+                                        {assignableMembers.map((member: any) => {
                                             const isAssigned = Array.isArray(prop.assignedTo) 
                                                 ? prop.assignedTo.includes(member.user_id || member.id)
                                                 : prop.assignedTo === (member.user_id || member.id);
@@ -695,7 +697,7 @@ function PropertiesPageContent() {
                                 <DropdownMenuSubTrigger><UserPlus className="mr-2 h-4 w-4" /> Assign to...</DropdownMenuSubTrigger>
                                 <DropdownMenuPortal>
                                     <DropdownMenuSubContent className="bg-background">
-                                        {assignableMembers.map(member => {
+                                        {assignableMembers.map((member: any) => {
                                             const isAssigned = Array.isArray(prop.assignedTo) 
                                                 ? prop.assignedTo.includes(member.user_id || member.id)
                                                 : prop.assignedTo === (member.user_id || member.id);
@@ -741,7 +743,7 @@ function PropertiesPageContent() {
                 <div className="flex items-center gap-2">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild><Button variant="outline" className="rounded-full"><UserPlus className="mr-2 h-4 w-4" /> Assign</Button></DropdownMenuTrigger>
-                    <DropdownMenuContent className="bg-background">{assignableMembers.map((member) => <DropdownMenuItem key={member.id} onSelect={() => handleBulkAssign(member.id) as any}>{member.name}</DropdownMenuItem>)}</DropdownMenuContent>
+                    <DropdownMenuContent className="bg-background">{assignableMembers.map((member: any) => <DropdownMenuItem key={member.id} onSelect={() => handleBulkAssign(member.id) as any}>{member.name}</DropdownMenuItem>)}</DropdownMenuContent>
                   </DropdownMenu>
                   <Button variant="destructive" className="rounded-full" onClick={handleBulkDelete}><Trash2 className="mr-2 h-4 w-4" /> Delete ({selectedProperties.length})</Button>
                 </div>
@@ -973,20 +975,24 @@ function PropertiesPageContent() {
         </div>
       </TooltipProvider>
 
-      <AddPropertyDialog isOpen={isAddPropertyOpen} setIsOpen={setIsAddPropertyOpen} propertyToEdit={propertyToEdit} allProperties={allProperties || []} onSave={handleSaveProperty} listingType={activeListingType === 'For Rent' ? 'For Rent' : 'For Sale'} limitReached={false} />
+      {isAddPropertyOpen && (
+        <AddPropertyDialog isOpen={isAddPropertyOpen} setIsOpen={setIsAddPropertyOpen} propertyToEdit={propertyToEdit} allProperties={allProperties || []} onSave={handleSaveProperty} listingType={activeListingType === 'For Rent' ? 'For Rent' : 'For Sale'} limitReached={false} />
+      )}
       
-      <ManageTagsDialog isOpen={isManageTagsOpen} setIsOpen={setIsManageTagsOpen} />
+      {isManageTagsOpen && (
+        <ManageTagsDialog isOpen={isManageTagsOpen} setIsOpen={setIsManageTagsOpen} />
+      )}
       
       {propertyForDetails && (
         <>
-          <PropertyDetailsDialog property={propertyForDetails} isOpen={isDetailsOpen} setIsOpen={setIsDetailsOpen} />
-          <EditPropertyTagsDialog property={propertyForDetails} isOpen={isEditTagsOpen} setIsOpen={setIsEditTagsOpen} />
-          <MarkAsSoldDialog property={propertyForDetails} isOpen={isSoldOpen} setIsOpen={setIsSoldOpen} onUpdateProperty={() => {}} />
-          <MarkAsRentOutDialog property={propertyForDetails} isOpen={isRentOutOpen} setIsOpen={setIsRentOutOpen} onUpdateProperty={() => {}} />
-          <RecordVideoDialog property={propertyForDetails} isOpen={isRecordVideoOpen} setIsOpen={setIsRecordVideoOpen} onUpdateProperty={() => {}} />
-          <SharePropertyDialog property={propertyForDetails} isOpen={isShareOpen} setIsOpen={setIsShareOpen} />
-          <PropertyNotesDialog property={propertyForDetails} isOpen={isNotesOpen} setIsOpen={setIsNotesOpen} />
-          <SetAppointmentDialog 
+          {isDetailsOpen && <PropertyDetailsDialog property={propertyForDetails} isOpen={isDetailsOpen} setIsOpen={setIsDetailsOpen} />}
+          {isEditTagsOpen && <EditPropertyTagsDialog property={propertyForDetails} isOpen={isEditTagsOpen} setIsOpen={setIsEditTagsOpen} />}
+          {isSoldOpen && <MarkAsSoldDialog property={propertyForDetails} isOpen={isSoldOpen} setIsOpen={setIsSoldOpen} onUpdateProperty={() => {}} />}
+          {isRentOutOpen && <MarkAsRentOutDialog property={propertyForDetails} isOpen={isRentOutOpen} setIsOpen={setIsRentOutOpen} onUpdateProperty={() => {}} />}
+          {isShareOpen && <SharePropertyDialog property={propertyForDetails} isOpen={isShareOpen} setIsOpen={setIsShareOpen} />}
+          {isNotesOpen && <PropertyNotesDialog property={propertyForDetails} isOpen={isNotesOpen} setIsOpen={setIsNotesOpen} />}
+          {isAppointmentOpen && (
+            <SetAppointmentDialog 
               isOpen={isAppointmentOpen}
               setIsOpen={setIsAppointmentOpen}
               onSave={handleSaveAppointment}
@@ -996,7 +1002,8 @@ function PropertiesPageContent() {
                   contactSerialNo: propertyForDetails.serial_no,
                   message: `Discussing ${propertyForDetails.listing_type} terms for ${propertyForDetails.serial_no}.`
               }}
-          />
+            />
+          )}
         </>
       )}
     </>

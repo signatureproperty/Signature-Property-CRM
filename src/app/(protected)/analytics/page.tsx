@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
@@ -21,10 +22,6 @@ import {
     Clock,
     Zap
 } from 'lucide-react';
-import { 
-    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-    BarChart, Bar, Cell
-} from 'recharts';
 import { useProfile } from '@/context/profile-context';
 import { useFirestore } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -41,6 +38,19 @@ import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogTitle, DialogFooter, DialogHeader, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+
+// --- Lazy Loaded Chart Components (to improve TTI and split bundle) ---
+const ResponsiveContainer = dynamic(() => import('recharts').then(mod => mod.ResponsiveContainer), { ssr: false });
+const AreaChart = dynamic(() => import('recharts').then(mod => mod.AreaChart), { ssr: false });
+const Area = dynamic(() => import('recharts').then(mod => mod.Area), { ssr: false });
+const XAxis = dynamic(() => import('recharts').then(mod => mod.XAxis), { ssr: false });
+const YAxis = dynamic(() => import('recharts').then(mod => mod.YAxis), { ssr: false });
+const CartesianGrid = dynamic(() => import('recharts').then(mod => mod.CartesianGrid), { ssr: false });
+const Tooltip = dynamic(() => import('recharts').then(mod => mod.Tooltip), { ssr: false });
+const BarChart = dynamic(() => import('recharts').then(mod => mod.BarChart), { ssr: false });
+const Bar = dynamic(() => import('recharts').then(mod => mod.Bar), { ssr: false });
+const Cell = dynamic(() => import('recharts').then(mod => mod.Cell), { ssr: false });
 
 const COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
@@ -67,7 +77,7 @@ export default function AnalyticsPage() {
     const { data: appointments } = useCollection<Appointment>(apptsQuery);
 
     const activityQuery = useMemoFirebase(() => profile.agency_id ? query(collection(firestore, 'agencies', profile.agency_id, 'activityLogs'), orderBy('timestamp', 'desc')) : null, [profile.agency_id, firestore]);
-    const { data: activities } = useCollection<Activity>(activityQuery);
+    const { data: activities } = useCollection<any>(activityQuery);
 
     // --- Helpers ---
     const filteredByTime = (dateStr?: string) => {
@@ -133,7 +143,7 @@ export default function AnalyticsPage() {
         
         return days.map(d => {
             const dayStr = format(d, 'EEE');
-            const count = activities.filter(act => {
+            const count = activities.filter((act: Activity) => {
                 const date = parseISO(act.timestamp);
                 return date.toDateString() === d.toDateString();
             }).length;
@@ -179,13 +189,13 @@ export default function AnalyticsPage() {
                 return acc;
             }, 0);
 
-            const assignedLastMonthCount = activities.filter(act => 
+            const assignedLastMonthCount = activities.filter((act: Activity) => 
                 act.assignedToId === uid && 
                 act.action.includes('assigned') && 
                 isAfter(parseISO(act.timestamp), lastMonth)
             ).length;
 
-            const statusChangesLastMonth = activities.filter(act => 
+            const statusChangesLastMonth = activities.filter((act: Activity) => 
                 act.userName === member.name && 
                 act.action.includes('updated') && 
                 isAfter(parseISO(act.timestamp), lastMonth)
@@ -224,7 +234,7 @@ export default function AnalyticsPage() {
     }, [teamMembers, properties, buyers, activities]);
 
     if (!properties || !buyers) {
-        return <div className="flex h-screen items-center justify-center">Loading Data Analytics...</div>;
+        return <div className="flex h-screen items-center justify-center"><Skeleton className="h-20 w-64 rounded-xl" /></div>;
     }
 
     return (
@@ -397,8 +407,8 @@ export default function AnalyticsPage() {
                                     </BarChart>
                                 </ResponsiveContainer>
                             </CardContent>
-                        </Card>
-                    </div>
+                        </div>
+                    </Card>
                 </TabsContent>
 
                 {/* --- Team Performance Tab --- */}

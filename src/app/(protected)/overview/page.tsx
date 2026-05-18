@@ -1,9 +1,10 @@
 'use client';
 import React, { useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { 
     Building2, Users, DollarSign, Home, TrendingUp, Star, CalendarDays, 
-    CheckCircle, Briefcase, Video, PlayCircle, Gem, ArrowRight, 
+    CheckCircle, Video, PlayCircle, Gem, ArrowRight, 
     VideoOff, Circle, Clock, History, FilePlus, UserPlus, Edit, ArrowUpRight,
     Plus, MessageSquareText, Calendar, MapPin, User, MessageSquare, Eye
 } from 'lucide-react';
@@ -13,7 +14,7 @@ import { useFirestore } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useMemoFirebase } from '@/firebase/hooks';
 import { collection, query, where, addDoc, doc, setDoc, deleteDoc, orderBy, limit, or } from 'firebase/firestore';
-import type { Property, Buyer, Appointment, AppointmentContactType, AppointmentStatus, Activity, LeadNote, User as TeamMember } from '@/lib/types';
+import type { Property, Buyer, Appointment, AppointmentContactType, Activity, TeamMember } from '@/lib/types';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { subDays, parseISO, format, formatDistanceToNow } from 'date-fns';
@@ -22,20 +23,31 @@ import { formatCurrency } from '@/lib/formatters';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { UpcomingEvents } from '@/components/upcoming-events';
-import { SetAppointmentDialog } from '@/components/set-appointment-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { AddEventDialog } from '@/components/add-event-dialog';
-import { AllEventsDialog } from '@/components/all-events-dialog';
-import { PerformanceChart } from '@/components/performance-chart';
-import { LeadsChart } from '@/components/leads-chart';
-import { SalesBreakdownChart } from '@/components/sales-breakdown-chart';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { BuyerNotesDialog } from '@/components/buyer-notes-dialog';
-import { PropertyNotesDialog } from '@/components/property-notes-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import { BuyerDetailsDialog } from '@/components/buyer-details-dialog';
-import { PropertyDetailsDialog } from '@/components/property-details-dialog';
+
+// --- Lazy Loaded Components ---
+const SetAppointmentDialog = dynamic(() => import('@/components/set-appointment-dialog').then(mod => mod.SetAppointmentDialog), { ssr: false });
+const AddEventDialog = dynamic(() => import('@/components/add-event-dialog').then(mod => mod.AddEventDialog), { ssr: false });
+const AllEventsDialog = dynamic(() => import('@/components/all-events-dialog').then(mod => mod.AllEventsDialog), { ssr: false });
+const PerformanceChart = dynamic(() => import('@/components/performance-chart').then(mod => mod.PerformanceChart), { 
+    ssr: false, 
+    loading: () => <Skeleton className="h-[400px] w-full rounded-2xl" /> 
+});
+const LeadsChart = dynamic(() => import('@/components/leads-chart').then(mod => mod.LeadsChart), { 
+    ssr: false,
+    loading: () => <Skeleton className="h-[400px] w-full rounded-2xl" />
+});
+const SalesBreakdownChart = dynamic(() => import('@/components/sales-breakdown-chart').then(mod => mod.SalesBreakdownChart), { 
+    ssr: false,
+    loading: () => <Skeleton className="h-[400px] w-full rounded-2xl" />
+});
+const BuyerNotesDialog = dynamic(() => import('@/components/buyer-notes-dialog').then(mod => mod.BuyerNotesDialog), { ssr: false });
+const PropertyNotesDialog = dynamic(() => import('@/components/property-notes-dialog').then(mod => mod.PropertyNotesDialog), { ssr: false });
+const BuyerDetailsDialog = dynamic(() => import('@/components/buyer-details-dialog').then(mod => mod.BuyerDetailsDialog), { ssr: false });
+const PropertyDetailsDialog = dynamic(() => import('@/components/property-details-dialog').then(mod => mod.PropertyDetailsDialog), { ssr: false });
 
 interface StatCardProps {
     title: string;
@@ -133,7 +145,7 @@ export default function OverviewPage() {
 
     // --- Data Fetching ---
     const teamMembersQuery = useMemoFirebase(() => canFetch ? collection(firestore, 'agencies', profile.agency_id, 'teamMembers') : null, [canFetch, firestore, profile.agency_id]);
-    const { data: teamMembers } = useCollection<TeamMember>(teamMembersQuery);
+    const { data: teamMembers } = useCollection<any>(teamMembersQuery);
 
     const propertiesQuery = useMemoFirebase(() => {
         if (!canFetch) return null;
@@ -181,7 +193,7 @@ export default function OverviewPage() {
             limit(5)
         );
     }, [canFetch, firestore, profile.agency_id]);
-    const { data: activities, isLoading: isActivitiesLoading } = useCollection<Activity>(activitiesQuery);
+    const { data: activities, isLoading: isActivitiesLoading } = useCollection<any>(activitiesQuery);
 
     const isLoading = isProfileLoading || isPropertiesLoading || isBuyersLoading || isAppointmentsLoading;
 
@@ -446,45 +458,46 @@ export default function OverviewPage() {
                 </Card>
             )}
 
-            <SetAppointmentDialog 
-                isOpen={isAppointmentOpen} 
-                setIsOpen={setIsAppointmentOpen} 
-                onSave={async (a) => {
-                    if (!profile.agency_id) return;
-                    
-                    // Save appointment
-                    await addDoc(collection(firestore, 'agencies', profile.agency_id, 'appointments'), { ...a, agency_id: profile.agency_id, status: 'Scheduled' });
-                    
-                    // Logic for notification if assigned to another agent
-                    const assignedAgent = teamMembers?.find(m => m.name === a.agentName);
-                    if (assignedAgent && (assignedAgent.user_id || assignedAgent.id) !== profile.user_id) {
-                        await addDoc(collection(firestore, 'agencies', profile.agency_id, 'activityLogs'), {
-                            userName: profile.name,
-                            action: 'assigned an appointment',
-                            target: a.contactName,
-                            targetType: 'Appointment',
-                            timestamp: new Date().toISOString(),
-                            agency_id: profile.agency_id,
-                            assignedToId: assignedAgent.user_id || assignedAgent.id,
-                            assignedToName: assignedAgent.name
-                        });
-                    }
-                    
-                    toast({ title: 'Appointment Scheduled' });
-                }} 
-                appointmentDetails={appointmentDetails ?? undefined} 
-            />
+            {isAppointmentOpen && (
+                <SetAppointmentDialog 
+                    isOpen={isAppointmentOpen} 
+                    setIsOpen={setIsAppointmentOpen} 
+                    onSave={async (a) => {
+                        if (!profile.agency_id) return;
+                        await addDoc(collection(firestore, 'agencies', profile.agency_id, 'appointments'), { ...a, agency_id: profile.agency_id, status: 'Scheduled' });
+                        const assignedAgent = teamMembers?.find(m => m.name === a.agentName);
+                        if (assignedAgent && (assignedAgent.user_id || assignedAgent.id) !== profile.user_id) {
+                            await addDoc(collection(firestore, 'agencies', profile.agency_id, 'activityLogs'), {
+                                userName: profile.name,
+                                action: 'assigned an appointment',
+                                target: a.contactName,
+                                targetType: 'Appointment',
+                                timestamp: new Date().toISOString(),
+                                agency_id: profile.agency_id,
+                                assignedToId: assignedAgent.user_id || assignedAgent.id,
+                                assignedToName: assignedAgent.name
+                            });
+                        }
+                        toast({ title: 'Appointment Scheduled' });
+                    }} 
+                    appointmentDetails={appointmentDetails ?? undefined} 
+                />
+            )}
             
-            <AddEventDialog isOpen={isEventOpen} setIsOpen={setIsEventOpen} onSave={async (e) => {
-                if (!profile.agency_id) return;
-                await addDoc(collection(firestore, 'agencies', profile.agency_id, 'appointments'), { 
-                    contactName: e.title, contactType: 'Owner', message: e.description || 'Custom Event',
-                    agentName: profile.name, date: e.date, time: e.time, status: 'Scheduled', agency_id: profile.agency_id
-                });
-                toast({ title: 'Event Created' });
-            }} />
+            {isEventOpen && (
+                <AddEventDialog isOpen={isEventOpen} setIsOpen={setIsEventOpen} onSave={async (e) => {
+                    if (!profile.agency_id) return;
+                    await addDoc(collection(firestore, 'agencies', profile.agency_id, 'appointments'), { 
+                        contactName: e.title, contactType: 'Owner', message: e.description || 'Custom Event',
+                        agentName: profile.name, date: e.date, time: e.time, status: 'Scheduled', agency_id: profile.agency_id
+                    });
+                    toast({ title: 'Event Created' });
+                }} />
+            )}
 
-            <AllEventsDialog isOpen={isAllEventsOpen} setIsOpen={setIsAllEventsOpen} appointments={allAppointments || []} />
+            {isAllEventsOpen && (
+                <AllEventsDialog isOpen={isAllEventsOpen} setIsOpen={setIsAllEventsOpen} appointments={allAppointments || []} />
+            )}
 
             {selectedApptForDetails && (
                 <Dialog open={!!selectedApptForDetails} onOpenChange={() => setSelectedApptForDetails(null)}>

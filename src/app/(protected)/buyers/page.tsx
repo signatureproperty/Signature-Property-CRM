@@ -1,6 +1,6 @@
 'use client';
 
-import { AddBuyerDialog } from '@/components/add-buyer-dialog';
+import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { 
     DropdownMenu, 
@@ -23,9 +23,8 @@ import { Buyer, PriceUnit, SizeUnit, PropertyType, User, Activity, ListingType, 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { usePathname, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useSearch } from '@/context/layout-context';
-import { BuyerDetailsDialog } from '@/components/buyer-details-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency, formatUnit, formatPhoneNumberForWhatsApp } from '@/lib/formatters';
 import { useCurrency } from '@/context/currency-context';
@@ -34,18 +33,22 @@ import { useFirestore } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, addDoc, setDoc, doc, updateDoc, writeBatch, query, where, or } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/hooks';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alertDialog';
 import { cn } from '@/lib/utils';
 import React from 'react';
 import { useUser } from '@/firebase/auth/use-user';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { ManageTagsDialog } from '@/components/manage-tags-dialog';
-import { EditBuyerTagsDialog } from '@/components/edit-buyer-tags-dialog';
-import { SetAppointmentDialog } from '@/components/set-appointment-dialog';
-import { PropertyRecommenderDialog } from '@/components/property-recommender-dialog';
-import { BuyerNotesDialog } from '@/components/buyer-notes-dialog';
 import { motion, AnimatePresence } from 'framer-motion';
+
+// --- Lazy Loaded Components ---
+const AddBuyerDialog = dynamic(() => import('@/components/add-buyer-dialog').then(mod => mod.AddBuyerDialog), { ssr: false });
+const ManageTagsDialog = dynamic(() => import('@/components/manage-tags-dialog').then(mod => mod.ManageTagsDialog), { ssr: false });
+const BuyerDetailsDialog = dynamic(() => import('@/components/buyer-details-dialog').then(mod => mod.BuyerDetailsDialog), { ssr: false });
+const BuyerNotesDialog = dynamic(() => import('@/components/buyer-notes-dialog').then(mod => mod.BuyerNotesDialog), { ssr: false });
+const EditBuyerTagsDialog = dynamic(() => import('@/components/edit-buyer-tags-dialog').then(mod => mod.EditBuyerTagsDialog), { ssr: false });
+const SetAppointmentDialog = dynamic(() => import('@/components/set-appointment-dialog').then(mod => mod.SetAppointmentDialog), { ssr: false });
+const PropertyRecommenderDialog = dynamic(() => import('@/components/property-recommender-dialog').then(mod => mod.PropertyRecommenderDialog), { ssr: false });
 
 const ITEMS_PER_PAGE = 50;
 
@@ -109,7 +112,7 @@ function BuyersPageContent() {
     const { data: allBuyers, isLoading: isAgencyLoading } = useCollection<Buyer>(allAgencyBuyersQuery);
 
     const teamMembersQuery = useMemoFirebase(() => profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'teamMembers') : null, [profile.agency_id, firestore]);
-    const { data: teamMembers } = useCollection<User>(teamMembersQuery);
+    const { data: teamMembers } = useCollection<any>(teamMembersQuery);
 
     const propertiesQuery = useMemoFirebase(() => profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'properties') : null, [profile.agency_id, firestore]);
     const { data: properties } = useCollection<Property>(propertiesQuery);
@@ -177,7 +180,7 @@ function BuyersPageContent() {
     }, [allBuyers, agencyTags]);
 
     const activeAgents = useMemo(() => {
-        return teamMembers?.filter(m => m.status === 'Active' && (m.role === 'Agent' || m.role === 'Admin')) || [];
+        return teamMembers?.filter((m: any) => m.status === 'Active' && (m.role === 'Agent' || m.role === 'Admin')) || [];
     }, [teamMembers]);
 
     const handleFilterChange = (key: keyof Filters, value: any) => {
@@ -228,7 +231,7 @@ function BuyersPageContent() {
         setIsNotesOpen(true);
     };
 
-    const handleManageTags = (buyer: Buyer) => {
+    const handleManageTagsAction = (buyer: Buyer) => {
         setSelectedBuyerForDetails(buyer);
         setIsEditTagsOpen(true);
     };
@@ -296,7 +299,7 @@ function BuyersPageContent() {
     const handleBulkAssign = async (agentDocId: string) => {
         if (selectedBuyers.length === 0 || !agentDocId || !profile.agency_id) return;
         
-        const agent = activeAgents.find(a => a.id === agentDocId);
+        const agent = activeAgents.find((a: any) => a.id === agentDocId);
         if(!agent) return;
 
         const actualAgentUid = agent.user_id || agent.id;
@@ -503,7 +506,7 @@ function BuyersPageContent() {
                                             <DropdownMenuItem onSelect={() => handleDetailsClick(buyer) as any}><Eye className="mr-2 h-4 w-4" /> View Details</DropdownMenuItem>
                                             <DropdownMenuItem onSelect={() => handleNotesClick(buyer) as any}><MessageSquareText className="mr-2 h-4 w-4" /> Remarks Update</DropdownMenuItem>
                                             <DropdownMenuItem onSelect={() => handleRecommendProperties(buyer) as any}><Sparkles className="mr-2 h-4 w-4" /> Recommended Properties</DropdownMenuItem>
-                                            <DropdownMenuItem onSelect={() => handleManageTags(buyer) as any}><TagIcon className="mr-2 h-4 w-4" /> Edit Tags</DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={() => handleManageTagsAction(buyer) as any}><TagIcon className="mr-2 h-4 w-4" /> Edit Tags</DropdownMenuItem>
                                             <DropdownMenuItem onSelect={(e: any) => handleWhatsAppChat(e, buyer) as any}><MessageSquare className="mr-2 h-4 w-4" /> WhatsApp Chat</DropdownMenuItem>
                                             <DropdownMenuItem onSelect={() => handleSetAppointment(buyer) as any}><CalendarPlus className="mr-2 h-4 w-4" /> Set Appointment</DropdownMenuItem>
                                             
@@ -513,7 +516,7 @@ function BuyersPageContent() {
                                                         <DropdownMenuSubTrigger><UserPlus className="mr-2 h-4 w-4" /> Assign Agent</DropdownMenuSubTrigger>
                                                         <DropdownMenuPortal>
                                                             <DropdownMenuSubContent className="bg-background">
-                                                                {activeAgents.map(member => (
+                                                                {activeAgents.map((member: any) => (
                                                                     <DropdownMenuItem key={member.id} onSelect={() => handleAssignAgent(buyer.id, member.user_id || member.id, member.name) as any}>
                                                                         {member.name}
                                                                     </DropdownMenuItem>
@@ -613,7 +616,7 @@ function BuyersPageContent() {
                             <DropdownMenuContent align="end" className="bg-background w-48">
                                 <DropdownMenuItem onSelect={() => handleDetailsClick(buyer) as any}><Eye className="mr-2 h-4 w-4" /> View Details</DropdownMenuItem>
                                 <DropdownMenuItem onSelect={() => handleRecommendProperties(buyer) as any}><Sparkles className="mr-2 h-4 w-4" /> Recommended Properties</DropdownMenuItem>
-                                <DropdownMenuItem onSelect={() => handleManageTags(buyer) as any}><TagIcon className="mr-2 h-4 w-4" /> Edit Tags</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => handleManageTagsAction(buyer) as any}><TagIcon className="mr-2 h-4 w-4" /> Edit Tags</DropdownMenuItem>
                                 <DropdownMenuItem onSelect={(e: any) => handleWhatsAppChat(e as any, buyer) as any}><MessageSquare className="mr-2 h-4 w-4" /> WhatsApp Chat</DropdownMenuItem>
                                 <DropdownMenuItem onSelect={() => handleSetAppointment(buyer) as any}><CalendarPlus className="mr-2 h-4 w-4" /> Set Appointment</DropdownMenuItem>
                                 
@@ -623,7 +626,7 @@ function BuyersPageContent() {
                                             <DropdownMenuSubTrigger><UserPlus className="mr-2 h-4 w-4" /> Assign Agent</DropdownMenuSubTrigger>
                                             <DropdownMenuPortal>
                                                 <DropdownMenuSubContent className="bg-background">
-                                                    {activeAgents.map(member => (
+                                                    {activeAgents.map((member: any) => (
                                                         <DropdownMenuItem key={member.id} onSelect={() => handleAssignAgent(buyer.id, member.user_id || member.id, member.name) as any}>
                                                             {member.name}
                                                         </DropdownMenuItem>
@@ -665,7 +668,7 @@ function BuyersPageContent() {
                             </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="bg-background">
-                            {activeAgents.map((member) => (
+                            {activeAgents.map((member: any) => (
                                 <DropdownMenuItem key={member.id} onSelect={() => handleBulkAssign(member.id) as any}>
                                 {member.name}
                                 </DropdownMenuItem>
@@ -857,31 +860,40 @@ function BuyersPageContent() {
                 </div>
             )}
 
-            <AddBuyerDialog isOpen={isAddBuyerOpen} setIsOpen={setIsAddBuyerOpen} totalSaleBuyers={allBuyers?.filter(b => !b.is_deleted && (b.listing_type || 'For Sale') === 'For Sale').length || 0} totalRentBuyers={allBuyers?.filter(b => !b.is_deleted && b.listing_type === 'For Rent').length || 0} buyerToEdit={buyerToEdit} onSave={handleSaveBuyer} limitReached={false} />
-            <ManageTagsDialog isOpen={isManageTagsOpen} setIsOpen={setIsManageTagsOpen} />
+            {isAddBuyerOpen && (
+                <AddBuyerDialog isOpen={isAddBuyerOpen} setIsOpen={setIsAddBuyerOpen} totalSaleBuyers={allBuyers?.filter(b => !b.is_deleted && (b.listing_type || 'For Sale') === 'For Sale').length || 0} totalRentBuyers={allBuyers?.filter(b => !b.is_deleted && b.listing_type === 'For Rent').length || 0} buyerToEdit={buyerToEdit} onSave={handleSaveBuyer} limitReached={false} />
+            )}
+            
+            {isManageTagsOpen && (
+                <ManageTagsDialog isOpen={isManageTagsOpen} setIsOpen={setIsManageTagsOpen} />
+            )}
             
             {selectedBuyerForDetails && (
                 <>
-                    <BuyerDetailsDialog buyer={selectedBuyerForDetails} isOpen={isDetailsOpen} setIsOpen={setIsDetailsOpen} />
-                    <BuyerNotesDialog buyer={selectedBuyerForDetails} isOpen={isNotesOpen} setIsOpen={setIsNotesOpen} />
-                    <EditBuyerTagsDialog buyer={selectedBuyerForDetails} isOpen={isEditTagsOpen} setIsOpen={setIsEditTagsOpen} />
-                    <SetAppointmentDialog 
-                        isOpen={isAppointmentOpen}
-                        setIsOpen={setIsAppointmentOpen}
-                        onSave={handleSaveAppointment}
-                        appointmentDetails={{
-                            contactType: 'Buyer',
-                            contactName: selectedBuyerForDetails.name,
-                            contactSerialNo: selectedBuyerForDetails.serial_no,
-                            message: `Appointment with buyer ${selectedBuyerForDetails.name} for property viewing.`
-                        }}
-                    />
-                    <PropertyRecommenderDialog 
-                        buyer={selectedBuyerForDetails}
-                        properties={properties || []}
-                        isOpen={isRecommenderOpen}
-                        setIsOpen={setIsRecommenderOpen}
-                    />
+                    {isDetailsOpen && <BuyerDetailsDialog buyer={selectedBuyerForDetails} isOpen={isDetailsOpen} setIsOpen={setIsDetailsOpen} />}
+                    {isNotesOpen && <BuyerNotesDialog buyer={selectedBuyerForDetails} isOpen={isNotesOpen} setIsOpen={setIsNotesOpen} />}
+                    {isEditTagsOpen && <EditBuyerTagsDialog buyer={selectedBuyerForDetails} isOpen={isEditTagsOpen} setIsOpen={setIsEditTagsOpen} />}
+                    {isAppointmentOpen && (
+                        <SetAppointmentDialog 
+                            isOpen={isAppointmentOpen}
+                            setIsOpen={setIsAppointmentOpen}
+                            onSave={handleSaveAppointment}
+                            appointmentDetails={{
+                                contactType: 'Buyer',
+                                contactName: selectedBuyerForDetails.name,
+                                contactSerialNo: selectedBuyerForDetails.serial_no,
+                                message: `Appointment with buyer ${selectedBuyerForDetails.name} for property viewing.`
+                            }}
+                        />
+                    )}
+                    {isRecommenderOpen && (
+                        <PropertyRecommenderDialog 
+                            buyer={selectedBuyerForDetails}
+                            properties={properties || []}
+                            isOpen={isRecommenderOpen}
+                            setIsOpen={setIsRecommenderOpen}
+                        />
+                    )}
                 </>
             )}
         </div>
