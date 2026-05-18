@@ -21,7 +21,7 @@ import { collection, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestor
 import { useProfile } from '@/context/profile-context';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useMemoFirebase } from '@/firebase/hooks';
-import { Trash2, Plus, Tag as TagIcon, X, Info, Edit2, RotateCcw } from 'lucide-react';
+import { Trash2, Plus, Tag as TagIcon, X, Info, Edit2, RotateCcw, Users2 } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
 import { Tag } from '@/lib/types';
@@ -81,7 +81,6 @@ export function ManageTagsDialog({ isOpen, setIsOpen }: ManageTagsDialogProps) {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!profile.agency_id) return;
     
-    // Check for duplicates if not editing current tag
     if (!editingTag && tags?.some(t => t.name.toLowerCase() === values.name.toLowerCase())) {
         toast({ title: "Tag already exists", variant: 'destructive' });
         return;
@@ -139,103 +138,109 @@ export function ManageTagsDialog({ isOpen, setIsOpen }: ManageTagsDialogProps) {
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
         <div className="p-6 pb-0">
             <DialogHeader>
-              <DialogTitle className="font-headline flex items-center gap-2"><TagIcon className="h-5 w-5" /> Manage Agency Tags</DialogTitle>
-              <DialogDescription>
-                {editingTag ? `Updating tag: ${editingTag.name}` : 'Create custom tags or manage existing status labels.'}
+              <DialogTitle className="font-headline flex items-center gap-2 text-2xl font-black">
+                <TagIcon className="h-6 w-6 text-primary" /> Manage Agency Tags
+              </DialogTitle>
+              <DialogDescription className="font-medium text-muted-foreground flex items-center gap-1.5">
+                <Users2 className="h-4 w-4" /> These tags are shared with your entire team.
               </DialogDescription>
             </DialogHeader>
 
-            <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-2">
-                    <div className="flex gap-2 items-end">
-                        <FormField
-                            control={form.control}
-                            name="name"
-                            render={({ field }) => (
-                                <FormItem className="flex-1">
-                                    <FormLabel className="text-xs">{editingTag ? 'Update Tag Name' : 'New Tag Name'}</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="e.g. Interested, Hot Lead, Follow Up" {...field} className="h-9" />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
+            <div className="bg-primary/5 p-5 rounded-2xl border border-primary/10 mt-4">
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                        <div className="flex gap-2 items-end">
+                            <FormField
+                                control={form.control}
+                                name="name"
+                                render={({ field }) => (
+                                    <FormItem className="flex-1">
+                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60">{editingTag ? 'Update Tag Name' : 'Create New Agency Tag'}</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="e.g. Hot Lead, Urgent, Follow Up" {...field} className="h-11 rounded-xl bg-background border-border/60" />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            {editingTag ? (
+                                <div className="flex gap-1">
+                                    <Button type="button" variant="outline" size="icon" onClick={cancelEdit} className="h-11 w-11 rounded-xl"><X className="h-4 w-4" /></Button>
+                                    <Button type="submit" className="h-11 px-6 rounded-xl font-bold">Update</Button>
+                                </div>
+                            ) : (
+                                <Button type="submit" className="h-11 px-6 rounded-xl font-bold glowing-btn">
+                                    <Plus className="h-4 w-4 mr-2" /> Add Tag
+                                </Button>
                             )}
-                        />
-                        {editingTag ? (
-                            <div className="flex gap-1 mb-[2px]">
-                                <Button type="button" variant="outline" size="icon" onClick={cancelEdit} className="h-9 w-9"><X className="h-4 w-4" /></Button>
-                                <Button type="submit" className="h-9 px-4">Update</Button>
-                            </div>
-                        ) : (
-                            <Button type="submit" size="icon" className="mb-[2px] h-9 w-9"><Plus className="h-4 w-4" /></Button>
-                        )}
-                    </div>
-                    <div className="space-y-2">
-                        <div className="flex flex-wrap gap-2">
-                            {tagColors.map((color) => (
-                                <button
-                                    key={color.name}
-                                    type="button"
-                                    onClick={() => setSelectedColor(color.class)}
-                                    className={cn(
-                                        "h-6 w-6 rounded-full border-2 transition-all",
-                                        color.class.split(' ')[0],
-                                        selectedColor === color.class ? "border-primary scale-125" : "border-transparent"
-                                    )}
-                                    title={color.name}
-                                />
-                            ))}
                         </div>
-                    </div>
-                </form>
-            </Form>
+                        <div className="space-y-2">
+                            <div className="flex flex-wrap gap-2">
+                                {tagColors.map((color) => (
+                                    <button
+                                        key={color.name}
+                                        type="button"
+                                        onClick={() => setSelectedColor(color.class)}
+                                        className={cn(
+                                            "h-7 w-7 rounded-full border-2 transition-all shadow-sm",
+                                            color.class.split(' ')[0],
+                                            selectedColor === color.class ? "border-primary scale-110 ring-2 ring-primary/20" : "border-transparent opacity-60 hover:opacity-100"
+                                        )}
+                                        title={color.name}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    </form>
+                </Form>
+            </div>
         </div>
 
-        <Separator className="mt-4" />
+        <Separator className="mt-6" />
 
-        <div className="flex-1 overflow-y-auto px-6 py-4">
-            <div className="space-y-3">
-                <h4 className="text-sm font-bold uppercase tracking-wider flex items-center justify-between">
-                    Agency Tags
-                    <span className="text-[10px] text-muted-foreground font-normal bg-muted px-2 py-0.5 rounded-full">Labels & Filters</span>
+        <div className="flex-1 overflow-y-auto px-6 py-6">
+            <div className="space-y-4">
+                <h4 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center justify-between">
+                    Current Agency Inventory
+                    <span className="text-[10px] bg-muted px-2 py-0.5 rounded-full lowercase font-bold">{tags?.length || 0} active tags</span>
                 </h4>
-                <div className="rounded-xl border p-4 bg-muted/5 min-h-[150px]">
-                    {isLoading ? <p className="text-center text-muted-foreground py-10">Loading tags...</p> : 
+                <div className="rounded-2xl border border-dashed p-6 bg-muted/5 min-h-[200px]">
+                    {isLoading ? <div className="flex justify-center py-20"><Plus className="animate-spin h-8 w-8 opacity-20" /></div> : 
                     tags && tags.length > 0 ? (
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-3">
                             {tags.map(tag => (
                                 <Badge 
                                     key={tag.id} 
                                     className={cn(
-                                        "px-3 py-1 flex items-center gap-2 pr-1 rounded-lg transition-all group", 
+                                        "px-4 py-2 flex items-center gap-3 pr-2 rounded-xl transition-all shadow-sm border-none", 
                                         tag.color,
                                         editingTag?.id === tag.id && "ring-2 ring-primary ring-offset-2"
                                     )}
                                 >
-                                    <span className="cursor-default">{tag.name}</span>
-                                    <div className="flex items-center gap-0.5 ml-1">
+                                    <span className="font-bold text-sm">{tag.name}</span>
+                                    <div className="flex items-center gap-1 ml-2 border-l border-current/20 pl-2">
                                         <button 
                                             onClick={() => handleEditClick(tag)}
-                                            className="h-5 w-5 flex items-center justify-center rounded-full hover:bg-black/10 transition-colors"
+                                            className="h-6 w-6 flex items-center justify-center rounded-lg hover:bg-black/10 transition-colors"
                                         >
-                                            <Edit2 className="h-3 w-3" />
+                                            <Edit2 className="h-3.5 w-3.5" />
                                         </button>
                                         <AlertDialog>
                                             <AlertDialogTrigger asChild>
-                                                <button className="h-5 w-5 flex items-center justify-center rounded-full hover:bg-black/10 transition-colors">
-                                                    <X className="h-3 w-3" />
+                                                <button className="h-6 w-6 flex items-center justify-center rounded-lg hover:bg-red-500/20 text-red-600 transition-colors">
+                                                    <X className="h-4 w-4" />
                                                 </button>
                                             </AlertDialogTrigger>
-                                            <AlertDialogContent>
+                                            <AlertDialogContent className="rounded-3xl border-none shadow-2xl">
                                                 <AlertDialogHeader>
-                                                    <AlertDialogTitle className="font-headline">Delete Tag?</AlertDialogTitle>
-                                                    <AlertDialogDescription>
-                                                        Are you sure you want to delete the "{tag.name}" tag? This will remove it from all leads. This action cannot be undone.
+                                                    <AlertDialogTitle className="font-headline text-2xl font-black tracking-tight">Delete Agency Tag?</AlertDialogTitle>
+                                                    <AlertDialogDescription className="text-base">
+                                                        The tag <strong className="text-foreground">"{tag.name}"</strong> will be removed from all Leads across the entire agency. This cannot be undone.
                                                     </AlertDialogDescription>
                                                 </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={() => handleDeleteTag(tag.id)} className="bg-destructive text-white hover:bg-destructive/90">Delete Permanently</AlertDialogAction>
+                                                <AlertDialogFooter className="mt-6">
+                                                    <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={() => handleDeleteTag(tag.id)} className="bg-destructive text-white hover:bg-destructive/90 rounded-xl font-bold px-8">Delete Permanently</AlertDialogAction>
                                                 </AlertDialogFooter>
                                             </AlertDialogContent>
                                         </AlertDialog>
@@ -244,17 +249,17 @@ export function ManageTagsDialog({ isOpen, setIsOpen }: ManageTagsDialogProps) {
                             ))}
                         </div>
                     ) : (
-                        <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
-                            <Info className="h-8 w-8 mb-2 opacity-20" />
-                            <p className="text-sm text-center max-w-[200px]">No agency tags created yet. Add statuses like "Interested" here.</p>
+                        <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
+                            <TagIcon className="h-12 w-12 mb-3 opacity-10" />
+                            <p className="text-sm font-bold opacity-60">No custom tags found for this agency.</p>
                         </div>
                     )}
                 </div>
             </div>
         </div>
 
-        <DialogFooter className="p-4 border-t bg-muted/5">
-          <Button variant="secondary" onClick={() => setIsOpen(false)} className="rounded-full px-6">Done</Button>
+        <DialogFooter className="p-6 border-t bg-muted/5 shrink-0">
+          <Button variant="secondary" onClick={() => setIsOpen(false)} className="rounded-xl h-11 px-8 font-bold w-full sm:w-auto">Close Manager</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

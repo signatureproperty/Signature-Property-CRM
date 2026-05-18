@@ -23,6 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from './ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Badge } from './ui/badge';
+import { Users2, Tag as TagIcon } from 'lucide-react';
 
 interface EditPropertyTagsDialogProps {
   property: Property;
@@ -52,7 +53,6 @@ export function EditPropertyTagsDialog({ property, isOpen, setIsOpen }: EditProp
   );
   const { data: agencyTags } = useCollection<Tag>(tagsQuery);
 
-  // Combine default statuses with custom agency tags
   const allAvailableTags = useMemo(() => {
     const statusTags = defaultPropertyStatuses.map(status => ({
         id: `status-${status}`,
@@ -66,7 +66,6 @@ export function EditPropertyTagsDialog({ property, isOpen, setIsOpen }: EditProp
         isStatus: false
     }));
 
-    // Filter out custom tags that have the same name as statuses to avoid duplicates
     const filteredCustom = customTags.filter(ct => !defaultPropertyStatuses.includes(ct.name as any));
 
     return [...statusTags, ...filteredCustom];
@@ -89,7 +88,6 @@ export function EditPropertyTagsDialog({ property, isOpen, setIsOpen }: EditProp
   const handleSave = async () => {
     if (!profile.agency_id) return;
 
-    // Determine the main status based on selection
     let newMainStatus: PropertyStatus = property.status;
     const selectedStatuses = selectedTags.filter(tag => defaultPropertyStatuses.includes(tag as any)) as PropertyStatus[];
     
@@ -104,7 +102,7 @@ export function EditPropertyTagsDialog({ property, isOpen, setIsOpen }: EditProp
             tags: selectedTags,
             status: newMainStatus
         });
-        toast({ title: "Tags Updated" });
+        toast({ title: "Property Tags Updated" });
         setIsOpen(false);
     } catch (error) {
         toast({ title: "Error", description: "Could not update tags.", variant: 'destructive' });
@@ -113,51 +111,62 @@ export function EditPropertyTagsDialog({ property, isOpen, setIsOpen }: EditProp
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="font-headline">Manage Tags for {property.serial_no}</DialogTitle>
-          <DialogDescription>Select statuses or custom tags to apply to this property lead.</DialogDescription>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-md rounded-3xl p-0 overflow-hidden">
+        <div className="p-6 pb-2">
+            <DialogHeader>
+              <DialogTitle className="font-headline text-2xl font-black tracking-tight flex items-center gap-2">
+                <TagIcon className="h-6 w-6 text-primary" /> Label Management
+              </DialogTitle>
+              <DialogDescription className="font-medium flex items-center gap-1.5">
+                <Users2 className="h-4 w-4 opacity-60" /> Shared Agency Library
+              </DialogDescription>
+            </DialogHeader>
+        </div>
 
-        <ScrollArea className="h-80 mt-4 pr-4">
-            <div className="grid gap-3">
+        <ScrollArea className="h-96 px-6 py-2">
+            <div className="grid gap-3 pb-4">
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-60 mb-1">Select Labels for this Property</p>
                 {allAvailableTags.length > 0 ? (
                     allAvailableTags.map(tag => (
                         <div 
                             key={tag.id} 
                             className={cn(
-                                "flex items-center space-x-3 p-3 rounded-lg border cursor-pointer transition-colors hover:bg-accent/50",
-                                selectedTags.includes(tag.name) ? "border-primary bg-primary/5" : "border-border"
+                                "flex items-center space-x-4 p-3.5 rounded-2xl border transition-all cursor-pointer",
+                                selectedTags.includes(tag.name) ? "border-primary bg-primary/5 shadow-sm" : "border-border hover:bg-accent/50"
                             )}
                             onClick={() => handleToggleTag(tag.name)}
                         >
                             <Checkbox 
-                                id={`edit-tag-${tag.id}`} 
+                                id={`prop-tag-${tag.id}`} 
                                 checked={selectedTags.includes(tag.name)}
                                 onCheckedChange={() => handleToggleTag(tag.name)}
                                 onClick={(e) => e.stopPropagation()}
+                                className="h-5 w-5 rounded-md"
                             />
                             <Label 
-                                htmlFor={`edit-tag-${tag.id}`} 
-                                className="flex-1 cursor-pointer font-medium flex items-center justify-between"
+                                htmlFor={`prop-tag-${tag.id}`} 
+                                className="flex-1 cursor-pointer font-bold flex items-center justify-between"
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                <Badge className={cn("px-2 py-0.5 text-[10px] font-bold", tag.color)}>
+                                <Badge className={cn("px-3 py-1 text-[11px] font-black shadow-sm border-none", tag.color)}>
                                     {tag.name}
                                 </Badge>
-                                {tag.isStatus && <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Status</span>}
+                                {tag.isStatus && <span className="text-[9px] text-muted-foreground uppercase font-black tracking-tighter bg-muted px-2 py-0.5 rounded-md">Status</span>}
                             </Label>
                         </div>
                     ))
                 ) : (
-                    <p className="text-center text-muted-foreground py-10">No tags found.</p>
+                    <div className="py-20 text-center text-muted-foreground opacity-40">
+                        <TagIcon className="h-10 w-10 mx-auto mb-2" />
+                        <p className="text-xs font-bold uppercase">No agency labels defined.</p>
+                    </div>
                 )}
             </div>
         </ScrollArea>
 
-        <DialogFooter className="pt-4 border-t">
-          <Button variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
-          <Button onClick={handleSave} className="glowing-btn px-6">Save Tags</Button>
+        <DialogFooter className="p-6 border-t bg-muted/5 shrink-0 flex gap-2">
+          <Button variant="ghost" onClick={() => setIsOpen(false)} className="rounded-xl h-11 px-6 font-bold">Cancel</Button>
+          <Button onClick={handleSave} className="glowing-btn px-10 h-11 rounded-xl font-bold flex-1">Save Changes</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
