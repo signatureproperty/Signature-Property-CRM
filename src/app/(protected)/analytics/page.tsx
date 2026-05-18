@@ -40,7 +40,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 
-// --- Lazy Loaded Chart Components (to improve TTI and split bundle) ---
+// --- Lazy Loaded Chart Components ---
 const ResponsiveContainer = dynamic(() => import('recharts').then(mod => mod.ResponsiveContainer), { ssr: false });
 const AreaChart = dynamic(() => import('recharts').then(mod => mod.AreaChart), { ssr: false });
 const Area = dynamic(() => import('recharts').then(mod => mod.Area), { ssr: false });
@@ -376,7 +376,7 @@ export default function AnalyticsPage() {
                                         <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700 }} width={120} />
                                         <Tooltip />
                                         <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
-                                            {propertyChartData.map((_, index) => (
+                                            {propertyChartData.slice(0, 10).map((_, index) => (
                                                 <Cell key={`bar-${index}`} fill={COLORS[index % COLORS.length]} />
                                             ))}
                                         </Bar>
@@ -407,8 +407,8 @@ export default function AnalyticsPage() {
                                     </BarChart>
                                 </ResponsiveContainer>
                             </CardContent>
-                        </div>
-                    </Card>
+                        </Card>
+                    </div>
                 </TabsContent>
 
                 {/* --- Team Performance Tab --- */}
@@ -465,7 +465,7 @@ export default function AnalyticsPage() {
                     </Card>
                 </TabsContent>
 
-                {/* --- Schedule Tab --- */}
+                {/* --- Appointment Tab --- */}
                 <TabsContent value="appointments" className="mt-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <Card className="lg:col-span-2 border-none shadow-2xl rounded-3xl overflow-hidden bg-card/60 backdrop-blur-xl">
