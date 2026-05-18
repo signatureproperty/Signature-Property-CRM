@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import dynamic from 'next/dynamic';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
@@ -40,7 +39,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 
-// --- Recharts Components (Client-Side) ---
+// --- Recharts Components (Standard Imports for Type Safety) ---
 import { 
     ResponsiveContainer, 
     AreaChart, 
@@ -572,7 +571,7 @@ export default function AnalyticsPage() {
                                         </div>
                                     </div>
                                     <div className="bg-card/80 backdrop-blur-md p-6 rounded-3xl border border-primary/10 shadow-xl text-center min-w-[200px]">
-                                        <div className="text-3xl font-black text-primary leading-none mb-1">{formatCurrency(selectedAgentForReport.revenue, currency, { notation: 'compact' })}</div>
+                                        <div className="text-3xl font-black text-primary leading-none mb-1">{formatCurrency(selectedAgentForReport.revenue, currency)}</div>
                                         <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Revenue Generated</span>
                                     </div>
                                 </div>

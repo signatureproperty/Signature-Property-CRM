@@ -19,7 +19,7 @@ import { Edit, MoreHorizontal, PlusCircle, Trash2, Wallet, Ruler, Eye, MessageSq
 import { useState, useMemo, Suspense } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useIsMobile } from '@/hooks/use-is-mobile';
-import { Buyer, PriceUnit, SizeUnit, PropertyType, User, Activity, ListingType, Tag, Appointment, Property } from '@/lib/types';
+import { Buyer, PriceUnit, SizeUnit, PropertyType, Activity, ListingType, Tag, Appointment, Property } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
