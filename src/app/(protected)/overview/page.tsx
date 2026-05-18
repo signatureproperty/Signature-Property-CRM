@@ -6,7 +6,8 @@ import {
     Building2, Users, DollarSign, Home, TrendingUp, Star, CalendarDays, 
     CheckCircle, Video, PlayCircle, Gem, ArrowRight, 
     VideoOff, Circle, Clock, History, FilePlus, UserPlus, Edit, ArrowUpRight,
-    Plus, MessageSquareText, Calendar, MapPin, User, MessageSquare, Eye
+    Plus, MessageSquareText, Calendar, MapPin, User, MessageSquare, Eye,
+    Briefcase
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useProfile } from '@/context/profile-context';
