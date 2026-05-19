@@ -61,35 +61,43 @@ export function AssignBuyerToAgentDialog({ buyer, isOpen, setIsOpen }: AssignBuy
         const propertyListingType = property.is_for_rent ? 'For Rent' : 'For Sale';
         if (buyerListingType !== propertyListingType) return false;
 
-        // 2. Property Type Match (Fuzzy)
+        // 2. Budget Match (MANDATORY with 15% margin)
+        // Convert everything to base units for comparison
+        const propDemand = formatUnit(property.demand_amount, property.demand_unit);
+        const buyerMin = formatUnit(buyer.budget_min_amount || 0, buyer.budget_min_unit || 'Thousand');
+        const buyerMax = formatUnit(buyer.budget_max_amount || buyer.budget_min_amount || 0, buyer.budget_max_unit || 'Lacs');
+        
+        // Strict boundary: Property must be within [85% of Min, 115% of Max]
+        const absoluteMin = buyerMin * 0.85;
+        const absoluteMax = buyerMax * 1.15;
+        
+        // If the property is way too expensive (e.g. 5.5Cr for a 1.35Cr buyer), block it!
+        const budgetMatch = (propDemand >= absoluteMin && propDemand <= absoluteMax);
+        if (!budgetMatch) return false;
+
+        // 3. Property Type Match (Fuzzy)
         const buyerType = (buyer.property_type_preference || '').toLowerCase();
         const propType = (property.property_type || '').toLowerCase();
-        // Exact match or includes (e.g. "Residential Plot" matches "Plot")
         const typeMatch = buyerType === propType || propType.includes(buyerType) || buyerType.includes(propType);
         if (!typeMatch) return false;
         
-        // 3. Area Match (Fuzzy)
-        // Check if property area exists as a substring in any of buyer's comma-separated preferences
+        // 4. Area Match (Optional priority)
         const buyerAreas = (buyer.area_preference || '').toLowerCase().split(',').map(a => a.trim()).filter(Boolean);
         const propArea = (property.area || '').toLowerCase();
-        // If buyer didn't specify areas, we consider it a loose match
         const areaMatch = buyerAreas.length === 0 || buyerAreas.some(ba => propArea.includes(ba) || ba.includes(propArea));
-        
-        // 4. Budget Match (Naram logic: +/- 20% margin)
-        const propDemand = formatUnit(property.demand_amount, property.demand_unit);
-        const buyerMin = formatUnit(buyer.budget_min_amount || 0, buyer.budget_min_unit || 'Thousand');
-        const buyerMax = formatUnit(buyer.budget_max_amount || 0, buyer.budget_max_unit || 'Lacs');
-        
-        // We accept properties that are slightly below min or slightly above max
-        const minWithMargin = buyerMin * 0.8;
-        const maxWithMargin = (buyerMax || buyerMin) * 1.2;
-        const budgetMatch = (propDemand >= minWithMargin && propDemand <= maxWithMargin);
 
-        // A property is a "good match" if it matches Type AND (Area OR Budget)
-        // This follows the user's request for "thora bhtt oper niche"
-        return typeMatch && (areaMatch || budgetMatch);
+        // Return true if Budget and Type match
+        return true;
     }).sort((a, b) => {
-        // Prioritize newer listings
+        // Sort by match score (Area match first, then newest)
+        const aAreas = (buyer.area_preference || '').toLowerCase().split(',').map(a => a.trim());
+        const bAreas = (buyer.area_preference || '').toLowerCase().split(',').map(a => a.trim());
+        const aAreaMatch = aAreas.some(area => a.area.toLowerCase().includes(area));
+        const bAreaMatch = bAreas.some(area => b.area.toLowerCase().includes(area));
+        
+        if (aAreaMatch && !bAreaMatch) return -1;
+        if (!aAreaMatch && bAreaMatch) return 1;
+        
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
   }, [allProperties, buyer]);

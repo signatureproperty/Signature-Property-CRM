@@ -439,7 +439,7 @@ function BuyersPageContent() {
                         </TableHead>
                         <TableHead><Button variant="ghost" onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}>Name <ArrowUpDown className="ml-2 h-4 w-4" /></Button></TableHead>
                         <TableHead>Requirement</TableHead>
-                        <TableHead>Budget</TableHead>
+                        <TableHead>Budget (Max)</TableHead>
                         <TableHead>Size</TableHead>
                         <TableHead>Status / Tags</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
@@ -490,7 +490,9 @@ function BuyersPageContent() {
                                     <div className="text-xs text-muted-foreground">{buyer.property_type_preference}</div>
                                 </TableCell>
                                 <TableCell>
-                                    <div className="text-sm font-bold text-primary">{formatCurrency(formatUnit(buyer.budget_min_amount || 0, buyer.budget_min_unit || 'Lacs'), currency)}</div>
+                                    <div className="text-sm font-bold text-primary">
+                                        {buyer.budget_max_amount ? formatCurrency(formatUnit(buyer.budget_max_amount, buyer.budget_max_unit || 'Lacs'), currency) : formatBuyerBudgetInline(buyer)}
+                                    </div>
                                 </TableCell>
                                 <TableCell>
                                     <div className="text-xs text-muted-foreground">{formatSize(buyer.size_min_value, buyer.size_min_unit, buyer.size_max_value, buyer.size_max_unit)}</div>
