@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import {
@@ -65,6 +65,11 @@ export function AppHeader({
   const { user } = useUser();
   const { notifications, isLoading: areNotificationsLoading, acceptInvitation, rejectInvitation, markAsRead, markAllAsRead, deleteNotification, forceRefresh } = useNotifications();
   const [updatingInvite, setUpdatingInvite] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
   const [isAppointmentDialogOpen, setIsAppointmentDialogOpen] = useState(false);
@@ -212,7 +217,9 @@ export function AppHeader({
                                 <div className="flex-1">
                                     <p className="font-semibold text-sm">{notification.title}</p>
                                     <p className="text-xs text-muted-foreground">{notification.description}</p>
-                                    <p className="text-[10px] text-muted-foreground mt-1">{formatDistanceToNow(notification.timestamp, { addSuffix: true })}</p>
+                                    <p className="text-[10px] text-muted-foreground mt-1">
+                                        {mounted ? formatDistanceToNow(notification.timestamp, { addSuffix: true }) : '...'}
+                                    </p>
                                 </div>
                                 {notification.type === 'invitation' ? (
                                     <div className="flex items-center gap-1 w-20 justify-end">

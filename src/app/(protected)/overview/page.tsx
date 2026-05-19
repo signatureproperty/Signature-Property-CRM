@@ -1,5 +1,5 @@
 'use client';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { 
@@ -120,6 +120,11 @@ export default function OverviewPage() {
     const [isAppointmentOpen, setIsAppointmentOpen] = useState(false);
     const [isEventOpen, setIsEventOpen] = useState(false);
     const [isAllEventsOpen, setIsAllEventsOpen] = useState(false);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     // Details state
     const [selectedApptForDetails, setSelectedApptForDetails] = useState<Appointment | null>(null);
@@ -348,7 +353,9 @@ export default function OverviewPage() {
                                                         <div className="flex items-center gap-2 mb-1">
                                                             <span className="font-bold text-xs">{remark.authorName}</span>
                                                             <Badge variant="outline" className="text-[9px] uppercase h-4 px-1">{remark.authorRole}</Badge>
-                                                            <span className="text-[10px] text-muted-foreground ml-auto">{formatDistanceToNow(new Date(remark.timestamp), { addSuffix: true })}</span>
+                                                            <span className="text-[10px] text-muted-foreground ml-auto">
+                                                                {mounted ? formatDistanceToNow(new Date(remark.timestamp), { addSuffix: true }) : '...'}
+                                                            </span>
                                                         </div>
                                                         <p className="text-sm text-foreground mb-2 leading-relaxed line-clamp-2">"{remark.text}"</p>
                                                         <div className="inline-flex items-center gap-1.5 text-[10px] font-black text-primary hover:underline uppercase tracking-wider">
@@ -428,7 +435,7 @@ export default function OverviewPage() {
                                                 </p>
                                                 <p className="text-[10px] font-medium text-primary/80 truncate mt-0.5">{act.target}</p>
                                                 <p className="text-[9px] text-muted-foreground mt-1 uppercase font-bold tracking-tighter">
-                                                    {format(new Date(act.timestamp), 'p')}
+                                                    {mounted ? format(new Date(act.timestamp), 'p') : '...'}
                                                 </p>
                                             </div>
                                         </div>
@@ -514,7 +521,7 @@ export default function OverviewPage() {
                                 <div>
                                     <DialogTitle className="text-xl font-black font-headline">{selectedApptForDetails.contactName}</DialogTitle>
                                     <DialogDescription className="font-bold flex items-center gap-2">
-                                        <Calendar className="h-3 w-3" /> {format(parseISO(selectedApptForDetails.date), 'PPPP')}
+                                        <Calendar className="h-3 w-3" /> {mounted ? format(parseISO(selectedApptForDetails.date), 'PPPP') : '...'}
                                     </DialogDescription>
                                 </div>
                             </div>

@@ -2,12 +2,12 @@
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Appointment, AppointmentStatus } from "@/lib/types";
 import { Calendar as CalendarIcon, Clock, Briefcase, Building, Plus, CalendarPlus, MoreHorizontal, CheckCircle, XCircle, Users, Check, Trash2 } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { format, parseISO, isSameDay } from "date-fns";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import { Skeleton } from "./ui/skeleton";
+import { Skeleton } from "./skeleton";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { Separator } from "./ui/separator";
 import { cn } from "@/lib/utils";
@@ -35,7 +35,13 @@ export function UpcomingEvents({
     onAllEventsClick,
     onViewDetails,
 }: UpcomingEventsProps) {
-    const [selectedDay, setSelectedDay] = useState<Date | undefined>(new Date());
+    const [selectedDay, setSelectedDay] = useState<Date | undefined>(undefined);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+        setSelectedDay(new Date());
+    }, []);
     
     const eventDates = useMemo(() => {
         return (appointments || [])
@@ -50,7 +56,7 @@ export function UpcomingEvents({
             .sort((a, b) => new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime());
     }, [appointments, selectedDay]);
 
-    if (isLoading) {
+    if (isLoading || !mounted) {
         return (
             <Card className="border-none shadow-sm bg-card/60 backdrop-blur-sm rounded-2xl overflow-hidden">
                 <CardHeader><Skeleton className="h-6 w-32" /></CardHeader>
@@ -122,7 +128,7 @@ export function UpcomingEvents({
                         <div className="p-4 bg-muted/10 min-h-[200px]">
                             <div className="flex items-center justify-between mb-4">
                                 <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                                    {selectedDay ? format(selectedDay, "MMM d, yyyy") : "Select a day"}
+                                    {selectedDay ? format(selectedDay, "MMM d, yyyy") : "..."}
                                 </h4>
                                 <Badge variant="outline" className="text-[9px] font-bold">
                                     {selectedDayEvents.length} Tasks
