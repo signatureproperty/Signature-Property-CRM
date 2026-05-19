@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useMemo, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
@@ -7,15 +8,15 @@ import {
     CheckCircle, Video, PlayCircle, Gem, ArrowRight, 
     VideoOff, Circle, Clock, History, FilePlus, UserPlus, Edit, ArrowUpRight,
     Plus, MessageSquareText, Calendar, MapPin, User, MessageSquare, Eye,
-    Briefcase
+    Briefcase, Trash2
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useProfile } from '@/context/profile-context';
 import { useFirestore } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useMemoFirebase } from '@/firebase/hooks';
-import { collection, query, where, addDoc, doc, setDoc, deleteDoc, orderBy, limit, or } from 'firebase/firestore';
-import type { Property, Buyer, Appointment, AppointmentContactType, Activity, User as UserType } from '@/lib/types';
+import { collection, query, where, addDoc, doc, setDoc, deleteDoc, orderBy, limit, or, updateDoc, arrayRemove } from 'firebase/firestore';
+import type { Property, Buyer, Appointment, AppointmentContactType, Activity, LeadNote } from '@/lib/types';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { subDays, parseISO, format, formatDistanceToNow } from 'date-fns';
@@ -28,6 +29,8 @@ import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 // --- Lazy Loaded Components ---
 const SetAppointmentDialog = dynamic(() => import('@/components/set-appointment-dialog').then(mod => mod.SetAppointmentDialog), { ssr: false });
@@ -227,6 +230,35 @@ export default function OverviewPage() {
         setIsRemarksOpen(true);
     };
 
+    const handleDeleteRemark = async (remark: any) => {
+        if (!profile.agency_id) return;
+        const collectionName = remark.leadType === 'Buyer' ? 'buyers' : 'properties';
+        const leadRef = doc(firestore, 'agencies', profile.agency_id, collectionName, remark.leadData.id);
+        
+        const noteToRemove: LeadNote = {
+            id: remark.id,
+            text: remark.text,
+            authorId: remark.authorId,
+            authorName: remark.authorName,
+            authorRole: remark.authorRole,
+            timestamp: remark.timestamp,
+            readBy: remark.readBy
+        };
+
+        updateDoc(leadRef, {
+            timeline_notes: arrayRemove(noteToRemove)
+        }).then(() => {
+            toast({ title: "Remark Deleted" });
+        }).catch(async (serverError) => {
+            const permissionError = new FirestorePermissionError({
+              path: leadRef.path,
+              operation: 'update',
+              requestResourceData: { timeline_notes: 'arrayRemove' },
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        });
+    };
+
     const handleViewLeadFromAppointment = () => {
         if (!selectedApptForDetails || !selectedApptForDetails.contactSerialNo) return;
         
@@ -345,7 +377,7 @@ export default function OverviewPage() {
                                         {latestRemarks.map((remark) => (
                                             <div 
                                                 key={remark.id} 
-                                                className="p-4 hover:bg-primary/5 transition-colors cursor-pointer"
+                                                className="p-4 hover:bg-primary/5 transition-colors cursor-pointer group"
                                                 onClick={() => handleRemarkClick(remark)}
                                             >
                                                 <div className="flex items-start justify-between gap-4">
@@ -356,6 +388,16 @@ export default function OverviewPage() {
                                                             <span className="text-[10px] text-muted-foreground ml-auto">
                                                                 {mounted ? formatDistanceToNow(new Date(remark.timestamp), { addSuffix: true }) : '...'}
                                                             </span>
+                                                            {profile.role === 'Admin' && (
+                                                                <Button 
+                                                                    size="icon" 
+                                                                    variant="ghost" 
+                                                                    className="h-6 w-6 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-all"
+                                                                    onClick={(e) => { e.stopPropagation(); handleDeleteRemark(remark); }}
+                                                                >
+                                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                                </Button>
+                                                            )}
                                                         </div>
                                                         <p className="text-sm text-foreground mb-2 leading-relaxed line-clamp-2">"{remark.text}"</p>
                                                         <div className="inline-flex items-center gap-1.5 text-[10px] font-black text-primary hover:underline uppercase tracking-wider">

@@ -10,19 +10,32 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 import { ScrollArea } from './ui/scroll-area';
 import { Property, LeadNote, InboxMessage } from '@/lib/types';
 import { useProfile } from '@/context/profile-context';
 import { useFirestore } from '@/firebase/provider';
-import { doc, updateDoc, arrayUnion, collection, addDoc } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion, collection, addDoc, arrayRemove } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { MessageSquareText, Send, User, Clock, Calendar, Check, Eye } from 'lucide-react';
+import { MessageSquareText, Send, User, Clock, Calendar, Check, Eye, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from './ui/badge';
 import { PropertyDetailsDialog } from './property-details-dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 interface PropertyNotesDialogProps {
   property: Property;
@@ -89,6 +102,42 @@ export function PropertyNotesDialog({
     }
   };
 
+  const handleClearNotes = async () => {
+    if (!profile.agency_id) return;
+    setIsSaving(true);
+    try {
+        const propRef = doc(firestore, 'agencies', profile.agency_id, 'properties', property.id);
+        await updateDoc(propRef, {
+            timeline_notes: [],
+            last_remark_at: null
+        });
+        toast({ title: "Remarks Cleared" });
+    } catch (error) {
+        console.error("Error clearing notes:", error);
+        toast({ title: "Failed to clear remarks", variant: "destructive" });
+    } finally {
+        setIsSaving(false);
+    }
+  };
+
+  const handleDeleteNote = async (note: LeadNote) => {
+    if (!profile.agency_id) return;
+    const propRef = doc(firestore, 'agencies', profile.agency_id, 'properties', property.id);
+    
+    updateDoc(propRef, {
+        timeline_notes: arrayRemove(note)
+    }).then(() => {
+        toast({ title: "Remark Deleted" });
+    }).catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: propRef.path,
+          operation: 'update',
+          requestResourceData: { timeline_notes: 'arrayRemove' },
+        });
+        errorEmitter.emit('permission-error', permissionError);
+    });
+  };
+
   const sortedNotes = [...(property.timeline_notes || [])].sort(
     (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
   );
@@ -107,13 +156,36 @@ export function PropertyNotesDialog({
                         <div>
                             <DialogTitle className="font-headline text-xl">Property Remarks</DialogTitle>
                             <DialogDescription>
-                                Keep the agency updated about <strong>{property.auto_title}</strong> ({property.serial_no}).
+                                Updates for <strong>{property.auto_title}</strong> ({property.serial_no}).
                             </DialogDescription>
                         </div>
                     </div>
-                    <Button variant="outline" size="sm" className="rounded-full gap-2 font-bold" onClick={() => setIsDetailsOpen(true)}>
-                        <Eye className="h-4 w-4" /> View Details
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        {profile.role === 'Admin' && sortedNotes.length > 0 && (
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="h-8 rounded-full gap-2 text-destructive hover:bg-destructive/10 font-bold px-3">
+                                        <Trash2 className="h-3.5 w-3.5" /> Clear All
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent className="rounded-3xl border-none shadow-2xl">
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle className="font-headline text-2xl font-black">Clear All Remarks?</AlertDialogTitle>
+                                        <AlertDialogDescription className="text-base font-medium">
+                                            This will permanently delete the entire update history for <strong>{property.serial_no}</strong>. This action cannot be undone.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter className="mt-6 gap-2">
+                                        <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={handleClearNotes} className="bg-destructive text-white hover:bg-destructive/90 rounded-xl font-bold px-8">Confirm & Delete</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        )}
+                        <Button variant="outline" size="sm" className="rounded-full h-8 gap-2 font-bold px-3" onClick={() => setIsDetailsOpen(true)}>
+                            <Eye className="h-3.5 w-3.5" /> File
+                        </Button>
+                    </div>
                 </div>
             </DialogHeader>
         </div>
@@ -126,11 +198,11 @@ export function PropertyNotesDialog({
                             {sortedNotes.map((note) => {
                                 const otherPartySeen = note.readBy?.some(uid => uid !== note.authorId);
                                 return (
-                                    <div key={note.id} className="relative pl-10">
+                                    <div key={note.id} className="relative pl-10 group">
                                         <div className="absolute left-0 top-1 h-9 w-9 rounded-full bg-background border flex items-center justify-center z-10 shadow-sm">
                                             <User className={cn("h-4 w-4", note.authorRole === 'Admin' ? "text-primary" : "text-muted-foreground")} />
                                         </div>
-                                        <div className="bg-card border rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow">
+                                        <div className="bg-card border rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow relative">
                                             <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                                                 <div className="flex items-center gap-2">
                                                     <span className="font-bold text-sm">{note.authorName}</span>
@@ -146,6 +218,15 @@ export function PropertyNotesDialog({
                                                     )}
                                                     <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {format(new Date(note.timestamp), 'MMM d')}</span>
                                                     <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {format(new Date(note.timestamp), 'p')}</span>
+                                                    {profile.role === 'Admin' && (
+                                                        <button 
+                                                            onClick={() => handleDeleteNote(note)}
+                                                            className="opacity-0 group-hover:opacity-100 transition-opacity ml-1 p-1 text-muted-foreground hover:text-destructive"
+                                                            title="Delete this remark"
+                                                        >
+                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
                                             <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
