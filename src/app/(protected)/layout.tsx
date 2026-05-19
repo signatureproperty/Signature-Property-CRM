@@ -109,27 +109,34 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <>
+    <div className="flex flex-col h-screen w-full overflow-hidden">
+        {/* Verification Banner - Now spans full width at the very top */}
         {!user.emailVerified && (profile.role as string) !== 'Super Admin' && (
-            <div className="sticky top-0 z-40 w-full bg-amber-500 text-amber-900 shadow-md">
-                <div className="container mx-auto flex items-center justify-center p-2 text-sm font-semibold gap-4">
-                    <MailWarning className="h-5 w-5" />
-                    <span>Please verify your email address to unlock all features.</span>
+            <div className="z-50 w-full bg-amber-500 text-amber-900 shadow-md flex-shrink-0">
+                <div className="container mx-auto flex items-center justify-center p-2 px-4 text-[11px] sm:text-sm font-bold gap-3 sm:gap-6 text-center">
+                    <div className="flex items-center gap-2">
+                        <MailWarning className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                        <span className="leading-tight">Please verify your email address to unlock all features.</span>
+                    </div>
                     <Button 
                         size="sm" 
                         variant="ghost" 
-                        className="h-auto px-2 py-1 text-amber-900 hover:bg-amber-400 hover:text-amber-900"
+                        className="h-8 px-3 py-0 text-[10px] sm:text-xs font-black uppercase tracking-widest border border-amber-900/30 hover:bg-amber-400 hover:text-amber-900 transition-colors"
                         onClick={handleResendVerification}
                         disabled={isResending}
                     >
-                        {isResending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 mr-2"/>}
-                        Resend Email
+                        {isResending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Send className="h-3 w-3 mr-1"/>}
+                        Resend
                     </Button>
                 </div>
             </div>
         )}
-        {children}
-    </>
+        
+        {/* Main App Container */}
+        <div className="flex-1 flex overflow-hidden relative">
+            {children}
+        </div>
+    </div>
   );
 }
 
@@ -148,24 +155,24 @@ function ProtectedLayoutContent({ children }: { children: React.ReactNode }) {
 
 
   return (
-    <SidebarProvider>
-      <AuthGuard>
-        <div className="flex h-screen w-full bg-background">
-        <AppSidebar />
-        <div className="flex flex-col flex-1 overflow-hidden">
-            <AppHeader 
-            searchable={isSearchable}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            />
-            <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 pb-32">
-                {children}
-            </main>
-            <MobileNav />
-        </div>
-        </div>
-      </AuthGuard>
-    </SidebarProvider>
+    <AuthGuard>
+        <SidebarProvider>
+            <div className="flex h-full w-full bg-background overflow-hidden">
+                <AppSidebar />
+                <div className="flex flex-col flex-1 overflow-hidden">
+                    <AppHeader 
+                        searchable={isSearchable}
+                        searchQuery={searchQuery}
+                        setSearchQuery={setSearchQuery}
+                    />
+                    <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 pb-32">
+                        {children}
+                    </main>
+                    <MobileNav />
+                </div>
+            </div>
+        </SidebarProvider>
+    </AuthGuard>
   );
 }
 
