@@ -56,6 +56,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useProfile } from '@/context/profile-context';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 
 interface BuyerDetailsDialogProps {
   buyer: Buyer;
@@ -63,17 +64,40 @@ interface BuyerDetailsDialogProps {
   setIsOpen: (open: boolean) => void;
 }
 
-const DetailBox = ({ icon, label, value, className }: { icon: React.ReactNode, label: string, value: React.ReactNode, className?: string }) => (
-    <div className={cn("flex flex-col gap-1 p-3 rounded-xl bg-muted/5 border border-border/20", className)}>
-        <div className="flex items-center gap-2 text-muted-foreground">
-            <span className="text-primary/60">{icon}</span>
-            <span className="text-[10px] font-bold uppercase tracking-wider">{label}</span>
+const DetailBox = ({ icon, label, value, className }: { icon: React.ReactNode, label: string, value: React.ReactNode, className?: string }) => {
+    const isLongText = typeof value === 'string' && value.length > 25;
+
+    return (
+        <div className={cn("flex flex-col gap-1 p-3 rounded-xl bg-muted/5 border border-border/20", className)}>
+            <div className="flex items-center gap-2 text-muted-foreground">
+                <span className="text-primary/60">{icon}</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider">{label}</span>
+            </div>
+            {isLongText ? (
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <div className="text-sm font-semibold truncate text-foreground cursor-pointer hover:text-primary transition-colors">
+                            {value}
+                        </div>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80 p-4 rounded-2xl shadow-2xl border-none bg-background/95 backdrop-blur-md z-[110]">
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2 text-primary/60">
+                                {icon}
+                                <p className="text-[10px] font-black uppercase tracking-widest">{label}</p>
+                            </div>
+                            <p className="text-sm font-bold leading-relaxed text-foreground whitespace-pre-wrap">{value}</p>
+                        </div>
+                    </PopoverContent>
+                </Popover>
+            ) : (
+                <div className="text-sm font-semibold truncate text-foreground">
+                    {value || 'N/A'}
+                </div>
+            )}
         </div>
-        <div className="text-sm font-semibold truncate text-foreground">
-            {value || 'N/A'}
-        </div>
-    </div>
-);
+    );
+};
 
 const statusVariant = {
     'New': 'bg-blue-600',

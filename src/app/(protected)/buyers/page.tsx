@@ -40,6 +40,7 @@ import { useUser } from '@/firebase/auth/use-user';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 // --- Lazy Loaded Components ---
 const AddBuyerDialog = dynamic(() => import('@/components/add-buyer-dialog').then(mod => mod.AddBuyerDialog), { ssr: false });
@@ -473,7 +474,19 @@ function BuyersPageContent() {
                                     </div>
                                 </TableCell>
                                 <TableCell>
-                                    <div className="text-sm font-medium">{displayedAreas}</div>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <div className="text-sm font-medium cursor-pointer hover:text-primary transition-colors" onClick={e => e.stopPropagation()}>{displayedAreas}</div>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-80 p-4 rounded-xl shadow-2xl border-none z-[100]" onClick={e => e.stopPropagation()}>
+                                            <div className="space-y-2">
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-primary/60 flex items-center gap-2">
+                                                    <MapPin className="h-3 w-3" /> Area Preference
+                                                </p>
+                                                <p className="text-sm font-bold leading-relaxed text-foreground">{buyer.area_preference || 'N/A'}</p>
+                                            </div>
+                                        </PopoverContent>
+                                    </Popover>
                                     <div className="text-xs text-muted-foreground">{buyer.property_type_preference}</div>
                                 </TableCell>
                                 <TableCell>
@@ -572,10 +585,22 @@ function BuyersPageContent() {
                                 <span className="font-bold text-primary">Budget: {formatBuyerBudgetInline(buyer)}</span>
                             </div>
                         </div>
-                        <div className="flex items-center gap-1.5 text-xs mt-3 text-muted-foreground italic">
-                            <MapPin className="h-3 w-3" />
-                            <span className="truncate">{buyer.area_preference || 'No area specified'}</span>
-                        </div>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <div className="flex items-center gap-1.5 text-xs mt-3 text-muted-foreground italic cursor-pointer hover:text-primary transition-colors" onClick={e => e.stopPropagation()}>
+                                    <MapPin className="h-3 w-3" />
+                                    <span className="truncate">{buyer.area_preference || 'No area specified'}</span>
+                                </div>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80 p-4 rounded-xl shadow-2xl border-none z-[100]" onClick={e => e.stopPropagation()}>
+                                <div className="space-y-2">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-primary/60 flex items-center gap-2">
+                                        <MapPin className="h-3 w-3" /> Area Preference
+                                    </p>
+                                    <p className="text-sm font-bold leading-relaxed text-foreground">{buyer.area_preference || 'N/A'}</p>
+                                </div>
+                            </PopoverContent>
+                        </Popover>
                         <div className="flex flex-wrap gap-1 mt-3">
                              {buyer.tags?.filter(t => t !== buyer.status).map(tagName => (
                                 <Badge key={tagName} className={cn("text-[8px] px-1.5 py-0 font-bold", getTagColor(tagName))}>{tagName}</Badge>
