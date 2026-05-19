@@ -91,6 +91,7 @@ const MarkAsRentOutDialog = dynamic(() => import('@/components/mark-as-rent-out-
 const SharePropertyDialog = dynamic(() => import('@/components/share-property-dialog').then(mod => mod.SharePropertyDialog), { ssr: false });
 const PropertyNotesDialog = dynamic(() => import('@/components/property-notes-dialog').then(mod => mod.PropertyNotesDialog), { ssr: false });
 const SetAppointmentDialog = dynamic(() => import('@/components/set-appointment-dialog').then(mod => mod.SetAppointmentDialog), { ssr: false });
+const AssignPropertyToAgentDialog = dynamic(() => import('@/components/assign-property-to-agent-dialog').then(mod => mod.AssignPropertyToAgentDialog), { ssr: false });
 
 const ITEMS_PER_PAGE = 50;
 
@@ -170,6 +171,7 @@ function PropertiesPageContent() {
   const [isAppointmentOpen, setIsAppointmentOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isNotesOpen, setIsNotesOpen] = useState(false);
+  const [isAssignOpen, setIsAssignOpen] = useState(false);
 
   const [activeListingType, setActiveListingType] = useState<ListingType | 'All'>('All');
   const [activeStatus, setActiveStatus] = useState<string>('All');
@@ -219,11 +221,6 @@ function PropertiesPageContent() {
 
     return counts;
   }, [allProperties, agencyTags]);
-
-  const assignableMembers = useMemo(() => {
-    if (!teamMembers) return [];
-    return teamMembers.filter((m: any) => m.status === 'Active' && (m.role === 'Agent' || m.role === 'Admin'));
-  }, [teamMembers]);
 
   const handleFilterChange = (key: keyof Filters, value: any) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -373,6 +370,11 @@ function PropertiesPageContent() {
       setIsNotesOpen(true);
   };
 
+  const handleAssignOpen = (prop: Property) => {
+      setPropertyForDetails(prop);
+      setIsAssignOpen(true);
+  }
+
   const handleMarkAsSoldOrRent = (prop: Property) => {
     setPropertyForDetails(prop);
     if (prop.is_for_rent) {
@@ -401,50 +403,10 @@ function PropertiesPageContent() {
     setPropertyToEdit(null);
   };
 
-  const handleAssignAgent = async (propId: string, agentUid: string, agentName: string) => {
-    if (!profile.agency_id) return;
-    try {
-      const propRef = doc(firestore, 'agencies', profile.agency_id, 'properties', propId);
-      const prop = allProperties?.find(p => p.id === propId);
-      if (!prop) return;
-
-      let currentAssigned = prop.assignedTo;
-      if (!Array.isArray(currentAssigned)) {
-          currentAssigned = currentAssigned ? [currentAssigned] : [];
-      }
-
-      const isAlreadyAssigned = currentAssigned.includes(agentUid);
-
-      if (isAlreadyAssigned) {
-        await updateDoc(propRef, { assignedTo: arrayRemove(agentUid) });
-        toast({ title: `Unassigned from ${agentName}` });
-      } else {
-        await updateDoc(propRef, { assignedTo: arrayUnion(agentUid) });
-        toast({ title: `Assigned to ${agentName}` });
-        
-        if(profile.agency_id) {
-            const activityLogRef = collection(firestore, 'agencies', profile.agency_id, 'activityLogs');
-            await addDoc(activityLogRef, {
-                userName: profile.name,
-                action: `assigned property to ${agentName}`,
-                target: prop.serial_no,
-                targetType: 'Property',
-                timestamp: new Date().toISOString(),
-                agency_id: profile.agency_id,
-                assignedToId: agentUid,
-                assignedToName: agentName
-            });
-        }
-      }
-    } catch (error) {
-      toast({ title: "Assignment Failed", variant: 'destructive' });
-    }
-  };
-
   const handleBulkAssign = async (agentDocId: string) => {
-    if (selectedProperties.length === 0 || !agentDocId || !profile.agency_id) return;
+    if (selectedProperties.length === 0 || !agentDocId || !profile.agency_id || !teamMembers) return;
     
-    const agent = assignableMembers.find((a: any) => a.id === agentDocId);
+    const agent = teamMembers.find((a: any) => a.id === agentDocId);
     if(!agent) return;
 
     const actualAgentUid = agent.user_id || agent.id;
@@ -574,28 +536,9 @@ function PropertiesPageContent() {
                     <DropdownMenuItem onSelect={() => handleMarkAsSoldOrRent(prop) as any}><Check className="mr-2 h-4 w-4" /> {prop.is_for_rent ? 'Mark as Rent Out' : 'Mark as Sold'}</DropdownMenuItem>
                     
                     {profile.role === 'Admin' && (
-                        <>
-                            <DropdownMenuSub>
-                                <DropdownMenuSubTrigger><UserPlus className="mr-2 h-4 w-4" /> Assign to...</DropdownMenuSubTrigger>
-                                <DropdownMenuPortal>
-                                    <DropdownMenuSubContent className="bg-background">
-                                        {assignableMembers.map((member: any) => {
-                                            const isAssigned = Array.isArray(prop.assignedTo) 
-                                                ? prop.assignedTo.includes(member.user_id || member.id)
-                                                : prop.assignedTo === (member.user_id || member.id);
-                                            return (
-                                                <DropdownMenuItem key={member.id} onSelect={() => handleAssignAgent(prop.id, member.user_id || member.id, member.name) as any}>
-                                                    <div className="flex items-center justify-between w-full">
-                                                        {member.name}
-                                                        {isAssigned && <Check className="h-4 w-4 ml-2" />}
-                                                    </div>
-                                                </DropdownMenuItem>
-                                            );
-                                        })}
-                                    </DropdownMenuSubContent>
-                                </DropdownMenuPortal>
-                            </DropdownMenuSub>
-                        </>
+                        <DropdownMenuItem onSelect={() => handleAssignOpen(prop)} className="font-bold text-primary">
+                            <UserPlus className="mr-2 h-4 w-4" /> Assign Agent & Buyers
+                        </DropdownMenuItem>
                     )}
                     <DropdownMenuItem onSelect={() => handleEdit(prop) as any}><Edit className="mr-2 h-4 w-4" />Edit</DropdownMenuItem>
                     {profile.role === 'Admin' && (
@@ -692,28 +635,9 @@ function PropertiesPageContent() {
                     <DropdownMenuItem onSelect={() => handleMarkAsSoldOrRent(prop) as any}><Check className="mr-2 h-4 w-4" /> {prop.is_for_rent ? 'Mark as Rent Out' : 'Mark as Sold'}</DropdownMenuItem>
                     
                     {profile.role === 'Admin' && (
-                        <>
-                            <DropdownMenuSub>
-                                <DropdownMenuSubTrigger><UserPlus className="mr-2 h-4 w-4" /> Assign to...</DropdownMenuSubTrigger>
-                                <DropdownMenuPortal>
-                                    <DropdownMenuSubContent className="bg-background">
-                                        {assignableMembers.map((member: any) => {
-                                            const isAssigned = Array.isArray(prop.assignedTo) 
-                                                ? prop.assignedTo.includes(member.user_id || member.id)
-                                                : prop.assignedTo === (member.user_id || member.id);
-                                            return (
-                                                <DropdownMenuItem key={member.id} onSelect={() => handleAssignAgent(prop.id, member.user_id || member.id, member.name) as any}>
-                                                    <div className="flex items-center justify-between w-full">
-                                                        {member.name}
-                                                        {isAssigned && <Check className="h-4 w-4 ml-2" />}
-                                                    </div>
-                                                </DropdownMenuItem>
-                                            );
-                                        })}
-                                    </DropdownMenuSubContent>
-                                </DropdownMenuPortal>
-                            </DropdownMenuSub>
-                        </>
+                         <DropdownMenuItem onSelect={() => handleAssignOpen(prop)} className="font-bold text-primary">
+                            <UserPlus className="mr-2 h-4 w-4" /> Assign Agent & Buyers
+                        </DropdownMenuItem>
                     )}
                     <DropdownMenuItem onSelect={() => handleEdit(prop) as any}><Edit className="mr-2 h-4 w-4" />Edit Details</DropdownMenuItem>
                     {profile.role === 'Admin' && (
@@ -743,7 +667,7 @@ function PropertiesPageContent() {
                 <div className="flex items-center gap-2">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild><Button variant="outline" className="rounded-full"><UserPlus className="mr-2 h-4 w-4" /> Assign</Button></DropdownMenuTrigger>
-                    <DropdownMenuContent className="bg-background">{assignableMembers.map((member: any) => <DropdownMenuItem key={member.id} onSelect={() => handleBulkAssign(member.id) as any}>{member.name}</DropdownMenuItem>)}</DropdownMenuContent>
+                    <DropdownMenuContent className="bg-background">{teamMembers?.filter((m: any) => m.status === 'Active' && (m.role === 'Agent' || m.role === 'Admin')).map((member: any) => <DropdownMenuItem key={member.id} onSelect={() => handleBulkAssign(member.id) as any}>{member.name}</DropdownMenuItem>)}</DropdownMenuContent>
                   </DropdownMenu>
                   <Button variant="destructive" className="rounded-full" onClick={handleBulkDelete}><Trash2 className="mr-2 h-4 w-4" /> Delete ({selectedProperties.length})</Button>
                 </div>
@@ -991,6 +915,7 @@ function PropertiesPageContent() {
           {isRentOutOpen && <MarkAsRentOutDialog property={propertyForDetails} isOpen={isRentOutOpen} setIsOpen={setIsRentOutOpen} onUpdateProperty={() => {}} />}
           {isShareOpen && <SharePropertyDialog property={propertyForDetails} isOpen={isShareOpen} setIsOpen={setIsShareOpen} />}
           {isNotesOpen && <PropertyNotesDialog property={propertyForDetails} isOpen={isNotesOpen} setIsOpen={setIsNotesOpen} />}
+          {isAssignOpen && <AssignPropertyToAgentDialog property={propertyForDetails} isOpen={isAssignOpen} setIsOpen={setIsAssignOpen} />}
           {isAppointmentOpen && (
             <SetAppointmentDialog 
               isOpen={isAppointmentOpen}

@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -32,7 +31,9 @@ import {
   User,
   MessageSquareText,
   Calendar,
-  Check
+  Check,
+  Undo2,
+  Loader2
 } from 'lucide-react';
 import { useCurrency } from '@/context/currency-context';
 import { formatCurrency, formatUnit } from '@/lib/formatters';
@@ -50,7 +51,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useFirestore } from '@/firebase/provider';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, collection, addDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -94,6 +95,7 @@ export function BuyerDetailsDialog({
   const firestore = useFirestore();
   const { toast } = useToast();
   const { profile } = useProfile();
+  const [isReleasing, setIsReleasing] = useState(false);
 
   // Mark notes as read when details are viewed
   useEffect(() => {
@@ -139,7 +141,36 @@ export function BuyerDetailsDialog({
     }
   };
 
+  const handleReleaseLead = async () => {
+    if (!profile.agency_id) return;
+    setIsReleasing(true);
+    try {
+        const buyerRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', buyer.id);
+        await updateDoc(buyerRef, { assignedTo: null });
+        
+        // Log activity
+        const activityLogRef = collection(firestore, 'agencies', profile.agency_id, 'activityLogs');
+        await addDoc(activityLogRef, {
+            userName: profile.name,
+            action: 'released the lead back to agency pool',
+            target: buyer.name,
+            targetType: 'Buyer',
+            timestamp: new Date().toISOString(),
+            agency_id: profile.agency_id,
+        });
+
+        toast({ title: "Lead Released", description: "This buyer is now back in the unassigned pool." });
+        setIsOpen(false);
+    } catch (error) {
+        toast({ title: "Error", variant: "destructive" });
+    } finally {
+        setIsReleasing(false);
+    }
+  };
+
   if (!buyer) return null;
+
+  const isAssignedToMe = buyer.assignedTo === profile.user_id;
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -147,16 +178,39 @@ export function BuyerDetailsDialog({
         <div className="p-6 pb-2 shrink-0">
           <DialogHeader>
             <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <Badge variant="outline" className="font-mono text-[10px] bg-background">
-                    {buyer.serial_no}
-                  </Badge>
-                  <Badge className={cn("text-[10px] font-bold px-2 py-0.5 text-white border-0", statusVariant[buyer.status as keyof typeof statusVariant] || 'bg-primary')}>
-                    {buyer.status}
-                  </Badge>
-                  {buyer.is_investor && (
-                    <Badge className="bg-indigo-600 text-white border-0 text-[10px] font-bold px-2 py-0.5">Investor</Badge>
-                  )}
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <Badge variant="outline" className="font-mono text-[10px] bg-background">
+                            {buyer.serial_no}
+                        </Badge>
+                        <Badge className={cn("text-[10px] font-bold px-2 py-0.5 text-white border-0", statusVariant[buyer.status as keyof typeof statusVariant] || 'bg-primary')}>
+                            {buyer.status}
+                        </Badge>
+                        {buyer.is_investor && (
+                            <Badge className="bg-indigo-600 text-white border-0 text-[10px] font-bold px-2 py-0.5">Investor</Badge>
+                        )}
+                    </div>
+                    {isAssignedToMe && (
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="outline" size="sm" className="rounded-full h-8 gap-2 text-destructive border-destructive/20 hover:bg-destructive/10">
+                                    <Undo2 className="h-3.5 w-3.5" /> Release to Pool
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent className="rounded-3xl border-none shadow-2xl">
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle className="font-headline text-2xl font-black">Release Lead Back?</AlertDialogTitle>
+                                    <AlertDialogDescription className="text-base">
+                                        This will un-assign <strong>{buyer.name}</strong> from you and return them to the agency pool for others to handle.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter className="mt-6">
+                                    <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleReleaseLead} className="bg-destructive text-white hover:bg-destructive/90 rounded-xl font-bold px-8">Confirm & Release</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    )}
                 </div>
                 
                 <div className="space-y-1">

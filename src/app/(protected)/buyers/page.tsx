@@ -49,6 +49,7 @@ const BuyerNotesDialog = dynamic(() => import('@/components/buyer-notes-dialog')
 const EditBuyerTagsDialog = dynamic(() => import('@/components/edit-buyer-tags-dialog').then(mod => mod.EditBuyerTagsDialog), { ssr: false });
 const SetAppointmentDialog = dynamic(() => import('@/components/set-appointment-dialog').then(mod => mod.SetAppointmentDialog), { ssr: false });
 const PropertyRecommenderDialog = dynamic(() => import('@/components/property-recommender-dialog').then(mod => mod.PropertyRecommenderDialog), { ssr: false });
+const AssignBuyerToAgentDialog = dynamic(() => import('@/components/assign-buyer-to-agent-dialog').then(mod => mod.AssignBuyerToAgentDialog), { ssr: false });
 
 const ITEMS_PER_PAGE = 50;
 
@@ -133,6 +134,7 @@ function BuyersPageContent() {
     const [isAppointmentOpen, setIsAppointmentOpen] = useState(false);
     const [isRecommenderOpen, setIsRecommenderOpen] = useState(false);
     const [isNotesOpen, setIsNotesOpen] = useState(false);
+    const [isAssignOpen, setIsAssignOpen] = useState(false);
 
     const [buyerToEdit, setBuyerToEdit] = useState<Buyer | null>(null);
     const [selectedBuyers, setSelectedBuyers] = useState<string[]>([]);
@@ -231,6 +233,11 @@ function BuyersPageContent() {
         setIsNotesOpen(true);
     };
 
+    const handleAssignOpen = (buyer: Buyer) => {
+        setSelectedBuyerForDetails(buyer);
+        setIsAssignOpen(true);
+    }
+
     const handleManageTagsAction = (buyer: Buyer) => {
         setSelectedBuyerForDetails(buyer);
         setIsEditTagsOpen(true);
@@ -258,22 +265,6 @@ function BuyersPageContent() {
             await addDoc(collectionRef, { ...restOfData, agency_id: profile.agency_id, created_by: user?.uid });
             await logActivity('added a new buyer', buyerData.name, 'Buyer');
             toast({ title: 'Buyer Added' });
-        }
-    };
-
-    const handleAssignAgent = async (buyerId: string, agentUid: string, agentName: string) => {
-        if (!profile.agency_id) return;
-        try {
-            const docRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', buyerId);
-            await updateDoc(docRef, { assignedTo: agentUid });
-            
-            const buyer = allBuyers?.find(b => b.id === buyerId);
-            if(buyer) {
-                await logActivity(`assigned buyer to ${agentName}`, buyer.name, 'Buyer', { assignedToId: agentUid, assignedToName: agentName });
-            }
-            toast({ title: `Assigned to ${agentName}` });
-        } catch (error) {
-            toast({ title: "Assignment Failed", variant: 'destructive' });
         }
     };
 
@@ -511,20 +502,9 @@ function BuyersPageContent() {
                                             <DropdownMenuItem onSelect={() => handleSetAppointment(buyer) as any}><CalendarPlus className="mr-2 h-4 w-4" /> Set Appointment</DropdownMenuItem>
                                             
                                             {profile.role === 'Admin' && (
-                                                <>
-                                                    <DropdownMenuSub>
-                                                        <DropdownMenuSubTrigger><UserPlus className="mr-2 h-4 w-4" /> Assign Agent</DropdownMenuSubTrigger>
-                                                        <DropdownMenuPortal>
-                                                            <DropdownMenuSubContent className="bg-background">
-                                                                {activeAgents.map((member: any) => (
-                                                                    <DropdownMenuItem key={member.id} onSelect={() => handleAssignAgent(buyer.id, member.user_id || member.id, member.name) as any}>
-                                                                        {member.name}
-                                                                    </DropdownMenuItem>
-                                                                ))}
-                                                            </DropdownMenuSubContent>
-                                                        </DropdownMenuPortal>
-                                                    </DropdownMenuSub>
-                                                </>
+                                                <DropdownMenuItem onSelect={() => handleAssignOpen(buyer)} className="font-bold text-primary">
+                                                    <UserPlus className="mr-2 h-4 w-4" /> Assign Agent & Inventory
+                                                </DropdownMenuItem>
                                             )}
                                             {profile.role === 'Admin' && (
                                                 <DropdownMenuItem onSelect={() => handleEdit(buyer) as any}><Edit className="mr-2 h-4 w-4" /> Edit Details</DropdownMenuItem>
@@ -621,20 +601,9 @@ function BuyersPageContent() {
                                 <DropdownMenuItem onSelect={() => handleSetAppointment(buyer) as any}><CalendarPlus className="mr-2 h-4 w-4" /> Set Appointment</DropdownMenuItem>
                                 
                                 {profile.role === 'Admin' && (
-                                    <>
-                                        <DropdownMenuSub>
-                                            <DropdownMenuSubTrigger><UserPlus className="mr-2 h-4 w-4" /> Assign Agent</DropdownMenuSubTrigger>
-                                            <DropdownMenuPortal>
-                                                <DropdownMenuSubContent className="bg-background">
-                                                    {activeAgents.map((member: any) => (
-                                                        <DropdownMenuItem key={member.id} onSelect={() => handleAssignAgent(buyer.id, member.user_id || member.id, member.name) as any}>
-                                                            {member.name}
-                                                        </DropdownMenuItem>
-                                                    ))}
-                                                </DropdownMenuSubContent>
-                                            </DropdownMenuPortal>
-                                        </DropdownMenuSub>
-                                    </>
+                                    <DropdownMenuItem onSelect={() => handleAssignOpen(buyer)} className="font-bold text-primary">
+                                        <UserPlus className="mr-2 h-4 w-4" /> Assign Agent & Inventory
+                                    </DropdownMenuItem>
                                 )}
                                 {profile.role === 'Admin' && (
                                     <DropdownMenuItem onSelect={() => handleEdit(buyer) as any}><Edit className="mr-2 h-4 w-4" /> Edit Details</DropdownMenuItem>
@@ -873,6 +842,7 @@ function BuyersPageContent() {
                     {isDetailsOpen && <BuyerDetailsDialog buyer={selectedBuyerForDetails} isOpen={isDetailsOpen} setIsOpen={setIsDetailsOpen} />}
                     {isNotesOpen && <BuyerNotesDialog buyer={selectedBuyerForDetails} isOpen={isNotesOpen} setIsOpen={setIsNotesOpen} />}
                     {isEditTagsOpen && <EditBuyerTagsDialog buyer={selectedBuyerForDetails} isOpen={isEditTagsOpen} setIsOpen={setIsEditTagsOpen} />}
+                    {isAssignOpen && <AssignBuyerToAgentDialog buyer={selectedBuyerForDetails} isOpen={isAssignOpen} setIsOpen={setIsAssignOpen} />}
                     {isAppointmentOpen && (
                         <SetAppointmentDialog 
                             isOpen={isAppointmentOpen}
