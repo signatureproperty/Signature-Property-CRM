@@ -7,7 +7,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { format, parseISO, isSameDay } from "date-fns";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import { Skeleton } from "./skeleton";
+import { Skeleton } from "./ui/skeleton";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { Separator } from "./ui/separator";
 import { cn } from "@/lib/utils";
