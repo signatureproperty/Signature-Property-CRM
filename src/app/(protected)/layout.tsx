@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button';
 import { MobileNav } from '@/components/shared/mobile-nav';
 import { LayoutStateProvider, useSearch } from '@/context/layout-context';
 
-function AuthGuard({ children }: { children: React.Node }) {
+function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const { profile, isLoading: isProfileLoading } = useProfile();
   const router = useRouter();
