@@ -82,7 +82,7 @@ export function AvatarCropDialog({
             });
             return;
         }
-        setCrop(undefined) // Makes crop preview update between images.
+        setCrop(undefined)
         const reader = new FileReader()
         reader.addEventListener('load', () =>
             setImgSrc(reader.result?.toString() || '')
@@ -126,8 +126,9 @@ export function AvatarCropDialog({
       canvas.height
     );
 
-    const base64Image = canvas.toDataURL('image/jpeg');
-    onSave(base64Image);
+    // Convert to WebP for storage efficiency
+    const webpImage = canvas.toDataURL('image/webp', 0.85);
+    onSave(webpImage);
   };
 
   return (
@@ -136,7 +137,7 @@ export function AvatarCropDialog({
         <DialogHeader>
           <DialogTitle>Update Profile Picture</DialogTitle>
           <DialogDescription>
-            Select and crop your new profile picture.
+            Select and crop your new profile picture. It will be converted to WebP for optimization.
           </DialogDescription>
         </DialogHeader>
         
