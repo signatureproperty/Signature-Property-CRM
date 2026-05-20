@@ -30,7 +30,7 @@ import { useTheme } from 'next-themes';
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Download, Upload, Server, Eye, EyeOff, AlertTriangle, Loader2, Link as LinkIcon, ChevronsUpDown, Check, Building, FileSpreadsheet, FileUp, FileDown } from 'lucide-react';
+import { Download, Upload, Server, Eye, EyeOff, AlertTriangle, Loader2, Link as LinkIcon, ChevronsUpDown, Check, Building, FileSpreadsheet, FileUp, FileDown, Users, Sun, Moon } from 'lucide-react';
 import { ResetAccountDialog } from '@/components/reset-account-dialog';
 import { useFirestore, useAuth } from '@/firebase/provider';
 import { useUser } from '@/firebase/auth/use-user';
@@ -426,7 +426,7 @@ export default function SettingsPage() {
         const batch = writeBatch(firestore);
         const agencyId = profile.agency_id;
         
-        const subCollections = ['properties', 'buyers', 'teamMembers', 'appointments', 'activityLogs'];
+        const subCollections = ['properties', 'buyers', 'teamMembers', 'appointments', 'followUps', 'activityLogs'];
         for (const subCol of subCollections) {
             const querySnapshot = await getDocs(collection(firestore, 'agencies', agencyId, subCol));
             querySnapshot.forEach(doc => batch.delete(doc.ref));
@@ -856,7 +856,7 @@ export default function SettingsPage() {
                         </div>
                     </div>
                     <div className="p-5 rounded-2xl bg-muted/20 border border-border/40 space-y-4">
-                        <h3 className="font-black text-[10px] uppercase tracking-widest text-indigo-600 flex items-center gap-2"><UserIcon className="h-3 w-3" /> Buyer Leads</h3>
+                        <h3 className="font-black text-[10px] uppercase tracking-widest text-indigo-600 flex items-center gap-2"><Users className="h-3 w-3" /> Buyer Leads</h3>
                         <div className="flex flex-wrap gap-2">
                             <Button variant="outline" size="sm" className="h-9 rounded-lg font-bold" onClick={() => handleExportCSV('Buyers')}>
                                 <FileDown className="mr-2 h-4 w-4" /> Export CSV
