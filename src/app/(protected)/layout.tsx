@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button';
 import { MobileNav } from '@/components/shared/mobile-nav';
 import { LayoutStateProvider, useSearch } from '@/context/layout-context';
 
-function AuthGuard({ children }: { children: React.ReactNode }) {
+function AuthGuard({ children }: { children: React.Node }) {
   const { user, isUserLoading } = useUser();
   const { profile, isLoading: isProfileLoading } = useProfile();
   const router = useRouter();
@@ -45,7 +45,8 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
       }
   }
 
-  if (isUserLoading || isProfileLoading) {
+  // ONLY show full screen loader on INITIAL load (if we have no user and no profile yet)
+  if (isUserLoading || (isProfileLoading && !profile.user_id)) {
     return (
         <div className="flex h-screen w-full items-center justify-center bg-background">
             <AppLoader />
@@ -77,7 +78,6 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
   // Routing Logic
   if (pathname.startsWith('/super-admin')) {
-      // Handled by the bypass above, but for clarity:
       isAllowed = (profile.role as string) === 'Super Admin';
   } else if (profile.role === 'Agent' && agentForbiddenPaths.some(path => pathname.startsWith(path))) {
       isAllowed = false;
@@ -110,7 +110,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex flex-col h-screen w-full overflow-hidden">
-        {/* Verification Banner - Now spans full width at the very top */}
+        {/* Verification Banner */}
         {!user.emailVerified && (profile.role as string) !== 'Super Admin' && (
             <div className="z-50 w-full bg-amber-500 text-amber-900 shadow-md flex-shrink-0">
                 <div className="container mx-auto flex items-center justify-center p-2 px-4 text-[11px] sm:text-sm font-bold gap-3 sm:gap-6 text-center">
@@ -145,14 +145,11 @@ function ProtectedLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isSearchable = ['/properties', '/buyers', '/recording', '/editing'].some(path => pathname.startsWith(path));
 
-
-  // Reset search when navigating away from searchable pages
   React.useEffect(() => {
     if (!isSearchable) {
       setSearchQuery('');
     }
   }, [isSearchable, pathname, setSearchQuery]);
-
 
   return (
     <AuthGuard>
@@ -175,7 +172,6 @@ function ProtectedLayoutContent({ children }: { children: React.ReactNode }) {
     </AuthGuard>
   );
 }
-
 
 export default function ProtectedLayout({
   children,

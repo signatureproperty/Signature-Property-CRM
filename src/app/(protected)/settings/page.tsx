@@ -153,39 +153,33 @@ export default function SettingsPage() {
   const handleAvatarUpdate = async (dataUrl: string) => {
     if (!user) return;
     
-    setTempAvatarPreview(dataUrl); // Show immediate local preview
+    setTempAvatarPreview(dataUrl); 
     setIsUploading(true);
 
     try {
         const response = await fetch(dataUrl);
         const blob = await response.blob();
         
-        // Define path in R2
         const fileName = `${user.uid}_${Date.now()}.webp`;
         const filePath = `avatars/${fileName}`;
         
-        // Upload to Cloudflare R2
         const downloadURL = await uploadToR2(blob, filePath);
 
         const batch = writeBatch(firestore);
         
-        // 1. Update global user profile
         const userDocRef = doc(firestore, 'users', user.uid);
         batch.update(userDocRef, { avatar: downloadURL });
 
-        // 2. Update Agency-specific records if applicable
         if (profile.agency_id && profile.agency_id !== 'master_control') {
             const teamMemberRef = doc(firestore, 'agencies', profile.agency_id, 'teamMembers', user.uid);
             batch.update(teamMemberRef, { avatar: downloadURL });
             
-            // If the user is the Admin/Owner, update the agency root as well
             if (profile.role === 'Admin' || profile.role === 'Super Admin') {
                 const agencyDocRef = doc(firestore, 'agencies', profile.agency_id);
                 batch.update(agencyDocRef, { avatar: downloadURL });
             }
         }
 
-        // 3. Update personal Agent record if applicable
         if (profile.role === 'Agent') {
             const agentDocRef = doc(firestore, 'agents', user.uid);
             batch.set(agentDocRef, { avatar: downloadURL }, { merge: true });
@@ -193,13 +187,12 @@ export default function SettingsPage() {
         
         await batch.commit();
         
-        // Update local context
         setProfile({ ...profile, avatar: downloadURL });
         toast({ title: 'Profile Picture Updated!' });
         
     } catch (error: any) {
         console.error('Avatar update error:', error);
-        setTempAvatarPreview(null); // Revert on error
+        setTempAvatarPreview(null); 
         toast({
             title: 'Update Failed',
             description: error.message || 'Could not update profile picture. Please try again.',
@@ -209,7 +202,7 @@ export default function SettingsPage() {
         setIsUploading(false);
         setIsAvatarCropOpen(false);
     }
-};
+  };
 
 
   const handleProfileSave = async (e: React.FormEvent) => {
@@ -480,7 +473,7 @@ export default function SettingsPage() {
             return numA - numB;
         });
 
-    let csvContent = "\ufeff"; // BOM for Excel UTF-8
+    let csvContent = "\ufeff"; 
     
     if (type === 'Buyers') {
         csvContent += "Serial,Name,Phone,Email,Status,Listing,Area,Type,Min Budget,Max Budget,Notes\n";
@@ -625,18 +618,8 @@ export default function SettingsPage() {
     reader.readAsText(file);
   }
 
-
   if (!mounted) {
     return null;
-  }
-
-  // Prevent flicker by not showing loader if profile already exists
-  if (isProfileLoading && !profile.user_id) {
-    return (
-        <div className="flex h-screen items-center justify-center">
-            <Loader2 className="animate-spin h-8 w-8 text-primary" />
-        </div>
-    );
   }
 
   return (
@@ -658,23 +641,23 @@ export default function SettingsPage() {
           <CardContent className="space-y-8">
              <div className="flex items-center gap-8">
                 <div className="relative group">
-                    <Avatar className="h-28 w-28 border-4 border-primary/20 shadow-2xl transition-transform hover:scale-105">
+                    <Avatar className="h-28 w-28 border-4 border-primary/20 shadow-2xl transition-transform hover:scale-105 overflow-hidden">
                         <AvatarImage 
                             src={tempAvatarPreview || profile.avatar} 
                             className="object-cover h-full w-full" 
-                            key={profile.avatar}
+                            key={tempAvatarPreview || profile.avatar}
                         />
                         <AvatarFallback className="bg-primary/5 text-primary text-2xl font-black">
-                            {profile.name?.charAt(0)}
+                            {profile.name?.charAt(0) || '?'}
                         </AvatarFallback>
                     </Avatar>
                      <button 
                         type="button" 
                         onClick={() => setIsAvatarCropOpen(true)} 
-                        className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-all text-white text-xs font-black uppercase tracking-widest"
+                        className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-all text-white text-[10px] font-black uppercase tracking-widest"
                         disabled={isUploading}
                     >
-                         {isUploading ? <Loader2 className="animate-spin h-6 w-6" /> : 'Change Image'}
+                         {isUploading ? <Loader2 className="animate-spin h-6 w-6" /> : 'Change Photo'}
                     </button>
                     {isUploading && (
                         <div className="absolute inset-0 bg-black/40 flex items-center justify-center rounded-full">
