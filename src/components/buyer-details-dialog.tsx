@@ -34,8 +34,7 @@ import {
   Undo2,
   Loader2,
   ChevronDown,
-  Info,
-  X
+  Info
 } from 'lucide-react';
 import { useCurrency } from '@/context/currency-context';
 import { formatCurrency, formatUnit } from '@/lib/formatters';
@@ -65,6 +64,7 @@ import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Checkbox } from './ui/checkbox';
 import { punjabCities } from '@/lib/data';
+import { SharePropertyDialog } from './share-property-dialog';
 
 const propertyTypeValues = [
     'House', 'Flat', 'Farm House', 'Penthouse', 'Plot', 'Residential Plot', 'Commercial Plot', 'Agricultural Land', 'Industrial Land', 'Office', 'Shop', 'Warehouse', 'Factory', 'Building', 'Residential Property', 'Commercial Property', 'Semi Commercial', 'Other'
@@ -135,6 +135,7 @@ export function BuyerDetailsDialog({
   const { profile } = useProfile();
   const [isReleasing, setIsReleasing] = useState(false);
   const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
   const [returnDetails, setReturnDetails] = useState({
       name: '',
       email: '',
@@ -475,9 +476,6 @@ export function BuyerDetailsDialog({
                                 Edit details before releasing. Phone is locked.
                             </DialogDescription>
                         </div>
-                        <Button variant="ghost" size="icon" className="sm:hidden -mr-2" onClick={() => setIsReturnDialogOpen(false)}>
-                            <X className="h-5 w-5" />
-                        </Button>
                     </div>
                   </DialogHeader>
               </div>
