@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -24,8 +24,8 @@ import { useProfile } from '@/context/profile-context';
 import { useToast } from '@/hooks/use-toast';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useMemoFirebase } from '@/firebase/hooks';
-import { Loader2, Zap, User, UserPlus, Phone, Check, ChevronsUpDown } from 'lucide-react';
-import type { Service, Buyer } from '@/lib/types';
+import { Loader2, Zap, User, UserPlus, Phone, Check, ChevronsUpDown, Building2 } from 'lucide-react';
+import type { Service, Buyer, Property } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -63,11 +63,40 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
   const [countryCodePopoverOpen, setCountryCodePopoverOpen] = useState(false);
   const [leadPopoverOpen, setLeadPopoverOpen] = useState(false);
 
+  // Fetch Buyers
   const buyersQuery = useMemoFirebase(() => 
     profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'buyers') : null,
     [profile.agency_id, firestore]
   );
   const { data: buyers } = useCollection<Buyer>(buyersQuery);
+
+  // Fetch Properties
+  const propertiesQuery = useMemoFirebase(() => 
+    profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'properties') : null,
+    [profile.agency_id, firestore]
+  );
+  const { data: properties } = useCollection<Property>(propertiesQuery);
+
+  // Combine and Filter Leads based on Service target
+  const applicableLeads = useMemo(() => {
+    const list: Array<{ id: string; name: string; serial: string; type: 'Buyer' | 'Property' }> = [];
+    
+    const target = service.applicableTo || 'Both';
+
+    if (target === 'Buyers' || target === 'Both') {
+        buyers?.filter(b => !b.is_deleted).forEach(b => {
+            list.push({ id: b.id, name: b.name, serial: b.serial_no, type: 'Buyer' });
+        });
+    }
+
+    if (target === 'Properties' || target === 'Both') {
+        properties?.filter(p => !p.is_deleted).forEach(p => {
+            list.push({ id: p.id, name: p.auto_title, serial: p.serial_no, type: 'Property' });
+        });
+    }
+
+    return list.sort((a, b) => a.name.localeCompare(b.name));
+  }, [buyers, properties, service.applicableTo]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -99,8 +128,8 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
 
     setIsLoading(true);
 
-    const lead = values.assignedToType === 'Lead' ? buyers?.find(b => b.id === values.leadId) : null;
-    const clientName = (values.assignedToType === 'Lead' ? lead?.name : values.externalName) || 'Client';
+    const lead = values.assignedToType === 'Lead' ? applicableLeads.find(l => l.id === values.leadId) : null;
+    const clientName = lead ? lead.name : (values.externalName || 'Client');
     const formattedPhone = values.externalPhone ? formatPhoneNumber(values.externalPhone, values.country_code) : null;
 
     const colRef = collection(firestore, 'agencies', profile.agency_id, 'providedServices');
@@ -110,7 +139,8 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
         priceCharged: values.priceCharged,
         assignedToType: values.assignedToType,
         leadId: values.leadId || null,
-        leadName: lead?.name || null,
+        leadName: clientName,
+        leadType: lead?.type || null,
         externalName: values.externalName || null,
         externalPhone: formattedPhone,
         externalClientDetails: values.externalClientDetails || null,
@@ -128,18 +158,18 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
         errorEmitter.emit('permission-error', permissionError);
     });
 
-    // Log Activity Non-blocking
+    // Log Activity
     const activityColRef = collection(firestore, 'agencies', profile.agency_id, 'activityLogs');
     addDoc(activityColRef, {
         userName: profile.name,
-        action: `assigned service "${service.name}" to ${clientName}`,
+        action: `sold service "${service.name}" to ${clientName}`,
         target: service.name,
         targetType: 'Service',
         timestamp: new Date().toISOString(),
         agency_id: profile.agency_id,
     }).catch(() => {});
 
-    toast({ title: 'Processing assignment...' });
+    toast({ title: 'Processing sale...' });
     setIsLoading(false);
     setIsOpen(false);
   };
@@ -178,7 +208,7 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
                     />
 
                     <div className="space-y-3">
-                        <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Client Type</Label>
+                        <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Client Selection</Label>
                         <FormField
                             control={form.control}
                             name="assignedToType"
@@ -198,7 +228,7 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
                                             )}
                                         >
                                             <User className="h-5 w-5 mb-1" />
-                                            <span className="text-xs font-bold">Existing Lead</span>
+                                            <span className="text-xs font-bold text-center">Existing Lead/Owner</span>
                                         </Label>
                                     </div>
                                     <div>
@@ -211,7 +241,7 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
                                             )}
                                         >
                                             <UserPlus className="h-5 w-5 mb-1" />
-                                            <span className="text-xs font-bold">External / New</span>
+                                            <span className="text-xs font-bold text-center">External Client</span>
                                         </Label>
                                     </div>
                                 </RadioGroup>
@@ -225,7 +255,7 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
                             name="leadId"
                             render={({ field }) => (
                                 <FormItem className="flex flex-col">
-                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60">Select Buyer Lead</FormLabel>
+                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60">Search Lead/Property</FormLabel>
                                     <Popover open={leadPopoverOpen} onOpenChange={setLeadPopoverOpen}>
                                         <PopoverTrigger asChild>
                                             <FormControl>
@@ -238,24 +268,24 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
                                                     )}
                                                 >
                                                     {field.value
-                                                        ? buyers?.find((b) => b.id === field.value)?.name + ` (${buyers?.find((b) => b.id === field.value)?.serial_no})`
-                                                        : "Search lead by Name or Serial..."}
+                                                        ? applicableLeads.find((l) => l.id === field.value)?.name.substring(0, 30) + '...'
+                                                        : "Search by Name or Serial..."}
                                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                 </Button>
                                             </FormControl>
                                         </PopoverTrigger>
                                         <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-2xl overflow-hidden shadow-2xl border-none">
                                             <Command>
-                                                <CommandInput placeholder="Type Name or Serial (e.g. B-10)..." className="h-11" />
+                                                <CommandInput placeholder="Type Name or SN..." className="h-11" />
                                                 <CommandList>
-                                                    <CommandEmpty>No matching leads found.</CommandEmpty>
+                                                    <CommandEmpty>No matching records found.</CommandEmpty>
                                                     <CommandGroup>
-                                                        {buyers?.filter(b => !b.is_deleted).map((b) => (
+                                                        {applicableLeads.map((l) => (
                                                             <CommandItem
-                                                                value={`${b.name} ${b.serial_no}`}
-                                                                key={b.id}
+                                                                value={`${l.name} ${l.serial}`}
+                                                                key={l.id}
                                                                 onSelect={() => {
-                                                                    form.setValue("leadId", b.id);
+                                                                    form.setValue("leadId", l.id);
                                                                     setLeadPopoverOpen(false);
                                                                 }}
                                                                 className="flex items-center justify-between py-3"
@@ -264,12 +294,17 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
                                                                     <Check
                                                                         className={cn(
                                                                             "h-4 w-4 text-primary",
-                                                                            b.id === field.value ? "opacity-100" : "opacity-0"
+                                                                            l.id === field.value ? "opacity-100" : "opacity-0"
                                                                         )}
                                                                     />
-                                                                    <span className="font-bold">{b.name}</span>
+                                                                    <div className="flex flex-col">
+                                                                        <span className="font-bold text-sm line-clamp-1">{l.name}</span>
+                                                                        <span className="text-[10px] font-black text-muted-foreground uppercase flex items-center gap-1">
+                                                                            {l.type === 'Buyer' ? <User className="h-2 w-2"/> : <Building2 className="h-2 w-2"/>} {l.type}
+                                                                        </span>
+                                                                    </div>
                                                                 </div>
-                                                                <Badge variant="outline" className="font-mono text-[10px] bg-muted/50">{b.serial_no}</Badge>
+                                                                <Badge variant="outline" className="font-mono text-[9px] bg-muted/50">{l.serial}</Badge>
                                                             </CommandItem>
                                                         ))}
                                                     </CommandGroup>

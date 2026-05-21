@@ -387,6 +387,8 @@ export interface EventDetails {
 }
 
 // --- New Service Module Types ---
+export type ServiceTargetAudience = 'Buyers' | 'Properties' | 'Both';
+
 export type Service = {
     id: string;
     name: string;
@@ -397,6 +399,7 @@ export type Service = {
     created_at: string;
     customStatuses?: string[]; // Selection options for status (picked one)
     tags?: string[];           // Available labels (picked many)
+    applicableTo?: ServiceTargetAudience;
 };
 
 export type ServiceStatus = 'Pending' | 'In Progress' | 'Completed' | string;
@@ -412,6 +415,7 @@ export type ProvidedService = {
     assignedToType: AssignedToType;
     leadId?: string;
     leadName?: string;
+    leadType?: 'Buyer' | 'Property';
     externalName?: string;
     externalPhone?: string;
     externalClientDetails?: string;

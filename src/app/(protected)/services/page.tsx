@@ -31,7 +31,8 @@ import {
     Wallet,
     DollarSign,
     ListChecks,
-    Check
+    Check,
+    Building2
 } from 'lucide-react';
 import { 
     DropdownMenu, 
@@ -54,8 +55,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-is-mobile';
 import { BuyerDetailsDialog } from '@/components/buyer-details-dialog';
+import { PropertyDetailsDialog } from '@/components/property-details-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Buyer, ProvidedService, Service } from '@/lib/types';
+import { Buyer, ProvidedService, Service, Property } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
@@ -100,6 +102,10 @@ export default function ServicesPage() {
 
     const [viewingBuyer, setViewingBuyer] = useState<Buyer | null>(null);
     const [isBuyerOpen, setIsBuyerOpen] = useState(false);
+    
+    const [viewingProperty, setViewingProperty] = useState<Property | null>(null);
+    const [isPropertyOpen, setIsPropertyOpen] = useState(false);
+
     const [viewingExternal, setViewingExternal] = useState<ProvidedService | null>(null);
     const [isExternalOpen, setIsExternalOpen] = useState(false);
 
@@ -121,6 +127,12 @@ export default function ServicesPage() {
         [profile.agency_id, firestore]
     );
     const { data: buyers } = useCollection<Buyer>(buyersQuery);
+
+    const propertiesQuery = useMemoFirebase(() => 
+        profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'properties') : null,
+        [profile.agency_id, firestore]
+    );
+    const { data: properties } = useCollection<Property>(propertiesQuery);
 
     const handleUpdateStatus = (log: ProvidedService, newStatus: string) => {
         if (!profile.agency_id) return;
@@ -159,8 +171,13 @@ export default function ServicesPage() {
 
     const handleClientClick = (log: ProvidedService) => {
         if (log.assignedToType === 'Lead' && log.leadId) {
-            const buyer = buyers?.find(b => b.id === log.leadId);
-            if (buyer) { setViewingBuyer(buyer); setIsBuyerOpen(true); }
+            if (log.leadType === 'Property') {
+                const prop = properties?.find(p => p.id === log.leadId);
+                if (prop) { setViewingProperty(prop); setIsPropertyOpen(true); }
+            } else {
+                const buyer = buyers?.find(b => b.id === log.leadId);
+                if (buyer) { setViewingBuyer(buyer); setIsBuyerOpen(true); }
+            }
         } else {
             setViewingExternal(log); setIsExternalOpen(true);
         }
@@ -181,7 +198,7 @@ export default function ServicesPage() {
                             <div>
                                 <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-0.5">{log.serviceName}</p>
                                 <div className="flex items-center gap-2 cursor-pointer" onClick={() => handleClientClick(log)}>
-                                    <span className="font-bold text-sm underline decoration-primary/20 underline-offset-4">{log.leadName || log.externalName}</span>
+                                    <span className="font-bold text-sm underline decoration-primary/20 underline-offset-4 line-clamp-1">{log.leadName || log.externalName}</span>
                                     <Badge variant="secondary" className="text-[8px] h-4 font-black">{log.assignedToType.toUpperCase()}</Badge>
                                 </div>
                             </div>
@@ -202,11 +219,6 @@ export default function ServicesPage() {
                                 </div>
                             </div>
                         </div>
-                        {log.tags && log.tags.length > 0 && (
-                            <div className="mt-4 flex flex-wrap gap-1 border-t border-dashed pt-3">
-                                {log.tags.map(t => <Badge key={t} variant="outline" className="text-[8px] bg-primary/5 border-primary/20 text-primary/70 font-bold px-1.5">{t}</Badge>)}
-                            </div>
-                        )}
                     </CardContent>
                 </Card>
             ))}
@@ -291,6 +303,9 @@ export default function ServicesPage() {
                                         </DropdownMenu>
                                     </div>
                                     <CardTitle className="text-lg font-black font-headline pt-1">{service.name}</CardTitle>
+                                    <Badge variant="secondary" className="w-fit text-[9px] h-4 py-0 font-bold opacity-60 flex items-center gap-1">
+                                        <Users className="h-2 w-2" /> FOR: {service.applicableTo || 'Both'}
+                                    </Badge>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                     <div className="text-2xl font-black text-primary">{formatCurrency(service.price, currency)}</div>
@@ -342,8 +357,8 @@ export default function ServicesPage() {
                                                 </TableCell>
                                                 <TableCell className="cursor-pointer" onClick={() => handleClientClick(log)}>
                                                     <div className="flex items-center gap-2">
-                                                        <span className="text-sm font-bold group-hover:text-primary transition-colors underline decoration-primary/10 underline-offset-4">{log.leadName || log.externalName}</span>
-                                                        <Badge variant="secondary" className="text-[8px] h-4 font-black">{log.assignedToType.toUpperCase()}</Badge>
+                                                        <span className="text-sm font-bold group-hover:text-primary transition-colors underline decoration-primary/10 underline-offset-4 line-clamp-1 max-w-[150px]">{log.leadName || log.externalName}</span>
+                                                        <Badge variant="secondary" className="text-[8px] h-4 font-black shrink-0">{log.assignedToType.toUpperCase()}</Badge>
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
@@ -367,7 +382,10 @@ export default function ServicesPage() {
             <AddServiceDialog isOpen={isAddOpen} setIsOpen={setIsAddOpen} serviceToEdit={selectedService} />
             {selectedService && <AssignServiceDialog isOpen={isAssignOpen} setIsOpen={setIsAssignOpen} service={selectedService} />}
             {selectedLog && <UpdateServicePaymentDialog isOpen={isPaymentOpen} setIsOpen={setIsPaymentOpen} log={selectedLog} />}
+            
             {viewingBuyer && <BuyerDetailsDialog buyer={viewingBuyer} isOpen={isBuyerOpen} setIsOpen={setIsBuyerOpen} />}
+            {viewingProperty && <PropertyDetailsDialog property={viewingProperty} isOpen={isPropertyOpen} setIsOpen={setIsPropertyOpen} />}
+
             <Dialog open={isExternalOpen} onOpenChange={setIsExternalOpen}>
                 <DialogContent className="sm:max-w-md border-none shadow-3xl rounded-[2rem] p-0 overflow-hidden">
                     <div className="p-8 pb-2"><DialogHeader><div className="flex items-center gap-3 mb-2"><div className="p-3 bg-orange-500/10 rounded-2xl text-orange-600"><User className="h-6 w-6" /></div><div><DialogTitle className="font-headline text-xl font-black">External Client Profile</DialogTitle></div></div></DialogHeader></div>

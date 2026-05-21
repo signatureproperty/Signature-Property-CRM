@@ -21,18 +21,20 @@ import { useFirestore } from '@/firebase/provider';
 import { doc, addDoc, collection, updateDoc } from 'firebase/firestore';
 import { useProfile } from '@/context/profile-context';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Plus, Sparkles, X, CheckCircle2, Tag as TagIcon, ListChecks } from 'lucide-react';
-import type { Service } from '@/lib/types';
+import { Loader2, Plus, Sparkles, X, CheckCircle2, Tag as TagIcon, ListChecks, Users } from 'lucide-react';
+import type { Service, ServiceTargetAudience } from '@/lib/types';
 import { Badge } from './ui/badge';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import { ScrollArea } from './ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 const formSchema = z.object({
   name: z.string().min(1, 'Service name is required'),
   price: z.coerce.number().min(0, 'Price must be positive'),
   category: z.string().min(1, 'Category is required'),
   description: z.string().optional(),
+  applicableTo: z.enum(['Buyers', 'Properties', 'Both']).default('Both'),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -64,6 +66,7 @@ export function AddServiceDialog({ isOpen, setIsOpen, serviceToEdit }: AddServic
       price: 0,
       category: 'Marketing',
       description: '',
+      applicableTo: 'Both',
     },
   });
 
@@ -74,6 +77,7 @@ export function AddServiceDialog({ isOpen, setIsOpen, serviceToEdit }: AddServic
         price: serviceToEdit.price,
         category: serviceToEdit.category,
         description: serviceToEdit.description,
+        applicableTo: serviceToEdit.applicableTo || 'Both',
       });
       setCustomStatuses(serviceToEdit.customStatuses || []);
       setTags(serviceToEdit.tags || []);
@@ -83,6 +87,7 @@ export function AddServiceDialog({ isOpen, setIsOpen, serviceToEdit }: AddServic
         price: 0,
         category: 'Marketing',
         description: '',
+        applicableTo: 'Both',
       });
       setCustomStatuses([]);
       setTags([]);
@@ -172,7 +177,7 @@ export function AddServiceDialog({ isOpen, setIsOpen, serviceToEdit }: AddServic
                         {serviceToEdit ? 'Edit Service' : 'Create New Service'}
                     </DialogTitle>
                     <DialogDescription className="text-xs font-medium">
-                        Define your agency service, workflow statuses, and labeling tags.
+                        Define your agency service, target audience, and workflow.
                     </DialogDescription>
                 </div>
               </div>
@@ -208,17 +213,40 @@ export function AddServiceDialog({ isOpen, setIsOpen, serviceToEdit }: AddServic
                         />
                     </div>
 
-                    <FormField
-                        control={form.control}
-                        name="price"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60">Base Price (PKR)</FormLabel>
-                            <FormControl><Input type="number" {...field} className="h-11 rounded-xl font-bold text-primary" /></FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                            control={form.control}
+                            name="price"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60">Base Price (PKR)</FormLabel>
+                                <FormControl><Input type="number" {...field} className="h-11 rounded-xl font-bold text-primary" /></FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="applicableTo"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60">Target Audience</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl>
+                                        <SelectTrigger className="h-11 rounded-xl">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent className="rounded-xl border-none shadow-xl">
+                                        <SelectItem value="Buyers">Buyers Only</SelectItem>
+                                        <SelectItem value="Properties">Properties/Owners Only</SelectItem>
+                                        <SelectItem value="Both">Both Leads & Owners</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                </FormItem>
+                            )}
+                        />
+                    </div>
 
                     {/* STATUSES SECTION */}
                     <div className="space-y-4 pt-2">
@@ -283,7 +311,6 @@ export function AddServiceDialog({ isOpen, setIsOpen, serviceToEdit }: AddServic
                                     <button type="button" onClick={() => removeTag(tag)} className="opacity-40 hover:opacity-100"><X className="h-3 w-3" /></button>
                                 </Badge>
                             ))}
-                            {tags.length === 0 && <p className="text-[10px] text-muted-foreground italic">Add tags for extra categorization (e.g. Urgent, Paid Shot, Interior Only).</p>}
                         </div>
                     </div>
 
