@@ -395,9 +395,10 @@ export type Service = {
     description: string;
     agency_id: string;
     created_at: string;
+    customStatuses?: string[]; // Defined at service creation time
 };
 
-export type ServiceStatus = 'Pending' | 'In Progress' | 'Completed';
+export type ServiceStatus = 'Pending' | 'In Progress' | 'Completed' | string;
 export type AssignedToType = 'Lead' | 'External';
 
 export type ProvidedService = {
@@ -411,7 +412,7 @@ export type ProvidedService = {
     externalName?: string;
     externalPhone?: string;
     externalClientDetails?: string;
-    status: ServiceStatus;
+    status: string; // Dynamic status based on service definition
     agency_id: string;
     created_at: string;
 };
