@@ -34,6 +34,7 @@ import { countryCodes } from '@/lib/data';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command';
 import { formatPhoneNumber } from '@/lib/utils';
+import { ScrollArea } from './ui/scroll-area';
 
 const formSchema = z.object({
   priceCharged: z.coerce.number().min(0, 'Amount is required'),
@@ -143,8 +144,8 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-md border-none shadow-3xl rounded-[2rem] p-0 overflow-hidden">
-        <div className="p-6 pb-2">
+      <DialogContent className="sm:max-w-md border-none shadow-3xl rounded-[2rem] p-0 overflow-hidden max-h-[95vh] flex flex-col">
+        <div className="p-6 pb-2 shrink-0">
             <DialogHeader>
                 <div className="flex items-center gap-3 mb-2">
                     <div className="p-2 bg-primary/10 rounded-xl text-primary">
@@ -158,186 +159,190 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
             </DialogHeader>
         </div>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="px-6 space-y-6">
-                <FormField
-                    control={form.control}
-                    name="priceCharged"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60">Price Charged (PKR)</FormLabel>
-                        <FormControl><Input type="number" {...field} className="h-11 rounded-xl font-bold text-primary" /></FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
-
-                <div className="space-y-3">
-                    <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Client Type</Label>
+        <ScrollArea className="flex-1">
+            <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-6 pt-2">
+                <div className="space-y-6">
                     <FormField
                         control={form.control}
-                        name="assignedToType"
-                        render={({ field }) => (
-                            <RadioGroup
-                                onValueChange={field.onChange}
-                                defaultValue={field.value}
-                                className="grid grid-cols-2 gap-4"
-                            >
-                                <div>
-                                    <RadioGroupItem value="Lead" id="lead" className="sr-only" />
-                                    <Label
-                                        htmlFor="lead"
-                                        className={cn(
-                                            "flex flex-col items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-all",
-                                            field.value === 'Lead' ? "border-primary bg-primary/5 text-primary" : "border-border opacity-60"
-                                        )}
-                                    >
-                                        <User className="h-5 w-5 mb-1" />
-                                        <span className="text-xs font-bold">Existing Lead</span>
-                                    </Label>
-                                </div>
-                                <div>
-                                    <RadioGroupItem value="External" id="external" className="sr-only" />
-                                    <Label
-                                        htmlFor="external"
-                                        className={cn(
-                                            "flex flex-col items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-all",
-                                            field.value === 'External' ? "border-primary bg-primary/5 text-primary" : "border-border opacity-60"
-                                        )}
-                                    >
-                                        <UserPlus className="h-5 w-5 mb-1" />
-                                        <span className="text-xs font-bold">External / New</span>
-                                    </Label>
-                                </div>
-                            </RadioGroup>
-                        )}
-                    />
-                </div>
-
-                {watchedType === 'Lead' ? (
-                    <FormField
-                        control={form.control}
-                        name="leadId"
+                        name="priceCharged"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60">Select Buyer Lead</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                    <FormControl>
-                                        <SelectTrigger className="h-11 rounded-xl">
-                                            <SelectValue placeholder="Choose a lead..." />
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent className="rounded-xl shadow-2xl border-none">
-                                        {buyers?.filter(b => !b.is_deleted).map(b => (
-                                            <SelectItem key={b.id} value={b.id}>{b.name} ({b.serial_no})</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                            <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60">Price Charged (PKR)</FormLabel>
+                            <FormControl><Input type="number" {...field} className="h-11 rounded-xl font-bold text-primary" /></FormControl>
+                            <FormMessage />
                             </FormItem>
                         )}
                     />
-                ) : (
-                    <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <FormField
-                                control={form.control}
-                                name="externalName"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60">Client Name</FormLabel>
-                                        <FormControl><Input placeholder="John Doe" {...field} className="h-11 rounded-xl" /></FormControl>
-                                    </FormItem>
-                                )}
-                            />
-                            <div className="space-y-1">
-                                <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Phone Number</Label>
-                                <div className="flex gap-2">
-                                    <FormField
-                                        control={form.control}
-                                        name="country_code"
-                                        render={({ field }) => (
-                                            <FormItem className="w-24">
-                                                <Popover open={countryCodePopoverOpen} onOpenChange={setCountryCodePopoverOpen}>
-                                                    <PopoverTrigger asChild>
-                                                        <FormControl>
-                                                            <Button variant="outline" role="combobox" className="w-full justify-between h-11 px-2 rounded-xl">
-                                                                {field.value || "+92"}
-                                                                <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
-                                                            </Button>
-                                                        </FormControl>
-                                                    </PopoverTrigger>
-                                                    <PopoverContent className="w-64 p-0">
-                                                        <Command>
-                                                            <CommandInput placeholder="Search code..." />
-                                                            <CommandList>
-                                                                <CommandEmpty>No country found.</CommandEmpty>
-                                                                <CommandGroup>
-                                                                    {countryCodes.map((country) => (
-                                                                        <CommandItem
-                                                                            value={country.dial_code}
-                                                                            key={country.code}
-                                                                            onSelect={() => {
-                                                                                form.setValue("country_code", country.dial_code);
-                                                                                setCountryCodePopoverOpen(false);
-                                                                            }}
-                                                                        >
-                                                                            <Check className={cn("mr-2 h-4 w-4", country.dial_code === field.value ? "opacity-100" : "opacity-0")} />
-                                                                            {country.dial_code} ({country.code})
-                                                                        </CommandItem>
-                                                                    ))}
-                                                                </CommandGroup>
-                                                            </CommandList>
-                                                        </Command>
-                                                    </PopoverContent>
-                                                </Popover>
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="externalPhone"
-                                        render={({ field }) => (
-                                            <FormItem className="flex-1">
-                                                <FormControl>
-                                                    <Input placeholder="3001234567" {...field} className="h-11 rounded-xl" />
-                                                </FormControl>
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-                            </div>
-                        </div>
+
+                    <div className="space-y-3">
+                        <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Client Type</Label>
                         <FormField
                             control={form.control}
-                            name="externalClientDetails"
+                            name="assignedToType"
                             render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60">Requirements & Details</FormLabel>
-                                    <FormControl>
-                                        <Textarea 
-                                            placeholder="Specific service requirements..." 
-                                            {...field} 
-                                            rows={3} 
-                                            className="rounded-xl resize-none"
-                                        />
-                                    </FormControl>
-                                </FormItem>
+                                <RadioGroup
+                                    onValueChange={field.onChange}
+                                    defaultValue={field.value}
+                                    className="grid grid-cols-2 gap-4"
+                                >
+                                    <div>
+                                        <RadioGroupItem value="Lead" id="lead" className="sr-only" />
+                                        <Label
+                                            htmlFor="lead"
+                                            className={cn(
+                                                "flex flex-col items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-all",
+                                                field.value === 'Lead' ? "border-primary bg-primary/5 text-primary" : "border-border opacity-60"
+                                            )}
+                                        >
+                                            <User className="h-5 w-5 mb-1" />
+                                            <span className="text-xs font-bold">Existing Lead</span>
+                                        </Label>
+                                    </div>
+                                    <div>
+                                        <RadioGroupItem value="External" id="external" className="sr-only" />
+                                        <Label
+                                            htmlFor="external"
+                                            className={cn(
+                                                "flex flex-col items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-all",
+                                                field.value === 'External' ? "border-primary bg-primary/5 text-primary" : "border-border opacity-60"
+                                            )}
+                                        >
+                                            <UserPlus className="h-5 w-5 mb-1" />
+                                            <span className="text-xs font-bold">External / New</span>
+                                        </Label>
+                                    </div>
+                                </RadioGroup>
                             )}
                         />
                     </div>
-                )}
-            </div>
 
-            <DialogFooter className="p-6 border-t bg-muted/5 mt-4">
-              <Button type="button" variant="ghost" onClick={() => setIsOpen(false)} className="rounded-xl h-11">Cancel</Button>
-              <Button type="submit" disabled={isLoading} className="rounded-xl h-11 px-8 glowing-btn font-black flex-1 sm:flex-none">
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4 mr-2" />}
-                Assign Service
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+                    {watchedType === 'Lead' ? (
+                        <FormField
+                            control={form.control}
+                            name="leadId"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60">Select Buyer Lead</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger className="h-11 rounded-xl">
+                                                <SelectValue placeholder="Choose a lead by Name or Serial..." />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent className="rounded-xl shadow-2xl border-none max-h-60">
+                                            {buyers?.filter(b => !b.is_deleted).map(b => (
+                                                <SelectItem key={b.id} value={b.id}>
+                                                    <span className="font-bold">{b.name}</span>
+                                                    <span className="ml-2 text-[10px] opacity-60 font-mono">({b.serial_no})</span>
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </FormItem>
+                            )}
+                        />
+                    ) : (
+                        <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FormField
+                                    control={form.control}
+                                    name="externalName"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60">Client Name</FormLabel>
+                                            <FormControl><Input placeholder="John Doe" {...field} className="h-11 rounded-xl" /></FormControl>
+                                        </FormItem>
+                                    )}
+                                />
+                                <div className="space-y-1">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Phone Number</Label>
+                                    <div className="flex gap-2">
+                                        <FormField
+                                            control={form.control}
+                                            name="country_code"
+                                            render={({ field }) => (
+                                                <FormItem className="w-24">
+                                                    <Popover open={countryCodePopoverOpen} onOpenChange={setCountryCodePopoverOpen}>
+                                                        <PopoverTrigger asChild>
+                                                            <FormControl>
+                                                                <Button variant="outline" role="combobox" className="w-full justify-between h-11 px-2 rounded-xl">
+                                                                    {field.value || "+92"}
+                                                                    <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
+                                                                </Button>
+                                                            </FormControl>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="w-64 p-0">
+                                                            <Command>
+                                                                <CommandInput placeholder="Search code..." />
+                                                                <CommandList>
+                                                                    <CommandEmpty>No country found.</CommandEmpty>
+                                                                    <CommandGroup>
+                                                                        {countryCodes.map((country) => (
+                                                                            <CommandItem
+                                                                                value={country.dial_code}
+                                                                                key={country.code}
+                                                                                onSelect={() => {
+                                                                                    form.setValue("country_code", country.dial_code);
+                                                                                    setCountryCodePopoverOpen(false);
+                                                                                }}
+                                                                            >
+                                                                                <Check className={cn("mr-2 h-4 w-4", country.dial_code === field.value ? "opacity-100" : "opacity-0")} />
+                                                                                {country.dial_code} ({country.code})
+                                                                            </CommandItem>
+                                                                        ))}
+                                                                    </CommandGroup>
+                                                                </CommandList>
+                                                            </Command>
+                                                        </PopoverContent>
+                                                    </Popover>
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name="externalPhone"
+                                            render={({ field }) => (
+                                                <FormItem className="flex-1">
+                                                    <FormControl>
+                                                        <Input placeholder="3001234567" {...field} className="h-11 rounded-xl" />
+                                                    </FormControl>
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                            <FormField
+                                control={form.control}
+                                name="externalClientDetails"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60">Requirements & Details</FormLabel>
+                                        <FormControl>
+                                            <Textarea 
+                                                placeholder="Specific service requirements..." 
+                                                {...field} 
+                                                rows={3} 
+                                                className="rounded-xl resize-none"
+                                            />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+                    )}
+                </div>
+                <DialogFooter className="pt-4 flex gap-2">
+                    <Button type="button" variant="ghost" onClick={() => setIsOpen(false)} className="rounded-xl h-11 px-6 font-bold flex-1 sm:flex-none">Cancel</Button>
+                    <Button type="submit" disabled={isLoading} className="rounded-xl h-11 px-8 glowing-btn font-black flex-1 sm:flex-none">
+                        {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4 mr-2" />}
+                        Confirm Sale
+                    </Button>
+                </DialogFooter>
+            </form>
+            </Form>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );
