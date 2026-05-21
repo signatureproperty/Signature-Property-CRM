@@ -13,7 +13,6 @@ import {
   Calendar, 
   ClipboardList, 
   History, 
-  FileArchive, 
   Trash2,
   X,
   ShieldAlert,
@@ -29,10 +28,9 @@ export function MobileNav() {
   const { profile } = useProfile();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  // Recorders have a very specific workflow, we don't show the standard bottom nav to them.
+  // Recorders have a very specific workflow
   if (profile.role === 'Video Recorder') return null;
 
-  // Define menu items for the "More" overlay, excluding Settings, Support, and Upgrade.
   const menuItems = [
     { href: '/super-admin', label: 'Admin Control', icon: <ShieldAlert />, roles: ['Super Admin'] },
     { href: '/super-admin/branding', label: 'App Branding', icon: <Palette />, roles: ['Super Admin'] },
@@ -41,11 +39,9 @@ export function MobileNav() {
     { href: '/appointments', label: 'Appointments', icon: <Calendar />, roles: ['Admin', 'Agent'] },
     { href: '/reports', label: 'Reports', icon: <ClipboardList />, roles: ['Admin'] },
     { href: '/activities', label: 'Activities', icon: <History />, roles: ['Admin', 'Agent'] },
-    { href: '/documents', label: 'Documents', icon: <FileArchive />, roles: ['Admin'] },
     { href: '/trash', label: 'Trash', icon: <Trash2 />, roles: ['Admin', 'Agent'] },
   ].filter(item => item.roles.includes(profile.role));
 
-  // Core navigation items for the main bar
   const mainNavItems = [
     { href: '/tools', label: 'Tools', icon: <Rocket className="h-5 w-5" /> },
     { href: '/properties', label: 'Properties', icon: <Building2 className="h-5 w-5" /> },
@@ -55,7 +51,6 @@ export function MobileNav() {
 
   return (
     <>
-      {/* Background Blur Overlay for Menu */}
       <AnimatePresence>
         {isMenuOpen && (
           <motion.div
@@ -68,7 +63,6 @@ export function MobileNav() {
         )}
       </AnimatePresence>
 
-      {/* Floating Menu Items (Gol buttons with names on the left) */}
       <div className="fixed bottom-24 right-6 z-[70] flex flex-col items-end gap-4 pointer-events-none">
         <AnimatePresence>
           {isMenuOpen && (
@@ -99,7 +93,6 @@ export function MobileNav() {
         </AnimatePresence>
       </div>
 
-      {/* Main Bottom Navigation Bar */}
       <div className="fixed bottom-0 left-0 right-0 z-50 block border-t bg-card/80 backdrop-blur-xl md:hidden pb-safe">
         <nav className="flex h-16 items-center justify-around px-2 relative">
           
@@ -143,7 +136,6 @@ export function MobileNav() {
             );
           })}
 
-          {/* More Toggle Button (Three Dots) */}
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             className={cn(

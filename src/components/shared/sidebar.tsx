@@ -26,7 +26,6 @@ import {
   MessageSquare,
   ClipboardList,
   Gem,
-  FileArchive,
   Video,
   Edit,
   ShieldAlert,
@@ -43,29 +42,28 @@ import {
 import { useProfile } from '@/context/profile-context';
 
 const allMenuItems = [
-  { href: '/overview', label: 'Dashboard', icon: <LayoutDashboard />, roles: ['Admin', 'Agent', 'Video Recorder', 'Super Admin'] },
-  { href: '/super-admin', label: 'Admin Control', icon: <ShieldAlert />, roles: ['Super Admin'] },
-  { href: '/super-admin/branding', label: 'App Branding', icon: <Palette />, roles: ['Super Admin'] },
-  { href: '/properties', label: 'Properties', icon: <Building2 />, roles: ['Admin', 'Agent'] },
-  { href: '/buyers', label: 'Buyers', icon: <Users />, roles: ['Admin', 'Agent'] },
-  { href: '/team', label: 'Team', icon: <UserCog />, roles: ['Admin'] },
-  { href: '/analytics', label: 'Analytics', icon: <BarChart3 />, roles: ['Admin'] },
-  { href: '/appointments', label: 'Appointments', icon: <Calendar />, roles: ['Admin', 'Agent']},
-  { href: '/tools', label: 'Tools', icon: <Rocket />, roles: ['Admin', 'Agent'] },
-  { href: '/reports', label: 'Reports', icon: <ClipboardList />, roles: ['Admin'] },
-  { href: '/activities', label: 'Activities', icon: <History />, roles: ['Admin', 'Agent'] },
-  { href: '/documents', label: 'Documents', icon: <FileArchive />, roles: ['Admin'] },
-  { href: '/trash', label: 'Trash', icon: <Trash2 />, roles: ['Admin', 'Agent'] },
+  { href: '/overview', label: 'Dashboard', roles: ['Admin', 'Agent', 'Video Recorder', 'Super Admin'], icon: <LayoutDashboard /> },
+  { href: '/super-admin', label: 'Admin Control', roles: ['Super Admin'], icon: <ShieldAlert /> },
+  { href: '/super-admin/branding', label: 'App Branding', roles: ['Super Admin'], icon: <Palette /> },
+  { href: '/properties', label: 'Properties', roles: ['Admin', 'Agent'], icon: <Building2 /> },
+  { href: '/buyers', label: 'Buyers', roles: ['Admin', 'Agent'], icon: <Users /> },
+  { href: '/team', label: 'Team', roles: ['Admin'], icon: <UserCog /> },
+  { href: '/analytics', label: 'Analytics', roles: ['Admin'], icon: <BarChart3 /> },
+  { href: '/appointments', label: 'Appointments', roles: ['Admin', 'Agent'], icon: <Calendar /> },
+  { href: '/tools', label: 'Tools', roles: ['Admin', 'Agent'], icon: <Rocket /> },
+  { href: '/reports', label: 'Reports', roles: ['Admin'], icon: <ClipboardList /> },
+  { href: '/activities', label: 'Activities', roles: ['Admin', 'Agent'], icon: <History /> },
+  { href: '/trash', label: 'Trash', roles: ['Admin', 'Agent'], icon: <Trash2 /> },
 ];
 
 const videoMenuItems = [
-    { href: '/recording', label: 'Recording', icon: <Video />, roles: ['Video Recorder'] },
-    { href: '/editing', label: 'Editing', icon: <Edit />, roles: ['Video Recorder'] },
+    { href: '/recording', label: 'Recording', roles: ['Video Recorder'], icon: <Video /> },
+    { href: '/editing', label: 'Editing', roles: ['Video Recorder'], icon: <Edit /> },
 ];
 
 const bottomMenuItems = [
-  { href: '/settings', label: 'Settings', icon: <Settings />, roles: ['Admin', 'Agent', 'Super Admin'] },
-  { href: '/support', label: 'Support', icon: <MessageSquare />, roles: ['Admin', 'Agent'] },
+  { href: '/settings', label: 'Settings', roles: ['Admin', 'Agent', 'Super Admin'], icon: <Settings /> },
+  { href: '/support', label: 'Support', roles: ['Admin', 'Agent'], icon: <MessageSquare /> },
 ];
 
 export function AppSidebar() {

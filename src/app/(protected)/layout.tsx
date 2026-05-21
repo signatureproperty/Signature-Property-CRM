@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, type ReactNode } from 'react';
 import { AppSidebar } from '@/components/shared/sidebar';
 import { AppHeader } from '@/components/shared/header';
 import { SidebarProvider } from '@/components/ui/sidebar';
@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button';
 import { MobileNav } from '@/components/shared/mobile-nav';
 import { LayoutStateProvider, useSearch } from '@/context/layout-context';
 
-function AuthGuard({ children }: { children: React.ReactNode }) {
+function AuthGuard({ children }: { children: ReactNode }) {
   const { user, isUserLoading } = useUser();
   const { profile, isLoading: isProfileLoading } = useProfile();
   const router = useRouter();
@@ -36,7 +36,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
       setIsResending(true);
       try {
         await sendEmailVerification(user);
-        toast({ title: 'Verification Email Sent', description: 'Please check your inbox (and spam folder).' });
+        toast({ title: 'Verification Email Sent', description: 'Please check your inbox.' });
       } catch (error) {
         console.error("Error resending verification email:", error);
         toast({ title: 'Error', description: 'Could not send email. Please try again later.', variant: 'destructive' });
@@ -45,7 +45,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
       }
   }
 
-  // ONLY show full screen loader on INITIAL load (if we have no user and no profile yet)
+  // Prevent full screen loader on every update if profile is already loaded
   if (isUserLoading || (isProfileLoading && !profile.user_id)) {
     return (
         <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -64,19 +64,20 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
   // --- Role Based Access Control (RBAC) ---
   
-  // Super Admin bypass
   if ((profile.role as string) === 'Super Admin') {
       return <>{children}</>;
   }
 
-  // Define forbidden paths for each role
-  const agentForbiddenPaths = ['/team', '/documents', '/analytics', '/reports', '/finance'];
-  const recorderForbiddenPaths = ['/team', '/upgrade', '/buyers', '/analytics', '/reports', '/tools', '/follow-ups', '/appointments', '/activities', '/trash', '/settings', '/support', '/properties', '/documents', '/finance', '/inbox'];
+  const agentForbiddenPaths = ['/team', '/analytics', '/reports', '/finance'];
+  const recorderForbiddenPaths = [
+    '/team', '/upgrade', '/buyers', '/analytics', '/reports', '/tools', 
+    '/follow-ups', '/appointments', '/activities', '/trash', '/settings', 
+    '/support', '/properties', '/finance'
+  ];
 
   let isAllowed = true;
   let message = "This page is not accessible with your current role.";
 
-  // Routing Logic
   if (pathname.startsWith('/super-admin')) {
       isAllowed = (profile.role as string) === 'Super Admin';
   } else if (profile.role === 'Agent' && agentForbiddenPaths.some(path => pathname.startsWith(path))) {
@@ -110,18 +111,17 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex flex-col h-screen w-full overflow-hidden">
-        {/* Verification Banner */}
         {!user.emailVerified && (profile.role as string) !== 'Super Admin' && (
             <div className="z-50 w-full bg-amber-500 text-amber-900 shadow-md flex-shrink-0">
                 <div className="container mx-auto flex items-center justify-center p-2 px-4 text-[11px] sm:text-sm font-bold gap-3 sm:gap-6 text-center">
                     <div className="flex items-center gap-2">
                         <MailWarning className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-                        <span className="leading-tight">Please verify your email address to unlock all features.</span>
+                        <span className="leading-tight">Verify your email to unlock all features.</span>
                     </div>
                     <Button 
                         size="sm" 
                         variant="ghost" 
-                        className="h-8 px-3 py-0 text-[10px] sm:text-xs font-black uppercase tracking-widest border border-amber-900/30 hover:bg-amber-400 hover:text-amber-900 transition-colors"
+                        className="h-8 px-3 py-0 text-[10px] sm:text-xs font-black uppercase tracking-widest border border-amber-900/30 hover:bg-amber-400"
                         onClick={handleResendVerification}
                         disabled={isResending}
                     >
@@ -131,8 +131,6 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
                 </div>
             </div>
         )}
-        
-        {/* Main App Container */}
         <div className="flex-1 flex overflow-hidden relative">
             {children}
         </div>
@@ -140,7 +138,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ProtectedLayoutContent({ children }: { children: React.ReactNode }) {
+function ProtectedLayoutContent({ children }: { children: ReactNode }) {
   const { searchQuery, setSearchQuery } = useSearch();
   const pathname = usePathname();
   const isSearchable = ['/properties', '/buyers', '/recording', '/editing'].some(path => pathname.startsWith(path));
@@ -176,7 +174,7 @@ function ProtectedLayoutContent({ children }: { children: React.ReactNode }) {
 export default function ProtectedLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <ProfileProvider>
