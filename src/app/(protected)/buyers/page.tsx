@@ -7,6 +7,7 @@ import {
     DropdownMenuContent, 
     DropdownMenuItem, 
     DropdownMenuTrigger,
+    DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { buyerStatuses } from '@/lib/data';
@@ -336,6 +337,33 @@ function BuyersPageContent() {
 
         await batch.commit();
         toast({ title: 'Leads Assigned Successfully' });
+        setSelectedBuyers([]);
+    };
+
+    const handleBulkUnassign = async () => {
+        if (selectedBuyers.length === 0 || !profile.agency_id) return;
+        const batch = writeBatch(firestore);
+        const buyerNames: string[] = [];
+        
+        selectedBuyers.forEach(buyerId => {
+            const buyer = allBuyers?.find(b => b.id === buyerId);
+            if(buyer) buyerNames.push(buyer.name);
+            const docRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', buyerId);
+            batch.update(docRef, { assignedTo: null });
+        });
+
+        const activityLogRef = doc(collection(firestore, 'agencies', profile.agency_id, 'activityLogs'));
+        batch.set(activityLogRef, {
+            userName: profile.name,
+            action: `unassigned ${buyerNames.length} leads from all agents`,
+            target: buyerNames.join(', '),
+            targetType: 'Buyer',
+            timestamp: new Date().toISOString(),
+            agency_id: profile.agency_id,
+        });
+
+        await batch.commit();
+        toast({ title: 'Leads Unassigned Successfully' });
         setSelectedBuyers([]);
     };
 
@@ -712,23 +740,26 @@ function BuyersPageContent() {
                 <div className="flex w-full md:w-auto items-center gap-2 flex-wrap justify-end ml-auto">
                     {selectedBuyers.length > 0 && profile.role === 'Admin' && (
                         <div className="flex items-center gap-2">
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="rounded-full">
-                                <UserPlus className="mr-2 h-4 w-4" /> Assign
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                <Button variant="outline" className="rounded-full">
+                                    <UserPlus className="mr-2 h-4 w-4" /> Assign
+                                </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent className="bg-background">
+                                {activeAgents.map((member: any) => (
+                                    <DropdownMenuItem key={member.id} onSelect={() => handleBulkAssign(member.id) as any}>
+                                    {member.name}
+                                    </DropdownMenuItem>
+                                ))}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                            <Button variant="outline" className="rounded-full text-destructive border-destructive/20 hover:bg-destructive/5" onClick={handleBulkUnassign}>
+                                <UserMinus className="mr-2 h-4 w-4" /> Unassign ({selectedBuyers.length})
                             </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent className="bg-background">
-                            {activeAgents.map((member: any) => (
-                                <DropdownMenuItem key={member.id} onSelect={() => handleBulkAssign(member.id) as any}>
-                                {member.name}
-                                </DropdownMenuItem>
-                            ))}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                        <Button variant="destructive" className="rounded-full" onClick={handleBulkDelete}>
-                            <Trash2 className="mr-2 h-4 w-4" /> Delete ({selectedBuyers.length})
-                        </Button>
+                            <Button variant="destructive" className="rounded-full" onClick={handleBulkDelete}>
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete ({selectedBuyers.length})
+                            </Button>
                         </div>
                     )}
                     <AlertDialog open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
@@ -959,9 +990,4 @@ export default function BuyersPage() {
             <BuyersPageContent />
         </Suspense>
     );
-}
-
-// Re-defining DropdownMenuSeparator for use inside the menu
-function DropdownMenuSeparator() {
-    return <div className="h-px bg-muted my-1" />;
 }

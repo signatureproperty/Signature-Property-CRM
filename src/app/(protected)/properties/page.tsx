@@ -26,6 +26,7 @@ import {
   ChevronLeft,
   ArrowUpDown,
   UserPlus,
+  UserMinus,
   ChevronDown,
   Building,
   Ruler,
@@ -34,16 +35,14 @@ import {
   Share2,
   Check,
   MessageSquareText,
+  User as UserIcon,
 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuPortal,
-  DropdownMenuSubContent,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import type { Property, PropertyType, SizeUnit, PriceUnit, ListingType, User, Activity, Tag, Appointment } from '@/lib/types';
@@ -71,7 +70,7 @@ import { formatCurrency, formatUnit, formatPhoneNumberForWhatsApp } from '@/lib/
 import { useCurrency } from '@/context/currency-context';
 import { useProfile } from '@/context/profile-context';
 import { useFirestore } from '@/firebase/provider';
-import { collection, addDoc, setDoc, doc, writeBatch, updateDoc, query, where, or, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { collection, addDoc, setDoc, doc, writeBatch, updateDoc, query, where, or, arrayUnion } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/hooks';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/firebase/auth/use-user';
@@ -92,6 +91,7 @@ const SharePropertyDialog = dynamic(() => import('@/components/share-property-di
 const PropertyNotesDialog = dynamic(() => import('@/components/property-notes-dialog').then(mod => mod.PropertyNotesDialog), { ssr: false });
 const SetAppointmentDialog = dynamic(() => import('@/components/set-appointment-dialog').then(mod => mod.SetAppointmentDialog), { ssr: false });
 const AssignPropertyToAgentDialog = dynamic(() => import('@/components/assign-property-to-agent-dialog').then(mod => mod.AssignPropertyToAgentDialog), { ssr: false });
+const SimpleAssignPropertyAgentDialog = dynamic(() => import('@/components/simple-assign-property-agent-dialog').then(mod => mod.SimpleAssignPropertyAgentDialog), { ssr: false });
 
 const ITEMS_PER_PAGE = 50;
 
@@ -172,6 +172,7 @@ function PropertiesPageContent() {
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isNotesOpen, setIsNotesOpen] = useState(false);
   const [isAssignOpen, setIsAssignOpen] = useState(false);
+  const [isSimpleAssignOpen, setIsSimpleAssignOpen] = useState(false);
 
   const [activeListingType, setActiveListingType] = useState<ListingType | 'All'>('All');
   const [activeStatus, setActiveStatus] = useState<string>('All');
@@ -374,6 +375,33 @@ function PropertiesPageContent() {
       setPropertyForDetails(prop);
       setIsAssignOpen(true);
   }
+  
+  const handleSimpleAssignOpen = (prop: Property) => {
+      setPropertyForDetails(prop);
+      setIsSimpleAssignOpen(true);
+  }
+
+  const handleUnassignProperty = async (prop: Property) => {
+      if (!profile.agency_id) return;
+      try {
+          const propRef = doc(firestore, 'agencies', profile.agency_id, 'properties', prop.id);
+          await updateDoc(propRef, { assignedTo: [] });
+          
+          const logRef = collection(firestore, 'agencies', profile.agency_id, 'activityLogs');
+          await addDoc(logRef, {
+              userName: profile.name,
+              action: `unassigned all agents from property ${prop.serial_no}`,
+              target: prop.auto_title,
+              targetType: 'Property',
+              timestamp: new Date().toISOString(),
+              agency_id: profile.agency_id,
+          });
+          
+          toast({ title: "Agents Unassigned", description: `Property ${prop.serial_no} is now back in the pool.` });
+      } catch (error) {
+          toast({ title: "Action Failed", variant: 'destructive' });
+      }
+  };
 
   const handleMarkAsSoldOrRent = (prop: Property) => {
     setPropertyForDetails(prop);
@@ -438,6 +466,33 @@ function PropertiesPageContent() {
     setSelectedProperties([]);
   };
 
+  const handleBulkUnassign = async () => {
+    if (selectedProperties.length === 0 || !profile.agency_id) return;
+    const batch = writeBatch(firestore);
+    const propertySerials: string[] = [];
+    
+    selectedProperties.forEach(propId => {
+        const prop = allProperties?.find(p => p.id === propId);
+        if(prop) propertySerials.push(prop.serial_no);
+        const docRef = doc(firestore, 'agencies', profile.agency_id, 'properties', propId);
+        batch.update(docRef, { assignedTo: [] });
+    });
+
+    const activityLogRef = doc(collection(firestore, 'agencies', profile.agency_id, 'activityLogs'));
+    batch.set(activityLogRef, {
+        userName: profile.name,
+        action: `unassigned ${propertySerials.length} properties from all agents`,
+        target: propertySerials.join(', '),
+        targetType: 'Property',
+        timestamp: new Date().toISOString(),
+        agency_id: profile.agency_id,
+    });
+
+    await batch.commit();
+    toast({ title: 'Properties Unassigned Successfully' });
+    setSelectedProperties([]);
+  };
+
   const handleBulkDelete = async () => {
     if (selectedProperties.length === 0 || !profile.agency_id) return;
     const batch = writeBatch(firestore);
@@ -485,15 +540,24 @@ function PropertiesPageContent() {
             <TableHead className="w-10">
               <Checkbox checked={paginatedProperties.length > 0 && selectedProperties.length === paginatedProperties.length} onCheckedChange={(checked) => setSelectedProperties(checked ? paginatedProperties.map(p => p.id) : [])} />
             </TableHead>
-            <TableHead className="w-[350px]">
+            <TableHead className="w-[300px]">
               <Button variant="ghost" onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}>Property <ArrowUpDown className="ml-2 h-4 w-4" /></Button>
             </TableHead>
-            <TableHead>Type</TableHead><TableHead>Size</TableHead><TableHead>Demand</TableHead><TableHead>Status / Tags</TableHead><TableHead className="text-right">Actions</TableHead>
+            <TableHead>Type</TableHead>
+            <TableHead>Size</TableHead>
+            <TableHead>Demand</TableHead>
+            <TableHead>Handled By</TableHead>
+            <TableHead>Status / Tags</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {properties.map((prop, index) => {
             const hasUnreadNotes = prop.timeline_notes?.some(n => !n.readBy?.includes(profile.user_id));
+            const assignedAgents = Array.isArray(prop.assignedTo) 
+                ? prop.assignedTo.map(uid => teamMembers?.find(m => (m.user_id || m.id) === uid)?.name).filter(Boolean)
+                : prop.assignedTo ? [teamMembers?.find(m => (m.user_id || m.id) === prop.assignedTo)?.name].filter(Boolean) : [];
+
             return (
             <motion.tr key={prop.id} className="hover:bg-accent/50 transition-colors cursor-pointer" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, delay: index * 0.02 }} >
               <TableCell onClick={(e) => e.stopPropagation()}><Checkbox checked={selectedProperties.includes(prop.id)} onCheckedChange={(checked) => setSelectedProperties(prev => checked ? [...prev, prop.id] : prev.filter(id => id !== prop.id))} /></TableCell>
@@ -516,6 +580,16 @@ function PropertiesPageContent() {
               <TableCell onClick={() => handleRowClick(prop)}>{prop.size_value} {prop.size_unit}</TableCell>
               <TableCell onClick={() => handleRowClick(prop)}>{formatCurrency(formatUnit(prop.demand_amount, prop.demand_unit), currency)}</TableCell>
               <TableCell onClick={() => handleRowClick(prop)}>
+                  {assignedAgents.length > 0 ? (
+                      <div className="flex flex-col">
+                          <span className="text-xs font-bold text-primary">{assignedAgents[0]}</span>
+                          {assignedAgents.length > 1 && <span className="text-[9px] text-muted-foreground">+{assignedAgents.length - 1} more agents</span>}
+                      </div>
+                  ) : (
+                      <Badge variant="outline" className="text-[9px] uppercase font-black border-dashed opacity-40 px-2 py-0">Unassigned</Badge>
+                  )}
+              </TableCell>
+              <TableCell onClick={() => handleRowClick(prop)}>
                 <div className="flex flex-wrap gap-1 items-center">
                     <Badge className={cn("text-[10px] font-bold", getTagColor(prop.status))}>{prop.status}</Badge>
                     {prop.tags?.filter(t => t !== prop.status).map(tagName => (
@@ -536,13 +610,24 @@ function PropertiesPageContent() {
                     <DropdownMenuItem onSelect={() => handleMarkAsSoldOrRent(prop) as any}><Check className="mr-2 h-4 w-4" /> {prop.is_for_rent ? 'Mark as Rent Out' : 'Mark as Sold'}</DropdownMenuItem>
                     
                     {profile.role === 'Admin' && (
-                        <DropdownMenuItem onSelect={() => handleAssignOpen(prop)} className="font-bold text-primary">
-                            <UserPlus className="mr-2 h-4 w-4" /> Assign Agent & Buyers
-                        </DropdownMenuItem>
+                        <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onSelect={() => handleSimpleAssignOpen(prop)} className="font-bold text-primary">
+                                <UserPlus className="mr-2 h-4 w-4" /> Direct Assign Agent
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => handleAssignOpen(prop)}>
+                                <UserPlus className="mr-2 h-4 w-4" /> Smart Assign & Buyers
+                            </DropdownMenuItem>
+                            {assignedAgents.length > 0 && (
+                                <DropdownMenuItem onSelect={() => handleUnassignProperty(prop)} className="text-destructive font-bold">
+                                    <UserMinus className="mr-2 h-4 w-4" /> Unassign All Agents
+                                </DropdownMenuItem>
+                            )}
+                        </>
                     )}
-                    <DropdownMenuItem onSelect={() => handleEdit(prop) as any}><Edit className="mr-2 h-4 w-4" />Edit</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleEdit(prop) as any}><Edit className="mr-2 h-4 w-4" />Edit Details</DropdownMenuItem>
                     {profile.role === 'Admin' && (
-                        <DropdownMenuItem onSelect={() => handleDelete(prop) as any} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => handleDelete(prop) as any} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" />Delete Property</DropdownMenuItem>
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -559,6 +644,10 @@ function PropertiesPageContent() {
       <div className="space-y-4">
         {properties.map((prop, index) => {
           const hasUnreadNotes = prop.timeline_notes?.some(n => !n.readBy?.includes(profile.user_id));
+          const assignedAgents = Array.isArray(prop.assignedTo) 
+                ? prop.assignedTo.map(uid => teamMembers?.find(m => (m.user_id || m.id) === uid)?.name).filter(Boolean)
+                : prop.assignedTo ? [teamMembers?.find(m => (m.user_id || m.id) === prop.assignedTo)?.name].filter(Boolean) : [];
+
           return (
           <motion.div key={prop.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, delay: index * 0.02 }}>
             <Card className="overflow-hidden border-l-4 border-l-primary/40 bg-background">
@@ -602,13 +691,18 @@ function PropertiesPageContent() {
                     <div className="flex items-center gap-1.5 text-xs col-span-2 mt-1">
                         <Wallet className="h-3.5 w-3.5 text-muted-foreground" />
                         <span className="font-bold text-primary">{formatCurrency(formatUnit(prop.demand_amount, prop.demand_unit), currency)}</span>
-                        {prop.potential_rent_amount ? (
-                            <Badge variant="secondary" className="text-[9px] h-4 bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800 ml-2">
-                                Rent: {formatCurrency(formatUnit(prop.potential_rent_amount, prop.potential_rent_unit || 'Thousand'), currency)}
-                            </Badge>
-                        ) : null}
                     </div>
                 </div>
+
+                <div className="mt-4 pt-3 border-t border-dashed flex items-center justify-between">
+                     <div className="flex items-center gap-2">
+                        <UserIcon className="h-3.5 w-3.5 text-primary/60" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-foreground">
+                            {assignedAgents.length > 0 ? (assignedAgents[0] + (assignedAgents.length > 1 ? ` +${assignedAgents.length - 1}` : '')) : 'Agency Pool'}
+                        </span>
+                    </div>
+                </div>
+
                  <div className="flex flex-wrap gap-1 mt-4">
                     {prop.tags?.filter(t => t !== prop.status).slice(0, 5).map(tagName => (
                          <Badge key={tagName} className={cn("text-[8px] px-1.5 py-0 font-bold", getTagColor(tagName))}>{tagName}</Badge>
@@ -635,9 +729,20 @@ function PropertiesPageContent() {
                     <DropdownMenuItem onSelect={() => handleMarkAsSoldOrRent(prop) as any}><Check className="mr-2 h-4 w-4" /> {prop.is_for_rent ? 'Mark as Rent Out' : 'Mark as Sold'}</DropdownMenuItem>
                     
                     {profile.role === 'Admin' && (
-                         <DropdownMenuItem onSelect={() => handleAssignOpen(prop)} className="font-bold text-primary">
-                            <UserPlus className="mr-2 h-4 w-4" /> Assign Agent & Buyers
-                        </DropdownMenuItem>
+                        <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onSelect={() => handleSimpleAssignOpen(prop)} className="font-bold text-primary">
+                                <UserPlus className="mr-2 h-4 w-4" /> Direct Assign Agent
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => handleAssignOpen(prop)}>
+                                <UserPlus className="mr-2 h-4 w-4" /> Smart Assign & Buyers
+                            </DropdownMenuItem>
+                            {assignedAgents.length > 0 && (
+                                <DropdownMenuItem onSelect={() => handleUnassignProperty(prop)} className="text-destructive font-bold">
+                                    <UserMinus className="mr-2 h-4 w-4" /> Unassign All Agents
+                                </DropdownMenuItem>
+                            )}
+                        </>
                     )}
                     <DropdownMenuItem onSelect={() => handleEdit(prop) as any}><Edit className="mr-2 h-4 w-4" />Edit Details</DropdownMenuItem>
                     {profile.role === 'Admin' && (
@@ -663,12 +768,13 @@ function PropertiesPageContent() {
               <p className="text-muted-foreground">{profile.role === 'Agent' ? 'View your assigned properties.' : 'Manage your agency and personal properties.'}</p>
             </div>
             <div className="flex w-full md:w-auto items-center gap-2 flex-wrap justify-end ml-auto">
-              {selectedProperties.length > 0 && profile.role !== 'Agent' && (
+              {selectedProperties.length > 0 && profile.role === 'Admin' && (
                 <div className="flex items-center gap-2">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild><Button variant="outline" className="rounded-full"><UserPlus className="mr-2 h-4 w-4" /> Assign</Button></DropdownMenuTrigger>
                     <DropdownMenuContent className="bg-background">{teamMembers?.filter((m: any) => m.status === 'Active' && (m.role === 'Agent' || m.role === 'Admin')).map((member: any) => <DropdownMenuItem key={member.id} onSelect={() => handleBulkAssign(member.id) as any}>{member.name}</DropdownMenuItem>)}</DropdownMenuContent>
                   </DropdownMenu>
+                  <Button variant="outline" className="rounded-full text-destructive border-destructive/20 hover:bg-destructive/5" onClick={handleBulkUnassign}><UserMinus className="mr-2 h-4 w-4" /> Unassign ({selectedProperties.length})</Button>
                   <Button variant="destructive" className="rounded-full" onClick={handleBulkDelete}><Trash2 className="mr-2 h-4 w-4" /> Delete ({selectedProperties.length})</Button>
                 </div>
               )}
@@ -916,6 +1022,7 @@ function PropertiesPageContent() {
           {isShareOpen && <SharePropertyDialog property={propertyForDetails} isOpen={isShareOpen} setIsOpen={setIsShareOpen} />}
           {isNotesOpen && <PropertyNotesDialog property={propertyForDetails} isOpen={isNotesOpen} setIsOpen={setIsNotesOpen} />}
           {isAssignOpen && <AssignPropertyToAgentDialog property={propertyForDetails} isOpen={isAssignOpen} setIsOpen={setIsAssignOpen} />}
+          {isSimpleAssignOpen && <SimpleAssignPropertyAgentDialog property={propertyForDetails} isOpen={isSimpleAssignOpen} setIsOpen={setIsSimpleAssignOpen} teamMembers={teamMembers || []} />}
           {isAppointmentOpen && (
             <SetAppointmentDialog 
               isOpen={isAppointmentOpen}
