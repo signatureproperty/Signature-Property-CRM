@@ -12,7 +12,11 @@ export default function HomePage() {
   useEffect(() => {
     if (!isUserLoading) {
       if (user) {
-        router.replace('/overview');
+        if (user.emailVerified) {
+          router.replace('/overview');
+        } else {
+          router.replace('/login');
+        }
       } else {
         router.replace('/login');
       }

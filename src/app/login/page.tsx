@@ -24,7 +24,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { useAuth, useFirestore } from '@/firebase/provider';
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
@@ -62,12 +62,42 @@ export default function LoginPage() {
     },
   });
 
+  const handlePostLoginRedirect = async (user: any) => {
+    const userDocRef = doc(firestore, 'users', user.uid);
+    const userDocSnap = await getDoc(userDocRef);
+
+    if (userDocSnap.exists()) {
+      const userData = userDocSnap.data();
+      if (userData.role === 'Super Admin') {
+        router.push('/super-admin');
+      } else {
+        router.push('/overview');
+      }
+    } else {
+      // Default fallback
+      router.push('/overview');
+    }
+  };
+
   const onSubmit = async (values: LoginFormValues) => {
     setIsLoading(true);
     try {
       if (!auth) throw new Error('Auth service is not available.');
-      await signInWithEmailAndPassword(auth, values.email, values.password);
-      router.push('/overview');
+      const result = await signInWithEmailAndPassword(auth, values.email, values.password);
+      const user = result.user;
+
+      if (!user.emailVerified) {
+        await signOut(auth);
+        toast({
+          variant: 'destructive',
+          title: 'Verification Required',
+          description: 'Please verify your email before logging in.',
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      await handlePostLoginRedirect(user);
     } catch (error: any) {
       console.error('Login Error:', error);
       toast({
@@ -88,15 +118,18 @@ export default function LoginPage() {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
-      const userDocRef = doc(firestore, 'users', user.uid);
-      const userDocSnap = await getDoc(userDocRef);
-
-      if (userDocSnap.exists()) {
-        router.push('/overview');
-      } else {
-        await auth.signOut();
-        toast({ variant: 'destructive', title: 'Account Not Found', description: "Please sign up first." });
+      // Google sign-in users are usually verified, but we check anyway
+      if (!user.emailVerified) {
+        await signOut(auth);
+        toast({
+          variant: 'destructive',
+          title: 'Verification Required',
+          description: 'Please verify your email before logging in.',
+        });
+        return;
       }
+
+      await handlePostLoginRedirect(user);
     } catch (error: any) {
       if (error.code !== 'auth/popup-closed-by-user') {
           toast({ variant: 'destructive', title: 'Google Sign-In Failed' });

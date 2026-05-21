@@ -156,11 +156,16 @@ function SignupPageContent() {
         });
         
         await batch.commit();
+        
+        // Trigger Email Verification
         await sendEmailVerification(user);
       }
 
-      toast({ title: 'Account Created!', description: 'Verification email sent.' });
-      router.push('/overview');
+      toast({ 
+        title: 'Account Created!', 
+        description: 'Verification email sent! Please check your inbox.' 
+      });
+      router.push('/login');
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Signup Failed', description: error.message });
     } finally {
@@ -170,7 +175,7 @@ function SignupPageContent() {
 
   return (
     <div className="flex h-svh w-full items-center justify-center p-4 font-body overflow-hidden relative bg-background">
-      <div className="w-full max-w-md z-10 space-y-6 animate-fade-in">
+      <div className="w-full max-md z-10 space-y-6 animate-fade-in">
         <div className="flex items-center justify-between px-2">
             <Button variant="ghost" size="sm" asChild>
                 <Link href="/login" className="flex items-center gap-2"><ArrowLeft className="h-4 w-4" /> Back to Login</Link>
