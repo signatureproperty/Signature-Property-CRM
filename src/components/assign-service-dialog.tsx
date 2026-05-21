@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -25,7 +24,7 @@ import { useProfile } from '@/context/profile-context';
 import { useToast } from '@/hooks/use-toast';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useMemoFirebase } from '@/firebase/hooks';
-import { Loader2, Zap, User, UserPlus, FileText } from 'lucide-react';
+import { Loader2, Zap, User, UserPlus, Phone } from 'lucide-react';
 import type { Service, Buyer, AssignedToType } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
@@ -34,6 +33,8 @@ const formSchema = z.object({
   priceCharged: z.coerce.number().min(0, 'Amount is required'),
   assignedToType: z.enum(['Lead', 'External']).default('Lead'),
   leadId: z.string().optional(),
+  externalName: z.string().optional(),
+  externalPhone: z.string().optional(),
   externalClientDetails: z.string().optional(),
 });
 
@@ -63,6 +64,8 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
       priceCharged: service.price,
       assignedToType: 'Lead',
       leadId: '',
+      externalName: '',
+      externalPhone: '',
       externalClientDetails: '',
     },
   });
@@ -77,8 +80,8 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
         return;
     }
     
-    if (values.assignedToType === 'External' && !values.externalClientDetails?.trim()) {
-        toast({ title: 'Please provide client details', variant: 'destructive' });
+    if (values.assignedToType === 'External' && !values.externalName?.trim()) {
+        toast({ title: 'Please provide client name', variant: 'destructive' });
         return;
     }
 
@@ -95,6 +98,8 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
             assignedToType: values.assignedToType,
             leadId: values.leadId || null,
             leadName: lead?.name || null,
+            externalName: values.externalName || null,
+            externalPhone: values.externalPhone || null,
             externalClientDetails: values.externalClientDetails || null,
             status: 'Pending',
             agency_id: profile.agency_id,
@@ -105,7 +110,7 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
         const activityColRef = collection(firestore, 'agencies', profile.agency_id, 'activityLogs');
         await addDoc(activityColRef, {
             userName: profile.name,
-            action: `assigned service "${service.name}" to ${values.assignedToType === 'Lead' ? lead?.name : 'External Client'}`,
+            action: `assigned service "${service.name}" to ${values.assignedToType === 'Lead' ? lead?.name : values.externalName}`,
             target: service.name,
             targetType: 'Service',
             timestamp: new Date().toISOString(),
@@ -218,30 +223,54 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
                         )}
                     />
                 ) : (
-                    <FormField
-                        control={form.control}
-                        name="externalClientDetails"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60">Client Details & Notes</FormLabel>
-                                <FormControl>
-                                    <Textarea 
-                                        placeholder="Name, Phone, and specific service requirements..." 
-                                        {...field} 
-                                        rows={4} 
-                                        className="rounded-xl resize-none"
-                                    />
-                                </FormControl>
-                            </FormItem>
-                        )}
-                    />
+                    <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                        <div className="grid grid-cols-2 gap-4">
+                            <FormField
+                                control={form.control}
+                                name="externalName"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60">Client Name</FormLabel>
+                                        <FormControl><Input placeholder="John Doe" {...field} className="h-11 rounded-xl" /></FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="externalPhone"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60">Phone Number</FormLabel>
+                                        <FormControl><Input placeholder="+92300..." {...field} className="h-11 rounded-xl" /></FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+                        <FormField
+                            control={form.control}
+                            name="externalClientDetails"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60">Requirements & Details</FormLabel>
+                                    <FormControl>
+                                        <Textarea 
+                                            placeholder="Specific service requirements..." 
+                                            {...field} 
+                                            rows={3} 
+                                            className="rounded-xl resize-none"
+                                        />
+                                    </FormControl>
+                                </FormItem>
+                            )}
+                        />
+                    </div>
                 )}
             </div>
 
             <DialogFooter className="p-6 border-t bg-muted/5 mt-4">
               <Button type="button" variant="ghost" onClick={() => setIsOpen(false)} className="rounded-xl h-11">Cancel</Button>
               <Button type="submit" disabled={isLoading} className="rounded-xl h-11 px-8 glowing-btn font-black flex-1 sm:flex-none">
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="h-4 w-4 mr-2" />}
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4 mr-2" />}
                 Assign Service
               </Button>
             </DialogFooter>
@@ -250,8 +279,4 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
       </DialogContent>
     </Dialog>
   );
-}
-
-function Check({ className }: { className?: string }) {
-    return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M20 6 9 17l-5-5"/></svg>;
 }

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -22,12 +21,12 @@ import {
     CheckCircle, 
     Clock, 
     PlayCircle,
-    DollarSign,
     User,
-    ArrowUpRight,
     Tag,
-    ChevronRight,
-    Search
+    Search,
+    Phone,
+    FileText,
+    Info
 } from 'lucide-react';
 import { 
     DropdownMenu, 
@@ -46,6 +45,9 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-is-mobile';
+import { BuyerDetailsDialog } from '@/components/buyer-details-dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Buyer, ProvidedService } from '@/lib/types';
 
 const statusConfig = {
     'Pending': { color: 'bg-orange-500/10 text-orange-600 border-orange-500/20', icon: Clock },
@@ -64,6 +66,12 @@ export default function ServicesPage() {
     const [selectedService, setSelectedService] = useState<any>(null);
     const [serviceSearch, setServiceSearch] = useState('');
 
+    // State for viewing details
+    const [viewingBuyer, setViewingBuyer] = useState<Buyer | null>(null);
+    const [isBuyerOpen, setIsBuyerOpen] = useState(false);
+    const [viewingExternal, setViewingExternal] = useState<ProvidedService | null>(null);
+    const [isExternalOpen, setIsExternalOpen] = useState(false);
+
     // --- Data Fetching ---
     const servicesQuery = useMemoFirebase(() => 
         profile.agency_id ? query(collection(firestore, 'agencies', profile.agency_id, 'services'), orderBy('created_at', 'desc')) : null,
@@ -77,6 +85,12 @@ export default function ServicesPage() {
     );
     const { data: providedServices, isLoading: isProvidedLoading } = useCollection<any>(providedQuery);
 
+    const buyersQuery = useMemoFirebase(() => 
+        profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'buyers') : null,
+        [profile.agency_id, firestore]
+    );
+    const { data: buyers } = useCollection<Buyer>(buyersQuery);
+
     const handleUpdateStatus = async (service: any, newStatus: string) => {
         if (!profile.agency_id) return;
         const docRef = doc(firestore, 'agencies', profile.agency_id, 'providedServices', service.id);
@@ -86,6 +100,19 @@ export default function ServicesPage() {
     const handleDeleteService = async (id: string) => {
         if (!profile.agency_id) return;
         await deleteDoc(doc(firestore, 'agencies', profile.agency_id, 'services', id));
+    };
+
+    const handleClientClick = (log: ProvidedService) => {
+        if (log.assignedToType === 'Lead' && log.leadId) {
+            const buyer = buyers?.find(b => b.id === log.leadId);
+            if (buyer) {
+                setViewingBuyer(buyer);
+                setIsBuyerOpen(true);
+            }
+        } else {
+            setViewingExternal(log);
+            setIsExternalOpen(true);
+        }
     };
 
     const filteredServices = useMemo(() => {
@@ -173,7 +200,7 @@ export default function ServicesPage() {
                     <Card className="border-none shadow-2xl rounded-3xl overflow-hidden bg-card/60 backdrop-blur-xl">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2"><History className="h-5 w-5 text-primary" /> Service Logs</CardTitle>
-                            <CardDescription>Track all provided services and payment statuses.</CardDescription>
+                            <CardDescription>Click on a client to view their full details and requirements.</CardDescription>
                         </CardHeader>
                         <CardContent className="p-0">
                             {isProvidedLoading ? (
@@ -196,17 +223,18 @@ export default function ServicesPage() {
                                             return (
                                                 <TableRow key={log.id}>
                                                     <TableCell className="font-bold">{log.serviceName}</TableCell>
-                                                    <TableCell>
+                                                    <TableCell className="cursor-pointer group" onClick={() => handleClientClick(log)}>
                                                         {log.assignedToType === 'Lead' ? (
                                                             <div className="flex items-center gap-2">
-                                                                <User className="h-3 w-3 text-primary" />
-                                                                <span className="text-sm font-semibold">{log.leadName}</span>
+                                                                <User className="h-3 w-3 text-primary group-hover:scale-110 transition-transform" />
+                                                                <span className="text-sm font-semibold group-hover:text-primary transition-colors underline-offset-4 decoration-primary/30 decoration-2 group-hover:underline">{log.leadName}</span>
                                                                 <Badge variant="secondary" className="text-[8px] h-4">LEAD</Badge>
                                                             </div>
                                                         ) : (
                                                             <div className="flex items-center gap-2">
-                                                                <Tag className="h-3 w-3 text-orange-500" />
-                                                                <span className="text-xs italic text-muted-foreground">{log.externalClientDetails?.substring(0, 30)}...</span>
+                                                                <User className="h-3 w-3 text-orange-500 group-hover:scale-110 transition-transform" />
+                                                                <span className="text-sm font-semibold group-hover:text-orange-500 transition-colors underline-offset-4 decoration-orange-500/30 decoration-2 group-hover:underline">{log.externalName}</span>
+                                                                <Badge variant="outline" className="text-[8px] h-4 border-orange-500/20 text-orange-600 bg-orange-500/5">EXTERNAL</Badge>
                                                             </div>
                                                         )}
                                                     </TableCell>
@@ -221,7 +249,7 @@ export default function ServicesPage() {
                                                     <TableCell className="text-right">
                                                         <DropdownMenu>
                                                             <DropdownMenuTrigger asChild>
-                                                                <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full"><MoreHorizontal className="h-4 w-4" /></Button>
                                                             </DropdownMenuTrigger>
                                                             <DropdownMenuContent align="end">
                                                                 <DropdownMenuItem onClick={() => handleUpdateStatus(log, 'In Progress')}>Set to In Progress</DropdownMenuItem>
@@ -260,6 +288,53 @@ export default function ServicesPage() {
                     service={selectedService} 
                 />
             )}
+
+            {/* View Buyer Lead Details */}
+            {viewingBuyer && (
+                <BuyerDetailsDialog 
+                    buyer={viewingBuyer}
+                    isOpen={isBuyerOpen}
+                    setIsOpen={setIsBuyerOpen}
+                />
+            )}
+
+            {/* View External Client Details */}
+            <Dialog open={isExternalOpen} onOpenChange={setIsExternalOpen}>
+                <DialogContent className="sm:max-w-md border-none shadow-3xl rounded-[2rem]">
+                    <DialogHeader>
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="p-3 bg-orange-500/10 rounded-2xl text-orange-600">
+                                <User className="h-6 w-6" />
+                            </div>
+                            <div>
+                                <DialogTitle className="font-headline text-xl font-black">External Client Details</DialogTitle>
+                                <DialogDescription className="text-xs font-medium">Service provided to a non-CRM lead.</DialogDescription>
+                            </div>
+                        </div>
+                    </DialogHeader>
+                    {viewingExternal && (
+                        <div className="py-6 space-y-6">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="p-4 rounded-2xl bg-muted/20 border border-border/40">
+                                    <Label className="text-[9px] font-black uppercase tracking-widest opacity-60 flex items-center gap-1.5 mb-1"><User className="h-3 w-3" /> Client Name</Label>
+                                    <p className="font-bold text-sm">{viewingExternal.externalName}</p>
+                                </div>
+                                <div className="p-4 rounded-2xl bg-muted/20 border border-border/40">
+                                    <Label className="text-[9px] font-black uppercase tracking-widest opacity-60 flex items-center gap-1.5 mb-1"><Phone className="h-3 w-3" /> Contact No</Label>
+                                    <p className="font-bold text-sm">{viewingExternal.externalPhone || 'N/A'}</p>
+                                </div>
+                            </div>
+                            <div className="p-5 rounded-2xl bg-primary/5 border border-primary/10">
+                                <Label className="text-[9px] font-black uppercase tracking-widest text-primary opacity-70 flex items-center gap-1.5 mb-2"><FileText className="h-3 w-3" /> Requirements & Notes</Label>
+                                <p className="text-sm font-medium leading-relaxed italic">"{viewingExternal.externalClientDetails || 'No additional details provided.'}"</p>
+                            </div>
+                        </div>
+                    )}
+                    <DialogFooter>
+                        <Button variant="secondary" className="rounded-xl px-8 h-11 font-bold" onClick={() => setIsExternalOpen(false)}>Close</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

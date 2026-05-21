@@ -1,4 +1,3 @@
-
 'use client';
 
 export type UserRole = 'Admin' | 'Agent' | 'Video Recorder' | 'Super Admin';
@@ -409,6 +408,8 @@ export type ProvidedService = {
     assignedToType: AssignedToType;
     leadId?: string;
     leadName?: string;
+    externalName?: string;
+    externalPhone?: string;
     externalClientDetails?: string;
     status: ServiceStatus;
     agency_id: string;
