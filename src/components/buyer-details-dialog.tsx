@@ -13,7 +13,6 @@ import { Buyer, PriceUnit, SizeUnit } from '@/lib/types';
 import { ScrollArea } from './ui/scroll-area';
 import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
-import { SharePropertyDialog } from './share-property-dialog';
 import { 
   Home, 
   Tag, 
@@ -57,6 +56,9 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useProfile } from '@/context/profile-context';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Textarea } from './ui/textarea';
 
 interface BuyerDetailsDialogProps {
   buyer: Buyer;
@@ -107,7 +109,6 @@ const statusVariant = {
     'Visited Property': 'bg-orange-600',
     'Deal Closed': 'bg-slate-800',
     'Deal Lost': 'bg-gray-500',
-    'Pending': 'bg-amber-600'
 } as const;
 
 export function BuyerDetailsDialog({
@@ -120,10 +121,16 @@ export function BuyerDetailsDialog({
   const { toast } = useToast();
   const { profile } = useProfile();
   const [isReleasing, setIsReleasing] = useState(false);
+  const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false);
+  const [returnDetails, setReturnDetails] = useState({
+      area_preference: '',
+      budget_max_amount: 0,
+      notes: ''
+  });
 
   // Mark notes as read when details are viewed
   useEffect(() => {
-    if (isOpen && buyer.timeline_notes && profile.agency_id) {
+    if (isOpen && buyer?.timeline_notes && profile.agency_id) {
         const unreadNotes = buyer.timeline_notes.filter(n => !n.readBy?.includes(profile.user_id));
         if (unreadNotes.length > 0) {
             const updatedNotes = buyer.timeline_notes.map(n => ({
@@ -134,7 +141,17 @@ export function BuyerDetailsDialog({
             updateDoc(buyerRef, { timeline_notes: updatedNotes });
         }
     }
-  }, [isOpen, buyer.timeline_notes, profile.user_id, profile.agency_id, firestore, buyer.id]);
+  }, [isOpen, buyer?.timeline_notes, profile.user_id, profile.agency_id, firestore, buyer?.id]);
+
+  useEffect(() => {
+      if (isReturnDialogOpen && buyer) {
+          setReturnDetails({
+              area_preference: buyer.area_preference || '',
+              budget_max_amount: buyer.budget_max_amount || 0,
+              notes: buyer.notes || ''
+          });
+      }
+  }, [isReturnDialogOpen, buyer]);
 
   const formatBudget = (minAmount?: number, minUnit?: PriceUnit, maxAmount?: number, maxUnit?: PriceUnit) => {
     if (!minAmount || !minUnit) return 'N/A';
@@ -170,20 +187,38 @@ export function BuyerDetailsDialog({
     setIsReleasing(true);
     try {
         const buyerRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', buyer.id);
-        await updateDoc(buyerRef, { assignedTo: null });
+        
+        const hasChanges = 
+            returnDetails.area_preference !== buyer.area_preference ||
+            returnDetails.budget_max_amount !== (buyer.budget_max_amount || 0) ||
+            returnDetails.notes !== (buyer.notes || '');
+
+        const updateData: any = { 
+            assignedTo: null,
+            area_preference: returnDetails.area_preference,
+            budget_max_amount: returnDetails.budget_max_amount,
+            notes: returnDetails.notes
+        };
+
+        await updateDoc(buyerRef, updateData);
         
         // Log activity
         const activityLogRef = collection(firestore, 'agencies', profile.agency_id, 'activityLogs');
+        const actionText = hasChanges 
+            ? 'updated details and returned the lead back to agency pool' 
+            : 'returned the lead back to agency pool';
+
         await addDoc(activityLogRef, {
             userName: profile.name,
-            action: 'released the lead back to agency pool',
+            action: actionText,
             target: buyer.name,
             targetType: 'Buyer',
             timestamp: new Date().toISOString(),
             agency_id: profile.agency_id,
         });
 
-        toast({ title: "Lead Released", description: "This buyer is now back in the unassigned pool." });
+        toast({ title: hasChanges ? "Lead Details Updated & Returned" : "Lead Returned to Pool" });
+        setIsReturnDialogOpen(false);
         setIsOpen(false);
     } catch (error) {
         toast({ title: "Error", variant: "destructive" });
@@ -197,11 +232,12 @@ export function BuyerDetailsDialog({
   const isAssignedToMe = buyer.assignedTo === profile.user_id;
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-3xl p-0 overflow-hidden rounded-2xl max-h-[95vh] flex flex-col">
-        <div className="p-6 pb-2 shrink-0">
-          <DialogHeader>
-            <div className="space-y-4">
+    <>
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogContent className="sm:max-w-3xl p-0 overflow-hidden rounded-2xl max-h-[95vh] flex flex-col">
+          <div className="p-6 pb-2 shrink-0">
+            <DialogHeader>
+              <div className="space-y-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <Badge variant="outline" className="font-mono text-[10px] bg-background">
@@ -214,27 +250,6 @@ export function BuyerDetailsDialog({
                             <Badge className="bg-indigo-600 text-white border-0 text-[10px] font-bold px-2 py-0.5">Investor</Badge>
                         )}
                     </div>
-                    {isAssignedToMe && (
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="outline" size="sm" className="rounded-full h-8 gap-2 text-destructive border-destructive/20 hover:bg-destructive/10">
-                                    <Undo2 className="h-3.5 w-3.5" /> Release to Pool
-                                </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent className="rounded-3xl border-none shadow-2xl">
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle className="font-headline text-2xl font-black">Release Lead Back?</AlertDialogTitle>
-                                    <AlertDialogDescription className="text-base">
-                                        This will un-assign <strong>{buyer.name}</strong> from you and return them to the agency pool for others to handle.
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter className="mt-6">
-                                    <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleReleaseLead} className="bg-destructive text-white hover:bg-destructive/90 rounded-xl font-bold px-8">Confirm & Release</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                    )}
                 </div>
                 
                 <div className="space-y-1">
@@ -388,12 +403,81 @@ export function BuyerDetailsDialog({
           </div>
         </ScrollArea>
 
-        <DialogFooter className="p-6 border-t bg-muted/5 shrink-0">
-           <Button variant="secondary" className="rounded-full h-9 px-6 w-full sm:w-auto" onClick={() => setIsOpen(false)}>
-            Close
-          </Button>
+        <DialogFooter className="p-6 border-t bg-muted/5 shrink-0 flex flex-row items-center justify-between sm:justify-between gap-4">
+            <div className="flex-1">
+                {isAssignedToMe && (
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="rounded-full h-10 gap-2 text-destructive border-destructive/20 hover:bg-destructive/10 font-bold px-6"
+                        onClick={() => setIsReturnDialogOpen(true)}
+                    >
+                        <Undo2 className="h-4 w-4" /> Return Lead
+                    </Button>
+                )}
+            </div>
+            <Button variant="secondary" className="rounded-full h-10 px-10 font-bold" onClick={() => setIsOpen(false)}>
+                Close
+            </Button>
         </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+
+      {/* Return Lead & Verification Dialog */}
+      <Dialog open={isReturnDialogOpen} onOpenChange={setIsReturnDialogOpen}>
+          <DialogContent className="sm:max-w-md border-none shadow-3xl rounded-[2rem] overflow-hidden">
+              <DialogHeader>
+                  <div className="mx-auto bg-destructive/10 w-12 h-12 rounded-full flex items-center justify-center mb-2">
+                    <Undo2 className="text-destructive h-6 w-6" />
+                  </div>
+                  <DialogTitle className="text-center font-headline text-2xl font-black tracking-tight">Return Lead to Pool</DialogTitle>
+                  <DialogDescription className="text-center font-medium">
+                      Before returning <strong>{buyer.name}</strong>, please verify and update their requirements so others can find better matches.
+                  </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4 py-4">
+                  <div className="space-y-1.5">
+                      <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Update Area Preference</Label>
+                      <Input 
+                        value={returnDetails.area_preference}
+                        onChange={e => setReturnDetails(prev => ({ ...prev, area_preference: e.target.value }))}
+                        placeholder="e.g. DHA Phase 6, Gulberg"
+                        className="h-11 rounded-xl bg-muted/30"
+                      />
+                  </div>
+                  <div className="space-y-1.5">
+                      <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Verify Max Budget</Label>
+                      <div className="relative">
+                        <Input 
+                            type="number"
+                            value={returnDetails.budget_max_amount}
+                            onChange={e => setReturnDetails(prev => ({ ...prev, budget_max_amount: Number(e.target.value) }))}
+                            className="h-11 rounded-xl bg-muted/30 pl-10"
+                        />
+                        <Wallet className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
+                      </div>
+                  </div>
+                  <div className="space-y-1.5">
+                      <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Final Feedback / Notes</Label>
+                      <Textarea 
+                        value={returnDetails.notes}
+                        onChange={e => setReturnDetails(prev => ({ ...prev, notes: e.target.value }))}
+                        placeholder="Why are you returning this lead? Any new info?"
+                        className="rounded-xl bg-muted/30 min-h-[100px] resize-none"
+                      />
+                  </div>
+              </div>
+
+              <DialogFooter className="gap-2 sm:gap-0">
+                  <Button variant="ghost" onClick={() => setIsReturnDialogOpen(false)} className="rounded-xl font-bold flex-1">Cancel</Button>
+                  <Button onClick={handleReleaseLead} disabled={isReleasing} className="rounded-xl font-bold bg-destructive text-white hover:bg-destructive/90 flex-1">
+                      {isReleasing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
+                      Confirm & Return
+                  </Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
+    </>
   );
 }
