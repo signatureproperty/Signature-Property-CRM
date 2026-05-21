@@ -28,6 +28,7 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import { useCurrency } from '@/context/currency-context';
 import { formatCurrency } from '@/lib/formatters';
+import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
   paymentStatus: z.enum(['Pending', 'Partial', 'Paid']),
@@ -110,7 +111,7 @@ export function UpdateServicePaymentDialog({ isOpen, setIsOpen, log }: UpdateSer
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-md border-none shadow-3xl rounded-[2.5rem] p-0 overflow-hidden">
+      <DialogContent className="sm:max-w-md border-none shadow-3xl rounded-[2rem] p-0 overflow-hidden">
         <div className="p-8 pb-2">
             <DialogHeader>
                 <div className="flex items-center gap-3 mb-2">
