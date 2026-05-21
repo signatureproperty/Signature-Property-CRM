@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -24,7 +24,7 @@ import { useProfile } from '@/context/profile-context';
 import { useToast } from '@/hooks/use-toast';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useMemoFirebase } from '@/firebase/hooks';
-import { Loader2, Zap, User, UserPlus, Phone, Check, ChevronsUpDown, Building2 } from 'lucide-react';
+import { Loader2, Zap, User, UserPlus, Phone, Check, ChevronsUpDown, Building2, Search, Filter } from 'lucide-react';
 import type { Service, Buyer, Property } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
@@ -36,6 +36,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { formatPhoneNumber } from '@/lib/utils';
 import { ScrollArea } from './ui/scroll-area';
 import { Badge } from './ui/badge';
+import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
 
 const formSchema = z.object({
   priceCharged: z.coerce.number().min(0, 'Amount is required'),
@@ -62,6 +63,7 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
   const [isLoading, setIsLoading] = useState(false);
   const [countryCodePopoverOpen, setCountryCodePopoverOpen] = useState(false);
   const [leadPopoverOpen, setLeadPopoverOpen] = useState(false);
+  const [activePrefixTab, setActivePrefixTab] = useState<string>('All');
 
   // Fetch Buyers
   const buyersQuery = useMemoFirebase(() => 
@@ -77,26 +79,52 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
   );
   const { data: properties } = useCollection<Property>(propertiesQuery);
 
-  // Combine and Filter Leads based on Service target
+  // Combine and Filter Leads based on Service target and Tabs
   const applicableLeads = useMemo(() => {
-    const list: Array<{ id: string; name: string; serial: string; type: 'Buyer' | 'Property' }> = [];
+    const list: Array<{ id: string; name: string; serial: string; type: 'Buyer' | 'Property'; searchStr: string }> = [];
     
     const target = service.applicableTo || 'Both';
 
     if (target === 'Buyers' || target === 'Both') {
         buyers?.filter(b => !b.is_deleted).forEach(b => {
-            list.push({ id: b.id, name: b.name, serial: b.serial_no, type: 'Buyer' });
+            const numPart = b.serial_no.split('-')[1] || '';
+            list.push({ 
+                id: b.id, 
+                name: b.name, 
+                serial: b.serial_no, 
+                type: 'Buyer',
+                searchStr: `${b.name} ${b.serial_no} ${numPart}`.toLowerCase() 
+            });
         });
     }
 
     if (target === 'Properties' || target === 'Both') {
         properties?.filter(p => !p.is_deleted).forEach(p => {
-            list.push({ id: p.id, name: p.auto_title, serial: p.serial_no, type: 'Property' });
+            const numPart = p.serial_no.split('-')[1] || '';
+            list.push({ 
+                id: p.id, 
+                name: p.auto_title, 
+                serial: p.serial_no, 
+                type: 'Property',
+                searchStr: `${p.auto_title} ${p.serial_no} ${numPart}`.toLowerCase()
+            });
         });
     }
 
-    return list.sort((a, b) => a.name.localeCompare(b.name));
-  }, [buyers, properties, service.applicableTo]);
+    let filtered = list;
+    if (activePrefixTab !== 'All') {
+        filtered = list.filter(l => l.serial.startsWith(activePrefixTab + '-'));
+    }
+
+    return filtered.sort((a, b) => a.name.localeCompare(b.name));
+  }, [buyers, properties, service.applicableTo, activePrefixTab]);
+
+  const availablePrefixes = useMemo(() => {
+    const target = service.applicableTo || 'Both';
+    if (target === 'Buyers') return ['B', 'RB'];
+    if (target === 'Properties') return ['P', 'RP'];
+    return ['B', 'RB', 'P', 'RP'];
+  }, [service.applicableTo]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -112,6 +140,21 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
   });
 
   const watchedType = form.watch('assignedToType');
+
+  useEffect(() => {
+    if (isOpen) {
+        form.reset({
+            priceCharged: service.price,
+            assignedToType: 'Lead',
+            leadId: '',
+            externalName: '',
+            country_code: '+92',
+            externalPhone: '',
+            externalClientDetails: '',
+        });
+        setActivePrefixTab('All');
+    }
+  }, [isOpen, service, form]);
 
   const onSubmit = async (values: FormValues) => {
     if (!profile.agency_id) return;
@@ -147,6 +190,8 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
         status: 'Pending',
         agency_id: profile.agency_id,
         created_at: new Date().toISOString(),
+        paymentStatus: 'Pending',
+        amountPaid: 0,
     };
 
     addDoc(colRef, providedData).catch(async () => {
@@ -169,7 +214,7 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
         agency_id: profile.agency_id,
     }).catch(() => {});
 
-    toast({ title: 'Processing sale...' });
+    toast({ title: 'Service assigned successfully' });
     setIsLoading(false);
     setIsOpen(false);
   };
@@ -255,7 +300,7 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
                             name="leadId"
                             render={({ field }) => (
                                 <FormItem className="flex flex-col">
-                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60">Search Lead/Property</FormLabel>
+                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60">Lead Lookup (Proper Serial Search)</FormLabel>
                                     <Popover open={leadPopoverOpen} onOpenChange={setLeadPopoverOpen}>
                                         <PopoverTrigger asChild>
                                             <FormControl>
@@ -269,26 +314,36 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
                                                 >
                                                     {field.value
                                                         ? applicableLeads.find((l) => l.id === field.value)?.name.substring(0, 30) + '...'
-                                                        : "Search by Name or Serial..."}
+                                                        : "Search by Name or Number..."}
                                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                 </Button>
                                             </FormControl>
                                         </PopoverTrigger>
                                         <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-2xl overflow-hidden shadow-2xl border-none">
-                                            <Command>
-                                                <CommandInput placeholder="Type Name or SN..." className="h-11" />
+                                            <div className="bg-muted/30 p-2 border-b">
+                                                <Tabs value={activePrefixTab} onValueChange={setActivePrefixTab}>
+                                                    <TabsList className="grid grid-cols-5 h-9 bg-background/50 rounded-lg">
+                                                        <TabsTrigger value="All" className="text-[9px] font-black uppercase">All</TabsTrigger>
+                                                        {availablePrefixes.map(p => (
+                                                            <TabsTrigger key={p} value={p} className="text-[9px] font-black uppercase">{p}</TabsTrigger>
+                                                        ))}
+                                                    </TabsList>
+                                                </Tabs>
+                                            </div>
+                                            <Command className="bg-background">
+                                                <CommandInput placeholder="Type Name or Just Numbers..." className="h-11" />
                                                 <CommandList>
-                                                    <CommandEmpty>No matching records found.</CommandEmpty>
+                                                    <CommandEmpty className="py-6 text-center text-xs font-bold text-muted-foreground uppercase opacity-40">No matching records found.</CommandEmpty>
                                                     <CommandGroup>
                                                         {applicableLeads.map((l) => (
                                                             <CommandItem
-                                                                value={`${l.name} ${l.serial}`}
+                                                                value={l.searchStr}
                                                                 key={l.id}
                                                                 onSelect={() => {
                                                                     form.setValue("leadId", l.id);
                                                                     setLeadPopoverOpen(false);
                                                                 }}
-                                                                className="flex items-center justify-between py-3"
+                                                                className="flex items-center justify-between py-3 cursor-pointer"
                                                             >
                                                                 <div className="flex items-center gap-2">
                                                                     <Check
@@ -299,12 +354,12 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
                                                                     />
                                                                     <div className="flex flex-col">
                                                                         <span className="font-bold text-sm line-clamp-1">{l.name}</span>
-                                                                        <span className="text-[10px] font-black text-muted-foreground uppercase flex items-center gap-1">
-                                                                            {l.type === 'Buyer' ? <User className="h-2 w-2"/> : <Building2 className="h-2 w-2"/>} {l.type}
+                                                                        <span className="text-[9px] font-black text-muted-foreground uppercase flex items-center gap-1 opacity-60">
+                                                                            {l.type === 'Buyer' ? <User className="h-2.5 w-2.5"/> : <Building2 className="h-2.5 w-2.5"/>} {l.type}
                                                                         </span>
                                                                     </div>
                                                                 </div>
-                                                                <Badge variant="outline" className="font-mono text-[9px] bg-muted/50">{l.serial}</Badge>
+                                                                <Badge variant="outline" className="font-mono text-[9px] font-black bg-primary/5 text-primary border-primary/20">{l.serial}</Badge>
                                                             </CommandItem>
                                                         ))}
                                                     </CommandGroup>
