@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -28,6 +29,8 @@ import { Loader2, Zap, User, UserPlus, Phone } from 'lucide-react';
 import type { Service, Buyer, AssignedToType } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 const formSchema = z.object({
   priceCharged: z.coerce.number().min(0, 'Amount is required'),
@@ -87,43 +90,48 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
 
     setIsLoading(true);
 
-    try {
-        const lead = values.assignedToType === 'Lead' ? buyers?.find(b => b.id === values.leadId) : null;
-        
-        const colRef = collection(firestore, 'agencies', profile.agency_id, 'providedServices');
-        await addDoc(colRef, {
-            serviceId: service.id,
-            serviceName: service.name,
-            priceCharged: values.priceCharged,
-            assignedToType: values.assignedToType,
-            leadId: values.leadId || null,
-            leadName: lead?.name || null,
-            externalName: values.externalName || null,
-            externalPhone: values.externalPhone || null,
-            externalClientDetails: values.externalClientDetails || null,
-            status: 'Pending',
-            agency_id: profile.agency_id,
-            created_at: new Date().toISOString(),
-        });
+    const lead = values.assignedToType === 'Lead' ? buyers?.find(b => b.id === values.leadId) : null;
+    const clientName = (values.assignedToType === 'Lead' ? lead?.name : values.externalName) || 'Client';
 
-        // Log Activity
-        const activityColRef = collection(firestore, 'agencies', profile.agency_id, 'activityLogs');
-        await addDoc(activityColRef, {
-            userName: profile.name,
-            action: `assigned service "${service.name}" to ${values.assignedToType === 'Lead' ? lead?.name : values.externalName}`,
-            target: service.name,
-            targetType: 'Service',
-            timestamp: new Date().toISOString(),
-            agency_id: profile.agency_id,
-        });
+    const colRef = collection(firestore, 'agencies', profile.agency_id, 'providedServices');
+    const providedData = {
+        serviceId: service.id,
+        serviceName: service.name,
+        priceCharged: values.priceCharged,
+        assignedToType: values.assignedToType,
+        leadId: values.leadId || null,
+        leadName: lead?.name || null,
+        externalName: values.externalName || null,
+        externalPhone: values.externalPhone || null,
+        externalClientDetails: values.externalClientDetails || null,
+        status: 'Pending',
+        agency_id: profile.agency_id,
+        created_at: new Date().toISOString(),
+    };
 
-        toast({ title: 'Service Assigned Successfully' });
-        setIsOpen(false);
-    } catch (error) {
-        toast({ title: 'Error assigning service', variant: 'destructive' });
-    } finally {
-        setIsLoading(false);
-    }
+    addDoc(colRef, providedData).catch(async () => {
+        const permissionError = new FirestorePermissionError({
+            path: colRef.path,
+            operation: 'create',
+            requestResourceData: providedData,
+        } satisfies SecurityRuleContext);
+        errorEmitter.emit('permission-error', permissionError);
+    });
+
+    // Log Activity Non-blocking
+    const activityColRef = collection(firestore, 'agencies', profile.agency_id, 'activityLogs');
+    addDoc(activityColRef, {
+        userName: profile.name,
+        action: `assigned service "${service.name}" to ${clientName}`,
+        target: service.name,
+        targetType: 'Service',
+        timestamp: new Date().toISOString(),
+        agency_id: profile.agency_id,
+    }).catch(() => {});
+
+    toast({ title: 'Processing assignment...' });
+    setIsLoading(false);
+    setIsOpen(false);
   };
 
   return (
@@ -280,3 +288,4 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
     </Dialog>
   );
 }
+

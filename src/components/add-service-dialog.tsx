@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -24,6 +25,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Plus, Sparkles, X, CheckCircle2 } from 'lucide-react';
 import type { Service } from '@/lib/types';
 import { Badge } from './ui/badge';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 const formSchema = z.object({
   name: z.string().min(1, 'Service name is required'),
@@ -98,31 +101,41 @@ export function AddServiceDialog({ isOpen, setIsOpen, serviceToEdit }: AddServic
     if (!profile.agency_id) return;
     setIsLoading(true);
 
-    try {
-        const payload = {
-            ...values,
-            customStatuses,
-            agency_id: profile.agency_id,
-        };
+    const payload = {
+        ...values,
+        customStatuses,
+        agency_id: profile.agency_id,
+    };
 
-        if (serviceToEdit) {
-            const docRef = doc(firestore, 'agencies', profile.agency_id, 'services', serviceToEdit.id);
-            await updateDoc(docRef, payload);
-            toast({ title: 'Service Updated' });
-        } else {
-            const colRef = collection(firestore, 'agencies', profile.agency_id, 'services');
-            await addDoc(colRef, {
-                ...payload,
-                created_at: new Date().toISOString(),
-            });
-            toast({ title: 'Service Created' });
-        }
-        setIsOpen(false);
-    } catch (error) {
-        toast({ title: 'Error saving service', variant: 'destructive' });
-    } finally {
-        setIsLoading(false);
+    if (serviceToEdit) {
+        const docRef = doc(firestore, 'agencies', profile.agency_id, 'services', serviceToEdit.id);
+        updateDoc(docRef, payload).catch(async () => {
+            const permissionError = new FirestorePermissionError({
+                path: docRef.path,
+                operation: 'update',
+                requestResourceData: payload,
+            } satisfies SecurityRuleContext);
+            errorEmitter.emit('permission-error', permissionError);
+        });
+        toast({ title: 'Updating Service...' });
+    } else {
+        const colRef = collection(firestore, 'agencies', profile.agency_id, 'services');
+        addDoc(colRef, {
+            ...payload,
+            created_at: new Date().toISOString(),
+        }).catch(async () => {
+            const permissionError = new FirestorePermissionError({
+                path: colRef.path,
+                operation: 'create',
+                requestResourceData: payload,
+            } satisfies SecurityRuleContext);
+            errorEmitter.emit('permission-error', permissionError);
+        });
+        toast({ title: 'Creating Service...' });
     }
+    
+    setIsLoading(false);
+    setIsOpen(false);
   };
 
   return (
@@ -247,3 +260,4 @@ export function AddServiceDialog({ isOpen, setIsOpen, serviceToEdit }: AddServic
     </Dialog>
   );
 }
+

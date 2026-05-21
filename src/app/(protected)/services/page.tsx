@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -52,6 +53,8 @@ import { BuyerDetailsDialog } from '@/components/buyer-details-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Buyer, ProvidedService, Service } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 const getStatusColor = (status: string) => {
     switch (status) {
@@ -106,38 +109,50 @@ export default function ServicesPage() {
     );
     const { data: buyers } = useCollection<Buyer>(buyersQuery);
 
-    const handleUpdateStatus = async (log: ProvidedService, newStatus: string) => {
+    const handleUpdateStatus = (log: ProvidedService, newStatus: string) => {
         if (!profile.agency_id) return;
-        try {
-            const docRef = doc(firestore, 'agencies', profile.agency_id, 'providedServices', log.id);
-            await updateDoc(docRef, { status: newStatus });
-            
-            // Log activity
-            const activityColRef = collection(firestore, 'agencies', profile.agency_id, 'activityLogs');
-            await addDoc(activityColRef, {
-                userName: profile.name,
-                action: `updated status of "${log.serviceName}" to ${newStatus}`,
-                target: log.assignedToType === 'Lead' ? log.leadName! : log.externalName!,
-                targetType: 'Service',
-                timestamp: new Date().toISOString(),
-                agency_id: profile.agency_id,
-                details: { from: log.status, to: newStatus }
-            });
+        
+        const docRef = doc(firestore, 'agencies', profile.agency_id, 'providedServices', log.id);
+        
+        // Update status Non-blocking
+        updateDoc(docRef, { status: newStatus }).catch(async () => {
+            const permissionError = new FirestorePermissionError({
+                path: docRef.path,
+                operation: 'update',
+                requestResourceData: { status: newStatus },
+            } satisfies SecurityRuleContext);
+            errorEmitter.emit('permission-error', permissionError);
+        });
+        
+        // Log activity Non-blocking
+        const activityColRef = collection(firestore, 'agencies', profile.agency_id, 'activityLogs');
+        const targetName = (log.assignedToType === 'Lead' ? log.leadName : (log.externalName || log.externalClientDetails)) || 'Client';
+        
+        addDoc(activityColRef, {
+            userName: profile.name,
+            action: `updated status of "${log.serviceName}" to ${newStatus}`,
+            target: targetName,
+            targetType: 'Service',
+            timestamp: new Date().toISOString(),
+            agency_id: profile.agency_id,
+            details: { from: log.status, to: newStatus }
+        }).catch(() => {});
 
-            toast({ title: `Status updated to ${newStatus}` });
-        } catch (error) {
-            toast({ title: "Failed to update status", variant: 'destructive' });
-        }
+        toast({ title: `Updating to ${newStatus}...` });
     };
 
-    const handleDeleteService = async (id: string) => {
+    const handleDeleteService = (id: string) => {
         if (!profile.agency_id) return;
-        try {
-            await deleteDoc(doc(firestore, 'agencies', profile.agency_id, 'services', id));
-            toast({ title: "Service Deleted" });
-        } catch (error) {
-            toast({ title: "Failed to delete service", variant: 'destructive' });
-        }
+        const docRef = doc(firestore, 'agencies', profile.agency_id, 'services', id);
+        
+        deleteDoc(docRef).catch(async () => {
+            const permissionError = new FirestorePermissionError({
+                path: docRef.path,
+                operation: 'delete',
+            } satisfies SecurityRuleContext);
+            errorEmitter.emit('permission-error', permissionError);
+        });
+        toast({ title: "Deleting service..." });
     };
 
     const handleClientClick = (log: ProvidedService) => {
@@ -219,7 +234,7 @@ export default function ServicesPage() {
                                         <div className="text-2xl font-black text-primary">{formatCurrency(service.price, currency)}</div>
                                         {service.customStatuses && service.customStatuses.length > 0 && (
                                             <div className="mt-3 flex flex-wrap gap-1">
-                                                {service.customStatuses.slice(0, 3).map(s => <Badge key={status} variant="secondary" className="text-[8px] h-4 py-0 font-bold opacity-60">{s}</Badge>)}
+                                                {service.customStatuses.slice(0, 3).map(s => <Badge key={s} variant="secondary" className="text-[8px] h-4 py-0 font-bold opacity-60">{s}</Badge>)}
                                                 {service.customStatuses.length > 3 && <span className="text-[8px] font-bold opacity-40">+{service.customStatuses.length - 3} more</span>}
                                             </div>
                                         )}
@@ -399,3 +414,4 @@ export default function ServicesPage() {
         </div>
     );
 }
+
