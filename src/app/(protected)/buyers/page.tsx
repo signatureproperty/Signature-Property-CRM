@@ -7,15 +7,11 @@ import {
     DropdownMenuContent, 
     DropdownMenuItem, 
     DropdownMenuTrigger,
-    DropdownMenuSub,
-    DropdownMenuSubTrigger,
-    DropdownMenuPortal,
-    DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { buyerStatuses } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
-import { Edit, MoreHorizontal, PlusCircle, Trash2, Wallet, Ruler, Eye, MessageSquare, ChevronLeft, ChevronRight, ArrowUpDown, Tag as TagIcon, MapPin, ChevronDown, UserPlus, CalendarPlus, Sparkles, MessageSquareText, Filter } from 'lucide-react';
+import { Edit, MoreHorizontal, PlusCircle, Trash2, Wallet, Ruler, Eye, MessageSquare, ChevronLeft, ChevronRight, ArrowUpDown, Tag as TagIcon, MapPin, ChevronDown, UserPlus, UserMinus, CalendarPlus, Sparkles, MessageSquareText, Filter, User } from 'lucide-react';
 import { useState, useMemo, Suspense } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useIsMobile } from '@/hooks/use-is-mobile';
@@ -51,6 +47,7 @@ const EditBuyerTagsDialog = dynamic(() => import('@/components/edit-buyer-tags-d
 const SetAppointmentDialog = dynamic(() => import('@/components/set-appointment-dialog').then(mod => mod.SetAppointmentDialog), { ssr: false });
 const PropertyRecommenderDialog = dynamic(() => import('@/components/property-recommender-dialog').then(mod => mod.PropertyRecommenderDialog), { ssr: false });
 const AssignBuyerToAgentDialog = dynamic(() => import('@/components/assign-buyer-to-agent-dialog').then(mod => mod.AssignBuyerToAgentDialog), { ssr: false });
+const SimpleAssignAgentDialog = dynamic(() => import('@/components/simple-assign-agent-dialog').then(mod => mod.SimpleAssignAgentDialog), { ssr: false });
 
 const ITEMS_PER_PAGE = 50;
 
@@ -136,6 +133,7 @@ function BuyersPageContent() {
     const [isRecommenderOpen, setIsRecommenderOpen] = useState(false);
     const [isNotesOpen, setIsNotesOpen] = useState(false);
     const [isAssignOpen, setIsAssignOpen] = useState(false);
+    const [isSimpleAssignOpen, setIsSimpleAssignOpen] = useState(false);
 
     const [buyerToEdit, setBuyerToEdit] = useState<Buyer | null>(null);
     const [selectedBuyers, setSelectedBuyers] = useState<string[]>([]);
@@ -237,7 +235,25 @@ function BuyersPageContent() {
     const handleAssignOpen = (buyer: Buyer) => {
         setSelectedBuyerForDetails(buyer);
         setIsAssignOpen(true);
-    }
+    };
+
+    const handleSimpleAssignOpen = (buyer: Buyer) => {
+        setSelectedBuyerForDetails(buyer);
+        setIsSimpleAssignOpen(true);
+    };
+
+    const handleUnassignAgent = async (buyer: Buyer) => {
+        if (!profile.agency_id) return;
+        try {
+            const buyerRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', buyer.id);
+            await updateDoc(buyerRef, { assignedTo: null });
+            
+            await logActivity('unassigned agent from lead', buyer.name, 'Buyer');
+            toast({ title: "Agent Unassigned", description: `Lead ${buyer.name} is now back in the pool.` });
+        } catch (error) {
+            toast({ title: "Action Failed", variant: 'destructive' });
+        }
+    };
 
     const handleManageTagsAction = (buyer: Buyer) => {
         setSelectedBuyerForDetails(buyer);
@@ -440,7 +456,7 @@ function BuyersPageContent() {
                         <TableHead><Button variant="ghost" onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}>Name <ArrowUpDown className="ml-2 h-4 w-4" /></Button></TableHead>
                         <TableHead>Requirement</TableHead>
                         <TableHead>Budget (Max)</TableHead>
-                        <TableHead>Size</TableHead>
+                        <TableHead>Handled By</TableHead>
                         <TableHead>Status / Tags</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -495,7 +511,14 @@ function BuyersPageContent() {
                                     </div>
                                 </TableCell>
                                 <TableCell>
-                                    <div className="text-xs text-muted-foreground">{formatSize(buyer.size_min_value, buyer.size_min_unit, buyer.size_max_value, buyer.size_max_unit)}</div>
+                                    {buyer.assignedTo ? (
+                                        <div className="flex flex-col">
+                                            <span className="text-xs font-bold text-primary">{teamMembers?.find(m => (m.user_id || m.id) === buyer.assignedTo)?.name || 'Unknown Agent'}</span>
+                                            <span className="text-[10px] text-muted-foreground uppercase font-black tracking-tighter">Active Lead</span>
+                                        </div>
+                                    ) : (
+                                        <Badge variant="outline" className="text-[9px] uppercase font-black border-dashed opacity-40 px-2 py-0">Unassigned</Badge>
+                                    )}
                                 </TableCell>
                                 <TableCell>
                                     <div className="flex flex-wrap gap-1 items-center">
@@ -508,7 +531,7 @@ function BuyersPageContent() {
                                 <TableCell className="text-right" onClick={e => e.stopPropagation()}>
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild><Button size="icon" variant="ghost"><MoreHorizontal /></Button></DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="bg-background w-48">
+                                        <DropdownMenuContent align="end" className="bg-background w-52">
                                             <DropdownMenuItem onSelect={() => handleDetailsClick(buyer) as any}><Eye className="mr-2 h-4 w-4" /> View Details</DropdownMenuItem>
                                             <DropdownMenuItem onSelect={() => handleNotesClick(buyer) as any}><MessageSquareText className="mr-2 h-4 w-4" /> Remarks Update</DropdownMenuItem>
                                             <DropdownMenuItem onSelect={() => handleRecommendProperties(buyer) as any}><Sparkles className="mr-2 h-4 w-4" /> Recommended Properties</DropdownMenuItem>
@@ -517,9 +540,20 @@ function BuyersPageContent() {
                                             <DropdownMenuItem onSelect={() => handleSetAppointment(buyer) as any}><CalendarPlus className="mr-2 h-4 w-4" /> Set Appointment</DropdownMenuItem>
                                             
                                             {profile.role === 'Admin' && (
-                                                <DropdownMenuItem onSelect={() => handleAssignOpen(buyer)} className="font-bold text-primary">
-                                                    <UserPlus className="mr-2 h-4 w-4" /> Assign Agent & Inventory
-                                                </DropdownMenuItem>
+                                                <>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem onSelect={() => handleSimpleAssignOpen(buyer)} className="font-bold text-primary">
+                                                        <UserPlus className="mr-2 h-4 w-4" /> Direct Assign Agent
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onSelect={() => handleAssignOpen(buyer)}>
+                                                        <Sparkles className="mr-2 h-4 w-4" /> Smart Assign (Inventory)
+                                                    </DropdownMenuItem>
+                                                    {buyer.assignedTo && (
+                                                        <DropdownMenuItem onSelect={() => handleUnassignAgent(buyer)} className="text-destructive font-bold">
+                                                            <UserMinus className="mr-2 h-4 w-4" /> Unassign Agent
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                </>
                                             )}
                                             {profile.role === 'Admin' && (
                                                 <DropdownMenuItem onSelect={() => handleEdit(buyer) as any}><Edit className="mr-2 h-4 w-4" /> Edit Details</DropdownMenuItem>
@@ -587,22 +621,32 @@ function BuyersPageContent() {
                                 <span className="font-bold text-primary">Budget: {formatBuyerBudgetInline(buyer)}</span>
                             </div>
                         </div>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <div className="flex items-center gap-1.5 text-xs mt-3 text-muted-foreground italic cursor-pointer hover:text-primary transition-colors" onClick={e => e.stopPropagation()}>
-                                    <MapPin className="h-3 w-3" />
-                                    <span className="truncate">{buyer.area_preference || 'No area specified'}</span>
-                                </div>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-80 p-4 rounded-xl shadow-2xl border-none z-[100]" onClick={e => e.stopPropagation()}>
-                                <div className="space-y-2">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-primary/60 flex items-center gap-2">
-                                        <MapPin className="h-3 w-3" /> Area Preference
-                                    </p>
-                                    <p className="text-sm font-bold leading-relaxed text-foreground">{buyer.area_preference || 'N/A'}</p>
-                                </div>
-                            </PopoverContent>
-                        </Popover>
+                        
+                        <div className="mt-4 pt-3 border-t border-dashed flex items-center justify-between">
+                             <div className="flex items-center gap-2">
+                                <User className="h-3.5 w-3.5 text-primary/60" />
+                                <span className="text-[10px] font-black uppercase tracking-widest text-foreground">
+                                    {buyer.assignedTo ? (teamMembers?.find(m => (m.user_id || m.id) === buyer.assignedTo)?.name || 'Assigned') : 'Agency Pool'}
+                                </span>
+                            </div>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground italic cursor-pointer hover:text-primary transition-colors" onClick={e => e.stopPropagation()}>
+                                        <MapPin className="h-3 w-3" />
+                                        <span className="truncate max-w-[100px]">{buyer.area_preference || 'No area'}</span>
+                                    </div>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-80 p-4 rounded-xl shadow-2xl border-none z-[100]" onClick={e => e.stopPropagation()}>
+                                    <div className="space-y-2">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-primary/60 flex items-center gap-2">
+                                            <MapPin className="h-3 w-3" /> Area Preference
+                                        </p>
+                                        <p className="text-sm font-bold leading-relaxed text-foreground">{buyer.area_preference || 'N/A'}</p>
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+                        
                         <div className="flex flex-wrap gap-1 mt-3">
                              {buyer.tags?.filter(t => t !== buyer.status).map(tagName => (
                                 <Badge key={tagName} className={cn("text-[8px] px-1.5 py-0 font-bold", getTagColor(tagName))}>{tagName}</Badge>
@@ -620,7 +664,7 @@ function BuyersPageContent() {
                                     <MoreHorizontal className="h-4 w-4" />
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="bg-background w-48">
+                            <DropdownMenuContent align="end" className="bg-background w-52">
                                 <DropdownMenuItem onSelect={() => handleDetailsClick(buyer) as any}><Eye className="mr-2 h-4 w-4" /> View Details</DropdownMenuItem>
                                 <DropdownMenuItem onSelect={() => handleRecommendProperties(buyer) as any}><Sparkles className="mr-2 h-4 w-4" /> Recommended Properties</DropdownMenuItem>
                                 <DropdownMenuItem onSelect={() => handleManageTagsAction(buyer) as any}><TagIcon className="mr-2 h-4 w-4" /> Edit Tags</DropdownMenuItem>
@@ -628,9 +672,20 @@ function BuyersPageContent() {
                                 <DropdownMenuItem onSelect={() => handleSetAppointment(buyer) as any}><CalendarPlus className="mr-2 h-4 w-4" /> Set Appointment</DropdownMenuItem>
                                 
                                 {profile.role === 'Admin' && (
-                                    <DropdownMenuItem onSelect={() => handleAssignOpen(buyer)} className="font-bold text-primary">
-                                        <UserPlus className="mr-2 h-4 w-4" /> Assign Agent & Inventory
-                                    </DropdownMenuItem>
+                                    <>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem onSelect={() => handleSimpleAssignOpen(buyer)} className="font-bold text-primary">
+                                            <UserPlus className="mr-2 h-4 w-4" /> Direct Assign Agent
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => handleAssignOpen(buyer)}>
+                                            <Sparkles className="mr-2 h-4 w-4" /> Smart Assign (Inventory)
+                                        </DropdownMenuItem>
+                                        {buyer.assignedTo && (
+                                            <DropdownMenuItem onSelect={() => handleUnassignAgent(buyer)} className="text-destructive font-bold">
+                                                <UserMinus className="mr-2 h-4 w-4" /> Unassign Agent
+                                            </DropdownMenuItem>
+                                        )}
+                                    </>
                                 )}
                                 {profile.role === 'Admin' && (
                                     <DropdownMenuItem onSelect={() => handleEdit(buyer) as any}><Edit className="mr-2 h-4 w-4" /> Edit Details</DropdownMenuItem>
@@ -870,6 +925,7 @@ function BuyersPageContent() {
                     {isNotesOpen && <BuyerNotesDialog buyer={selectedBuyerForDetails} isOpen={isNotesOpen} setIsOpen={setIsNotesOpen} />}
                     {isEditTagsOpen && <EditBuyerTagsDialog buyer={selectedBuyerForDetails} isOpen={isEditTagsOpen} setIsOpen={setIsEditTagsOpen} />}
                     {isAssignOpen && <AssignBuyerToAgentDialog buyer={selectedBuyerForDetails} isOpen={isAssignOpen} setIsOpen={setIsAssignOpen} />}
+                    {isSimpleAssignOpen && <SimpleAssignAgentDialog buyer={selectedBuyerForDetails} isOpen={isSimpleAssignOpen} setIsOpen={setIsSimpleAssignOpen} teamMembers={teamMembers || []} />}
                     {isAppointmentOpen && (
                         <SetAppointmentDialog 
                             isOpen={isAppointmentOpen}
@@ -903,4 +959,9 @@ export default function BuyersPage() {
             <BuyersPageContent />
         </Suspense>
     );
+}
+
+// Re-defining DropdownMenuSeparator for use inside the menu
+function DropdownMenuSeparator() {
+    return <div className="h-px bg-muted my-1" />;
 }
