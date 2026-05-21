@@ -338,203 +338,42 @@
         "status"
       ]
     },
-    "FollowUp": {
+    "Service": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "FollowUp",
+      "title": "Service",
       "type": "object",
-      "description": "Represents a follow-up action for a buyer.",
+      "description": "Represents a service offered by the agency.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the FollowUp entity."
-        },
-        "buyerId": {
-          "type": "string",
-          "description": "Reference to Buyer. (Relationship: Buyer 1:N FollowUp) ID of the buyer being followed up with."
-        },
-        "propertyId": {
-          "type": "string",
-          "description": "Reference to Property. (Relationship: Property 1:N FollowUp) ID of the property associated with the follow-up (nullable)."
-        },
-        "nextFollowupAt": {
-          "type": "string",
-          "description": "Date and time for the next follow-up action.",
-          "format": "date-time"
-        },
-        "lastContactedAt": {
-          "type": "string",
-          "description": "Date and time when the buyer was last contacted.",
-          "format": "date-time"
-        },
-        "notes": {
-          "type": "string",
-          "description": "Notes or comments about the follow-up."
-        },
-        "assignedTo": {
-          "type": "string",
-          "description": "Reference to User. (Relationship: User 1:N FollowUp) ID of the agent assigned to perform the follow-up."
-        }
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "agency_id": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
       },
-      "required": [
-        "id",
-        "buyerId",
-        "nextFollowupAt"
-      ]
+      "required": ["id", "name", "price", "agency_id"]
     },
-    "Transaction": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Transaction",
-      "type": "object",
-      "description": "Represents a sales transaction.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Transaction entity."
+    "ProvidedService": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Provided Service",
+        "type": "object",
+        "description": "Represents an instance of a service provided to a client.",
+        "properties": {
+          "id": { "type": "string" },
+          "serviceId": { "type": "string" },
+          "serviceName": { "type": "string" },
+          "priceCharged": { "type": "number" },
+          "assignedToType": { "type": "string", "enum": ["Lead", "External"] },
+          "leadId": { "type": "string" },
+          "leadName": { "type": "string" },
+          "externalClientDetails": { "type": "string" },
+          "status": { "type": "string", "enum": ["Pending", "In Progress", "Completed"] },
+          "agency_id": { "type": "string" },
+          "created_at": { "type": "string", "format": "date-time" }
         },
-        "propertyId": {
-          "type": "string",
-          "description": "Reference to Property. (Relationship: Property 1:N Transaction) ID of the property sold in the transaction."
-        },
-        "buyerId": {
-          "type": "string",
-          "description": "Reference to Buyer. (Relationship: Buyer 1:N Transaction) ID of the buyer who purchased the property."
-        },
-        "agentId": {
-          "type": "string",
-          "description": "Reference to User. (Relationship: User 1:N Transaction) ID of the agent involved in the transaction."
-        },
-        "salePriceAmount": {
-          "type": "number",
-          "description": "Amount of the sale price."
-        },
-        "salePriceUnit": {
-          "type": "string",
-          "description": "Unit for the sale price (e.g., Lacs, Crore)."
-        },
-        "commissionAmount": {
-          "type": "number",
-          "description": "Amount of the commission earned."
-        },
-        "commissionUnit": {
-          "type": "string",
-          "description": "Unit for the commission amount (e.g., Lacs, Crore)."
-        },
-        "saleDate": {
-          "type": "string",
-          "description": "Date of the sale.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "propertyId",
-        "buyerId",
-        "agentId",
-        "salePriceAmount",
-        "salePriceUnit",
-        "commissionAmount",
-        "commissionUnit",
-        "saleDate"
-      ]
-    },
-    "ActivityLog": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "ActivityLog",
-      "type": "object",
-      "description": "Represents an activity log entry.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the ActivityLog entity."
-        },
-        "type": {
-          "type": "string",
-          "description": "Type of activity (e.g., create, update, delete)."
-        },
-        "referenceId": {
-          "type": "string",
-          "description": "ID of the entity that the activity is related to (e.g., Property ID, Buyer ID)."
-        },
-        "userId": {
-          "type": "string",
-          "description": "Reference to User. (Relationship: User 1:N ActivityLog) ID of the user who performed the activity."
-        },
-        "amount": {
-          "type": "number",
-          "description": "Amount associated with the activity (if applicable)."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Date and time when the activity occurred.",
-          "format": "date-time"
-        },
-        "meta": {
-          "type": "string",
-          "description": "JSON object containing additional metadata about the activity."
-        }
-      },
-      "required": [
-        "id",
-        "type",
-        "referenceId",
-        "userId",
-        "createdAt"
-      ]
-    },
-    "InboxMessage": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Inbox Message",
-      "type": "object",
-      "description": "Represents an internal message or notification for the agency admin.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the message."
-        },
-        "type": {
-          "type": "string",
-          "description": "Type of message (e.g., 'cannot_record', 'payment_confirmation')."
-        },
-        "fromUserId": {
-          "type": "string",
-          "description": "ID of the user who sent the message."
-        },
-        "fromUserName": {
-          "type": "string",
-          "description": "Name of the user who sent the message."
-        },
-        "message": {
-          "type": "string",
-          "description": "The content of the message or reason."
-        },
-        "propertyId": {
-          "type": "string",
-          "description": "ID of the related property (if any)."
-        },
-        "propertySerial": {
-          "type": "string",
-          "description": "Serial number of the related property (if any)."
-        },
-        "isRead": {
-          "type": "boolean",
-          "description": "Whether the admin has read the message."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp of when the message was created.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "type",
-        "fromUserId",
-        "fromUserName",
-        "message",
-        "isRead",
-        "createdAt"
-      ]
-    }
+        "required": ["id", "serviceId", "assignedToType", "status", "agency_id"]
+      }
   },
   "auth": {
     "providers": [
@@ -562,154 +401,33 @@
         }
       },
       {
-        "path": "/users/{userId}/properties/{propertyId}",
+        "path": "/agencies/{agencyId}/services/{serviceId}",
         "definition": {
-          "entityName": "Property",
+          "entityName": "Service",
           "schema": {
-            "$ref": "#/backend/entities/Property"
+            "$ref": "#/backend/entities/Service"
           },
-          "description": "Stores real estate properties created by users. Includes denormalized 'createdBy' field (userId) for authorization independence.",
+          "description": "Stores services offered by an agency.",
           "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user who created the property."
-            },
-            {
-              "name": "propertyId",
-              "description": "The unique identifier of the property."
-            }
+            { "name": "agencyId" },
+            { "name": "serviceId" }
           ]
         }
       },
       {
-        "path": "/users/{userId}/buyers/{buyerId}",
+        "path": "/agencies/{agencyId}/providedServices/{providedServiceId}",
         "definition": {
-          "entityName": "Buyer",
+          "entityName": "ProvidedService",
           "schema": {
-            "$ref": "#/backend/entities/Buyer"
+            "$ref": "#/backend/entities/ProvidedService"
           },
-          "description": "Stores potential buyer information. Includes denormalized 'createdBy' field (userId) for authorization independence.",
+          "description": "Stores logs of services provided to clients.",
           "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user who created the buyer record."
-            },
-            {
-              "name": "buyerId",
-              "description": "The unique identifier of the buyer."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/users/{userId}/appointments/{appointmentId}",
-        "definition": {
-          "entityName": "Appointment",
-          "schema": {
-            "$ref": "#/backend/entities/Appointment"
-          },
-          "description": "Stores appointment schedules. Includes denormalized 'agentId' and 'buyerId' for authorization independence. Accessible to agent and admin.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user (agent) associated with the appointment."
-            },
-            {
-              "name": "appointmentId",
-              "description": "The unique identifier of the appointment."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/users/{userId}/followUps/{followUpId}",
-        "definition": {
-          "entityName": "FollowUp",
-          "schema": {
-            "$ref": "#/backend/entities/FollowUp"
-          },
-          "description": "Stores follow-up actions for buyers. Includes denormalized 'assignedTo' field for authorization independence.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user assigned to the follow-up."
-            },
-            {
-              "name": "followUpId",
-              "description": "The unique identifier of the follow-up action."
-            }
-          ]
-        }
-      },
-       {
-        "path": "/agencies/{agencyId}/inboxMessages/{messageId}",
-        "definition": {
-          "entityName": "InboxMessage",
-          "schema": {
-            "$ref": "#/backend/entities/InboxMessage"
-          },
-          "description": "Stores internal notifications and messages for the agency admin.",
-          "params": [
-            {
-              "name": "agencyId",
-              "description": "The unique identifier of the agency."
-            },
-            {
-              "name": "messageId",
-              "description": "The unique identifier of the message."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/transactions/{transactionId}",
-        "definition": {
-          "entityName": "Transaction",
-          "schema": {
-            "$ref": "#/backend/entities/Transaction"
-          },
-          "description": "Stores sales transactions.  Accessible to admin.",
-          "params": [
-            {
-              "name": "transactionId",
-              "description": "The unique identifier of the transaction."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/activityLogs/{activityLogId}",
-        "definition": {
-          "entityName": "ActivityLog",
-          "schema": {
-            "$ref": "#/backend/entities/ActivityLog"
-          },
-          "description": "Stores activity logs for auditing purposes.  Accessible to admin.",
-          "params": [
-            {
-              "name": "activityLogId",
-              "description": "The unique identifier of the activity log entry."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/roles_admin/{userId}",
-        "definition": {
-          "entityName": "roles_admin",
-          "schema": {
-            "$ref": "#/backend/entities/User"
-          },
-          "description": "Indicates admin privileges. Existence of document grants admin role.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user with admin privileges."
-            }
+            { "name": "agencyId" },
+            { "name": "providedServiceId" }
           ]
         }
       }
-    ],
-    "reasoning": "The Firestore data structure is designed to support a real estate CRM application focusing on properties, buyers, team management, and related functionalities. The design prioritizes security, scalability, and ease of debugging, adhering to the principles of Authorization Independence, Clarity of Intent, DBAC (Database-Based Access Control), and QAPs (Rules are not Filters). \n\nAuthorization Independence is achieved through denormalization. For example, the `properties` subcollection under `/users/{userId}` includes the `members` map which defines the roles of different users. This eliminates the need for `get()` calls in security rules to check parent document properties, enabling atomic operations.\n\nStructural Segregation is applied by using dedicated collections for different data types, each with homogeneous security requirements. For example, properties created by different users are segregated under their respective user document, enhancing security and simplifying rules.\n\nAccess Modeling uses hierarchical paths for user-owned data. Properties, Buyers, FollowUps, and Appointments are stored under each user's document, establishing clear ownership and simplifying security rules. Membership Maps (`members` field) are utilized for collaborative data access, allowing multiple users to have specific roles (e.g., Admin, Agent, Viewer) within a property or buyer record. Global roles are managed through the `/roles_admin/{uid}` collection, where the existence of a document indicates admin privileges.\n\nQAPs (Rules are not Filters) are supported by structural segregation and the membership model. List operations can be secured based on the path and the `members` map, ensuring that only authorized users can access the data without filtering based on document content.\n\nExplicit State Modeling is encouraged by using a dedicated `status` field in entities like `Property` and `Buyer`, rather than relying on multiple booleans or timestamps to infer the state. This makes the data model more predictable and easier to reason about.\n\nRadical Consistency is maintained through strict naming conventions for fields (e.g., always using `ownerId` for ownership) and descriptive wildcards (e.g., `{propertyId}` instead of `{id}`)."
+    ]
   }
 }

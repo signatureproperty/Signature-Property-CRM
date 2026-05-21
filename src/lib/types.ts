@@ -1,3 +1,4 @@
+
 'use client';
 
 export type UserRole = 'Admin' | 'Agent' | 'Video Recorder' | 'Super Admin';
@@ -263,7 +264,7 @@ export type Activity = {
     userAvatar?: string;
     action: string;
     target: string;
-    targetType: 'Property' | 'Buyer' | 'Appointment' | 'User' | 'FollowUp' | 'Invitation';
+    targetType: 'Property' | 'Buyer' | 'Appointment' | 'User' | 'FollowUp' | 'Invitation' | 'Service';
     details: { from: string; to: string } | null;
     timestamp: string;
     agency_id: string;
@@ -385,3 +386,31 @@ export interface EventDetails {
     time: string;
     description: string;
 }
+
+// --- New Service Module Types ---
+export type Service = {
+    id: string;
+    name: string;
+    price: number;
+    category: string;
+    description: string;
+    agency_id: string;
+    created_at: string;
+};
+
+export type ServiceStatus = 'Pending' | 'In Progress' | 'Completed';
+export type AssignedToType = 'Lead' | 'External';
+
+export type ProvidedService = {
+    id: string;
+    serviceId: string;
+    serviceName: string;
+    priceCharged: number;
+    assignedToType: AssignedToType;
+    leadId?: string;
+    leadName?: string;
+    externalClientDetails?: string;
+    status: ServiceStatus;
+    agency_id: string;
+    created_at: string;
+};

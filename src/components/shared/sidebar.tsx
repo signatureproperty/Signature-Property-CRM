@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -30,7 +31,8 @@ import {
   Edit,
   ShieldAlert,
   Palette,
-  BarChart3
+  BarChart3,
+  Sparkles
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -47,6 +49,7 @@ const allMenuItems = [
   { href: '/super-admin/branding', label: 'App Branding', roles: ['Super Admin'], icon: <Palette /> },
   { href: '/properties', label: 'Properties', roles: ['Admin', 'Agent'], icon: <Building2 /> },
   { href: '/buyers', label: 'Buyers', roles: ['Admin', 'Agent'], icon: <Users /> },
+  { href: '/services', label: 'Services', roles: ['Admin', 'Agent'], icon: <Sparkles /> },
   { href: '/team', label: 'Team', roles: ['Admin'], icon: <UserCog /> },
   { href: '/analytics', label: 'Analytics', roles: ['Admin'], icon: <BarChart3 /> },
   { href: '/appointments', label: 'Appointments', roles: ['Admin', 'Agent'], icon: <Calendar /> },

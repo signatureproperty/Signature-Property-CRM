@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -17,7 +18,8 @@ import {
   X,
   ShieldAlert,
   Palette,
-  BarChart3
+  BarChart3,
+  Sparkles
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProfile } from '@/context/profile-context';
@@ -36,6 +38,7 @@ export function MobileNav() {
     { href: '/super-admin/branding', label: 'App Branding', icon: <Palette />, roles: ['Super Admin'] },
     { href: '/team', label: 'Team', icon: <UserCog />, roles: ['Admin'] },
     { href: '/analytics', label: 'Analytics', icon: <BarChart3 />, roles: ['Admin'] },
+    { href: '/services', label: 'Services', icon: <Sparkles />, roles: ['Admin', 'Agent'] },
     { href: '/appointments', label: 'Appointments', icon: <Calendar />, roles: ['Admin', 'Agent'] },
     { href: '/reports', label: 'Reports', icon: <ClipboardList />, roles: ['Admin'] },
     { href: '/activities', label: 'Activities', icon: <History />, roles: ['Admin', 'Agent'] },
