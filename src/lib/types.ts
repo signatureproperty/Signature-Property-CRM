@@ -395,7 +395,8 @@ export type Service = {
     description: string;
     agency_id: string;
     created_at: string;
-    customStatuses?: string[]; // Defined at service creation time
+    customStatuses?: string[]; // Selection options for status (picked one)
+    tags?: string[];           // Available labels (picked many)
 };
 
 export type ServiceStatus = 'Pending' | 'In Progress' | 'Completed' | string;
@@ -414,7 +415,8 @@ export type ProvidedService = {
     externalName?: string;
     externalPhone?: string;
     externalClientDetails?: string;
-    status: string; // Dynamic status based on service definition
+    status: string; // Dynamic status from Service definition
+    tags?: string[]; // Dynamic labels from Service definition
     agency_id: string;
     created_at: string;
     // Payment Tracking
