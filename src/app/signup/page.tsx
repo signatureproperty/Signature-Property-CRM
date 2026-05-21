@@ -69,10 +69,14 @@ function SignupPageContent() {
               const agencyId = user.uid;
               const batch = writeBatch(firestore);
 
+              // Use Fallbacks to prevent ghost members
+              const userName = user.displayName || 'Unnamed Admin';
+              const userEmail = user.email || 'no-email@agency.com';
+
               batch.set(doc(firestore, 'users', user.uid), {
                   id: user.uid,
-                  name: user.displayName,
-                  email: user.email,
+                  name: userName,
+                  email: userEmail,
                   role: 'Admin',
                   agency_id: agencyId,
                   createdAt: serverTimestamp(),
@@ -80,22 +84,22 @@ function SignupPageContent() {
 
               batch.set(doc(firestore, 'agencies', agencyId), {
                   id: agencyId,
-                  agencyName: `${user.displayName}'s Agency`,
+                  agencyName: `${userName}'s Agency`,
                   ownerId: user.uid,
-                  name: user.displayName,
+                  name: userName,
                   createdAt: serverTimestamp(),
-                  avatar: user.photoURL,
+                  avatar: user.photoURL || '',
                   planName: 'Basic',
               });
 
               batch.set(doc(firestore, 'agencies', agencyId, 'teamMembers', user.uid), {
                   id: user.uid,
-                  name: user.displayName,
-                  email: user.email,
+                  name: userName,
+                  email: userEmail,
                   role: 'Admin',
                   status: 'Active',
                   joinedAt: serverTimestamp(),
-                  avatar: user.photoURL,
+                  avatar: user.photoURL || '',
                   agency_id: agencyId,
               });
 

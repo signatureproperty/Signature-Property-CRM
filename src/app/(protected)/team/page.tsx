@@ -4,7 +4,7 @@ import { useState, useMemo, Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MoreVertical, PlusCircle, Trash2, Edit, User, Shield, Camera, MoreHorizontal, UserCog, Mail, Phone, CalendarDays, ShieldAlert } from 'lucide-react';
+import { MoreVertical, PlusCircle, Trash2, Edit, User, Shield, Camera, MoreHorizontal, UserCog, Mail, Phone, CalendarDays, ShieldAlert, AlertCircle } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AddTeamMemberDialog } from '@/components/add-team-member-dialog';
 import type { User as TeamMember, UserRole, Property, Buyer, PlanName } from '@/lib/types';
@@ -65,27 +65,41 @@ function TeamPageContent() {
     };
 
     const handleDelete = async (member: TeamMember) => {
-        if (!profile.agency_id || !member.id) return;
+        if (!profile.agency_id || !member.id) {
+            toast({ title: 'Error', description: 'Could not find a valid record ID to delete.', variant: 'destructive' });
+            return;
+        }
         
-        const memberRef = doc(firestore, 'agencies', profile.agency_id, 'teamMembers', member.id);
-        await deleteDoc(memberRef);
-        
-        toast({
-            title: 'Member Removed',
-            description: `${member.name || member.email} has been removed from the team.`,
-            variant: 'destructive',
-        });
+        try {
+            const memberRef = doc(firestore, 'agencies', profile.agency_id, 'teamMembers', member.id);
+            await deleteDoc(memberRef);
+            
+            toast({
+                title: 'Record Removed',
+                description: 'The team member or corrupted record has been deleted.',
+                variant: 'destructive',
+            });
+        } catch (error: any) {
+            console.error("Deletion error:", error);
+            toast({ title: 'Deletion Failed', description: error.message, variant: 'destructive' });
+        }
     };
 
     const handleCardClick = (member: TeamMember) => {
+        if (!member.name && !member.email) return; // Don't open details for ghost members
         setSelectedMember(member);
         setIsDetailsOpen(true);
     };
 
     const sortedTeamMembers = useMemo(() => {
         if (!teamMembers) return [];
+        
+        // Safety Filter: Remove records that have NO identifier (ghost records)
+        // Keep those that have at least a Name or Email so they can be deleted
+        const validMembers = teamMembers.filter(m => m.id && (m.name || m.email || m.role));
+
         const roleOrder: Record<string, number> = { 'Super Admin': 0, Admin: 1, Agent: 2, 'Video Recorder': 3 };
-        return [...teamMembers].sort((a, b) => {
+        return [...validMembers].sort((a, b) => {
             return (roleOrder[a.role] || 4) - (roleOrder[b.role] || 4);
         });
     }, [teamMembers]);
@@ -108,6 +122,7 @@ function TeamPageContent() {
                 {sortedTeamMembers.map(member => {
                     const config = roleConfig[member.role] || roleConfig.Agent;
                     const isOwner = member.id === profile.user_id;
+                    const isGhost = !member.name || !member.email;
                     const status = (member.role === 'Admin' || member.role === 'Super Admin' || member.status === 'Active') ? 'Active' : 'Pending';
                     
                     const joinedSource = member.joinedAt || member.invitedAt;
@@ -122,22 +137,27 @@ function TeamPageContent() {
                     }
                     
                     return (
-                        <TableRow key={member.id || member.email} onClick={() => handleCardClick(member)} className='cursor-pointer hover:bg-accent/50 transition-colors group'>
+                        <TableRow key={member.id} onClick={() => !isGhost && handleCardClick(member)} className={cn('cursor-pointer hover:bg-accent/50 transition-colors group', isGhost && "bg-destructive/5 cursor-default")}>
                             <TableCell className="font-medium py-4">
                                 <div className="flex items-center gap-3">
-                                    <Avatar className="h-10 w-10 border border-primary/20">
+                                    <Avatar className={cn("h-10 w-10 border border-primary/20", isGhost && "border-destructive/40")}>
                                         <AvatarImage src={member.avatar} />
-                                        <AvatarFallback className="bg-primary/5 text-primary text-xs font-bold">
-                                            {member.name?.split(' ').map(n => n[0]).join('') || '?'}
+                                        <AvatarFallback className={cn("bg-primary/5 text-primary text-xs font-bold", isGhost && "bg-destructive/10 text-destructive")}>
+                                            {member.name?.split(' ').map(n => n[0]).join('') || (isGhost ? '?' : 'U')}
                                         </AvatarFallback>
                                     </Avatar>
                                     <div className="flex flex-col">
-                                        <p className="font-bold group-hover:text-primary transition-colors">{member.name || 'Invitation Sent'}</p>
-                                        <p className="text-xs text-muted-foreground flex items-center gap-1"><Mail className="h-3 w-3" /> {member.email}</p>
+                                        <p className={cn("font-bold group-hover:text-primary transition-colors", isGhost && "text-destructive flex items-center gap-1.5")}>
+                                            {isGhost && <AlertCircle className="h-3 w-3" />}
+                                            {member.name || (isGhost ? 'Corrupted Record' : 'Unnamed User')}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                            <Mail className="h-3 w-3" /> {member.email || 'No email data'}
+                                        </p>
                                     </div>
                                 </div>
                             </TableCell>
-                            <TableCell><Badge variant="outline" className={config.color}>{config.icon} <span className="ml-1.5">{member.role}</span></Badge></TableCell>
+                            <TableCell><Badge variant="outline" className={config.color}>{config.icon} <span className="ml-1.5">{member.role || 'Unknown'}</span></Badge></TableCell>
                             <TableCell>
                                 <Badge variant={status === 'Active' ? 'success' : 'secondary'} className="capitalize">{status}</Badge>
                             </TableCell>
@@ -150,16 +170,20 @@ function TeamPageContent() {
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end" className="glass-card">
-                                        <DropdownMenuItem onSelect={() => handleCardClick(member) as any}>
-                                            <MoreHorizontal className="mr-2 h-4 w-4" /> View Stats
-                                        </DropdownMenuItem>
+                                        {!isGhost && (
+                                            <DropdownMenuItem onSelect={() => handleCardClick(member) as any}>
+                                                <MoreHorizontal className="mr-2 h-4 w-4" /> View Stats
+                                            </DropdownMenuItem>
+                                        )}
                                         {!isOwner && (
                                             <>
-                                                <DropdownMenuItem onSelect={() => handleEdit(member) as any}>
-                                                    <Edit className="mr-2 h-4 w-4" /> Edit Role
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem onSelect={() => handleDelete(member) as any} className="text-destructive focus:bg-destructive focus:text-white">
-                                                    <Trash2 className="mr-2 h-4 w-4" /> Remove Member
+                                                {!isGhost && (
+                                                    <DropdownMenuItem onSelect={() => handleEdit(member) as any}>
+                                                        <Edit className="mr-2 h-4 w-4" /> Edit Role
+                                                    </DropdownMenuItem>
+                                                )}
+                                                <DropdownMenuItem onSelect={() => handleDelete(member) as any} className="text-destructive focus:bg-destructive focus:text-white font-bold">
+                                                    <Trash2 className="mr-2 h-4 w-4" /> {isGhost ? 'Remove Corrupted' : 'Remove Member'}
                                                 </DropdownMenuItem>
                                             </>
                                         )}
@@ -179,6 +203,7 @@ function TeamPageContent() {
         {sortedTeamMembers.map(member => {
             const config = roleConfig[member.role] || roleConfig.Agent;
             const isOwner = member.id === profile.user_id;
+            const isGhost = !member.name || !member.email;
             const status = (member.role === 'Admin' || member.role === 'Super Admin' || member.status === 'Active') ? 'Active' : 'Pending';
 
             const joinedSource = member.joinedAt || member.invitedAt;
@@ -194,13 +219,17 @@ function TeamPageContent() {
 
             return (
                 <Card 
-                    key={member.id || member.email} 
-                    className="flex flex-col hover:shadow-lg transition-all duration-300 cursor-pointer border-l-4 border-l-primary/40"
-                    onClick={() => handleCardClick(member)}
+                    key={member.id} 
+                    className={cn(
+                        "flex flex-col hover:shadow-lg transition-all duration-300 cursor-pointer border-l-4",
+                        isGhost ? "border-l-destructive/60 bg-destructive/5" : "border-l-primary/40",
+                        isGhost && "cursor-default"
+                    )}
+                    onClick={() => !isGhost && handleCardClick(member)}
                 >
                     <CardHeader className="flex flex-row items-center justify-between p-4 pb-2">
                         <Badge variant="outline" className={cn("text-[10px] font-bold", config.color)}>
-                            {config.icon} <span className="ml-1.5">{member.role}</span>
+                            {config.icon} <span className="ml-1.5">{member.role || 'No Role'}</span>
                         </Badge>
                          <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -209,14 +238,16 @@ function TeamPageContent() {
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="glass-card">
-                                 <DropdownMenuItem onSelect={() => handleCardClick(member) as any}>View Stats</DropdownMenuItem>
+                                 {!isGhost && <DropdownMenuItem onSelect={() => handleCardClick(member) as any}>View Stats</DropdownMenuItem>}
                                  {!isOwner && (
                                     <>
-                                        <DropdownMenuItem onSelect={() => handleEdit(member) as any}>
-                                            <Edit className="mr-2 h-4 w-4" /> Edit Role
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={() => handleDelete(member) as any} className="text-destructive">
-                                            <Trash2 className="mr-2 h-4 w-4" /> Remove Member
+                                        {!isGhost && (
+                                            <DropdownMenuItem onSelect={() => handleEdit(member) as any}>
+                                                <Edit className="mr-2 h-4 w-4" /> Edit Role
+                                            </DropdownMenuItem>
+                                        )}
+                                        <DropdownMenuItem onSelect={() => handleDelete(member) as any} className="text-destructive font-bold">
+                                            <Trash2 className="mr-2 h-4 w-4" /> {isGhost ? 'Delete Corrupted' : 'Remove Member'}
                                         </DropdownMenuItem>
                                     </>
                                 )}
@@ -225,15 +256,17 @@ function TeamPageContent() {
                     </CardHeader>
                     <CardContent className="p-4 pt-2">
                         <div className="flex items-center gap-3">
-                            <Avatar className="h-12 w-12 border-2 border-background shadow-md">
+                            <Avatar className={cn("h-12 w-12 border-2 border-background shadow-md", isGhost && "border-destructive/20")}>
                                 <AvatarImage src={member.avatar} />
-                                <AvatarFallback className="bg-primary/5 text-primary text-sm font-bold">
+                                <AvatarFallback className={cn("bg-primary/5 text-primary text-sm font-bold", isGhost && "bg-destructive/10 text-destructive")}>
                                     {member.name?.split(' ').map(n => n[0]).join('') || '?'}
                                 </AvatarFallback>
                             </Avatar>
                             <div className="flex flex-col min-w-0">
-                                <CardTitle className="text-lg font-bold font-headline truncate">{member.name || 'Invitation Sent'}</CardTitle>
-                                <div className="text-xs text-muted-foreground truncate">{member.email}</div>
+                                <CardTitle className={cn("text-lg font-bold font-headline truncate", isGhost && "text-destructive text-sm")}>
+                                    {member.name || (isGhost ? 'Corrupted Record' : 'Unknown')}
+                                </CardTitle>
+                                <div className="text-xs text-muted-foreground truncate">{member.email || 'No email available'}</div>
                             </div>
                         </div>
                         <div className="mt-4 flex items-center justify-between">

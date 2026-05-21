@@ -85,6 +85,12 @@ export function AddTeamMemberForm({ setDialogOpen, memberToEdit, onRoleChange }:
   const handleSaveMember = async (values: AddMemberFormValues) => {
     if (!profile.agency_id) return;
     
+    // Strict Validation before DB write
+    if (!values.name.trim() || !values.email.trim()) {
+        toast({ title: 'Validation Error', description: 'Name and Email are required.', variant: 'destructive' });
+        return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -111,10 +117,15 @@ export function AddTeamMemberForm({ setDialogOpen, memberToEdit, onRoleChange }:
                 const newUser = userCredential.user;
 
                 const batch = writeBatch(firestore);
+                
+                // Fallbacks during creation
+                const userName = values.name || 'Unnamed Recorder';
+                const userEmail = values.email;
+
                 batch.set(doc(firestore, 'users', newUser.uid), {
                     id: newUser.uid,
-                    name: values.name,
-                    email: values.email,
+                    name: userName,
+                    email: userEmail,
                     role: 'Video Recorder',
                     agency_id: profile.agency_id,
                     createdAt: serverTimestamp()
@@ -122,8 +133,8 @@ export function AddTeamMemberForm({ setDialogOpen, memberToEdit, onRoleChange }:
                 batch.set(doc(firestore, 'agencies', profile.agency_id, 'teamMembers', newUser.uid), {
                     id: newUser.uid,
                     user_id: newUser.uid,
-                    name: values.name,
-                    email: values.email,
+                    name: userName,
+                    email: userEmail,
                     role: 'Video Recorder',
                     status: 'Active',
                     agency_id: profile.agency_id,
