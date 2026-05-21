@@ -319,13 +319,27 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
                                                 </Button>
                                             </FormControl>
                                         </PopoverTrigger>
-                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-2xl overflow-hidden shadow-2xl border-none">
+                                        <PopoverContent 
+                                            className="w-[--radix-popover-trigger-width] p-0 rounded-2xl overflow-hidden shadow-2xl border-none"
+                                            onWheel={(e) => e.stopPropagation()}
+                                        >
                                             <div className="bg-muted/30 p-2 border-b">
                                                 <Tabs value={activePrefixTab} onValueChange={setActivePrefixTab}>
-                                                    <TabsList className="grid grid-cols-5 h-9 bg-background/50 rounded-lg">
-                                                        <TabsTrigger value="All" className="text-[9px] font-black uppercase">All</TabsTrigger>
+                                                    <TabsList className="grid grid-cols-5 h-9 bg-background/50 rounded-lg p-1">
+                                                        <TabsTrigger 
+                                                            value="All" 
+                                                            className="text-[9px] font-black uppercase rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+                                                        >
+                                                            All
+                                                        </TabsTrigger>
                                                         {availablePrefixes.map(p => (
-                                                            <TabsTrigger key={p} value={p} className="text-[9px] font-black uppercase">{p}</TabsTrigger>
+                                                            <TabsTrigger 
+                                                                key={p} 
+                                                                value={p} 
+                                                                className="text-[9px] font-black uppercase rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+                                                            >
+                                                                {p}
+                                                            </TabsTrigger>
                                                         ))}
                                                     </TabsList>
                                                 </Tabs>
