@@ -35,6 +35,7 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command';
 import { formatPhoneNumber } from '@/lib/utils';
 import { ScrollArea } from './ui/scroll-area';
+import { Badge } from './ui/badge';
 
 const formSchema = z.object({
   priceCharged: z.coerce.number().min(0, 'Amount is required'),
@@ -60,6 +61,7 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [countryCodePopoverOpen, setCountryCodePopoverOpen] = useState(false);
+  const [leadPopoverOpen, setLeadPopoverOpen] = useState(false);
 
   const buyersQuery = useMemoFirebase(() => 
     profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'buyers') : null,
@@ -222,23 +224,60 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
                             control={form.control}
                             name="leadId"
                             render={({ field }) => (
-                                <FormItem>
+                                <FormItem className="flex flex-col">
                                     <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60">Select Buyer Lead</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value}>
-                                        <FormControl>
-                                            <SelectTrigger className="h-11 rounded-xl">
-                                                <SelectValue placeholder="Choose a lead by Name or Serial..." />
-                                            </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent className="rounded-xl shadow-2xl border-none max-h-60">
-                                            {buyers?.filter(b => !b.is_deleted).map(b => (
-                                                <SelectItem key={b.id} value={b.id}>
-                                                    <span className="font-bold">{b.name}</span>
-                                                    <span className="ml-2 text-[10px] opacity-60 font-mono">({b.serial_no})</span>
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                    <Popover open={leadPopoverOpen} onOpenChange={setLeadPopoverOpen}>
+                                        <PopoverTrigger asChild>
+                                            <FormControl>
+                                                <Button
+                                                    variant="outline"
+                                                    role="combobox"
+                                                    className={cn(
+                                                        "w-full justify-between h-11 rounded-xl font-bold",
+                                                        !field.value && "text-muted-foreground font-normal"
+                                                    )}
+                                                >
+                                                    {field.value
+                                                        ? buyers?.find((b) => b.id === field.value)?.name + ` (${buyers?.find((b) => b.id === field.value)?.serial_no})`
+                                                        : "Search lead by Name or Serial..."}
+                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                </Button>
+                                            </FormControl>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-2xl overflow-hidden shadow-2xl border-none">
+                                            <Command>
+                                                <CommandInput placeholder="Type Name or Serial (e.g. B-10)..." className="h-11" />
+                                                <CommandList>
+                                                    <CommandEmpty>No matching leads found.</CommandEmpty>
+                                                    <CommandGroup>
+                                                        {buyers?.filter(b => !b.is_deleted).map((b) => (
+                                                            <CommandItem
+                                                                value={`${b.name} ${b.serial_no}`}
+                                                                key={b.id}
+                                                                onSelect={() => {
+                                                                    form.setValue("leadId", b.id);
+                                                                    setLeadPopoverOpen(false);
+                                                                }}
+                                                                className="flex items-center justify-between py-3"
+                                                            >
+                                                                <div className="flex items-center gap-2">
+                                                                    <Check
+                                                                        className={cn(
+                                                                            "h-4 w-4 text-primary",
+                                                                            b.id === field.value ? "opacity-100" : "opacity-0"
+                                                                        )}
+                                                                    />
+                                                                    <span className="font-bold">{b.name}</span>
+                                                                </div>
+                                                                <Badge variant="outline" className="font-mono text-[10px] bg-muted/50">{b.serial_no}</Badge>
+                                                            </CommandItem>
+                                                        ))}
+                                                    </CommandGroup>
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
+                                    <FormMessage />
                                 </FormItem>
                             )}
                         />
