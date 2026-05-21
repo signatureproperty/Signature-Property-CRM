@@ -302,7 +302,7 @@ export default function ServicesPage() {
                                 </CardContent>
                                 <CardFooter className="bg-muted/5 p-4 border-t border-dashed">
                                     <Button className="w-full rounded-xl h-11 font-black bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all shadow-none gap-2" onClick={() => { setSelectedService(service); setIsAssignOpen(true); }}>
-                                        <Zap className="h-4 w-4" /> ACTIVATE SERVICE
+                                        <Zap className="h-4 w-4" /> SELL SERVICE
                                     </Button>
                                 </CardFooter>
                             </Card>
