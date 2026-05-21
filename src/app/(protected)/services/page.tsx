@@ -23,6 +23,7 @@ import {
     Clock, 
     PlayCircle,
     User,
+    Users,
     Tag,
     Search,
     Phone,
@@ -352,7 +353,7 @@ export default function ServicesPage() {
                                                 <TableCell>
                                                     <div className="font-bold text-sm">{log.serviceName}</div>
                                                     <div className="flex flex-wrap gap-1 mt-1">
-                                                        {log.tags?.map(t => <Badge key={t} variant="outline" className="text-[8px] h-3.5 px-1 py-0 border-primary/20 text-primary/70 font-bold">{t}</Badge>)}
+                                                        {log.tags?.map(t => <Badge variant="outline" className="text-[8px] h-3.5 px-1 py-0 border-primary/20 text-primary/70 font-bold">{t}</Badge>)}
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="cursor-pointer" onClick={() => handleClientClick(log)}>
