@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -25,18 +24,23 @@ import { useProfile } from '@/context/profile-context';
 import { useToast } from '@/hooks/use-toast';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useMemoFirebase } from '@/firebase/hooks';
-import { Loader2, Zap, User, UserPlus, Phone } from 'lucide-react';
-import type { Service, Buyer, AssignedToType } from '@/lib/types';
+import { Loader2, Zap, User, UserPlus, Phone, Check, ChevronsUpDown } from 'lucide-react';
+import type { Service, Buyer } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
+import { countryCodes } from '@/lib/data';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command';
+import { formatPhoneNumber } from '@/lib/utils';
 
 const formSchema = z.object({
   priceCharged: z.coerce.number().min(0, 'Amount is required'),
   assignedToType: z.enum(['Lead', 'External']).default('Lead'),
   leadId: z.string().optional(),
   externalName: z.string().optional(),
+  country_code: z.string().default('+92'),
   externalPhone: z.string().optional(),
   externalClientDetails: z.string().optional(),
 });
@@ -54,6 +58,7 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [countryCodePopoverOpen, setCountryCodePopoverOpen] = useState(false);
 
   const buyersQuery = useMemoFirebase(() => 
     profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'buyers') : null,
@@ -68,6 +73,7 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
       assignedToType: 'Lead',
       leadId: '',
       externalName: '',
+      country_code: '+92',
       externalPhone: '',
       externalClientDetails: '',
     },
@@ -92,6 +98,7 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
 
     const lead = values.assignedToType === 'Lead' ? buyers?.find(b => b.id === values.leadId) : null;
     const clientName = (values.assignedToType === 'Lead' ? lead?.name : values.externalName) || 'Client';
+    const formattedPhone = values.externalPhone ? formatPhoneNumber(values.externalPhone, values.country_code) : null;
 
     const colRef = collection(firestore, 'agencies', profile.agency_id, 'providedServices');
     const providedData = {
@@ -102,7 +109,7 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
         leadId: values.leadId || null,
         leadName: lead?.name || null,
         externalName: values.externalName || null,
-        externalPhone: values.externalPhone || null,
+        externalPhone: formattedPhone,
         externalClientDetails: values.externalClientDetails || null,
         status: 'Pending',
         agency_id: profile.agency_id,
@@ -232,7 +239,7 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
                     />
                 ) : (
                     <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <FormField
                                 control={form.control}
                                 name="externalName"
@@ -243,16 +250,63 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
                                     </FormItem>
                                 )}
                             />
-                            <FormField
-                                control={form.control}
-                                name="externalPhone"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60">Phone Number</FormLabel>
-                                        <FormControl><Input placeholder="+92300..." {...field} className="h-11 rounded-xl" /></FormControl>
-                                    </FormItem>
-                                )}
-                            />
+                            <div className="space-y-1">
+                                <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Phone Number</Label>
+                                <div className="flex gap-2">
+                                    <FormField
+                                        control={form.control}
+                                        name="country_code"
+                                        render={({ field }) => (
+                                            <FormItem className="w-24">
+                                                <Popover open={countryCodePopoverOpen} onOpenChange={setCountryCodePopoverOpen}>
+                                                    <PopoverTrigger asChild>
+                                                        <FormControl>
+                                                            <Button variant="outline" role="combobox" className="w-full justify-between h-11 px-2 rounded-xl">
+                                                                {field.value || "+92"}
+                                                                <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
+                                                            </Button>
+                                                        </FormControl>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-64 p-0">
+                                                        <Command>
+                                                            <CommandInput placeholder="Search code..." />
+                                                            <CommandList>
+                                                                <CommandEmpty>No country found.</CommandEmpty>
+                                                                <CommandGroup>
+                                                                    {countryCodes.map((country) => (
+                                                                        <CommandItem
+                                                                            value={country.dial_code}
+                                                                            key={country.code}
+                                                                            onSelect={() => {
+                                                                                form.setValue("country_code", country.dial_code);
+                                                                                setCountryCodePopoverOpen(false);
+                                                                            }}
+                                                                        >
+                                                                            <Check className={cn("mr-2 h-4 w-4", country.dial_code === field.value ? "opacity-100" : "opacity-0")} />
+                                                                            {country.dial_code} ({country.code})
+                                                                        </CommandItem>
+                                                                    ))}
+                                                                </CommandGroup>
+                                                            </CommandList>
+                                                        </Command>
+                                                    </PopoverContent>
+                                                </Popover>
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="externalPhone"
+                                        render={({ field }) => (
+                                            <FormItem className="flex-1">
+                                                <FormControl>
+                                                    <Input placeholder="3001234567" {...field} className="h-11 rounded-xl" />
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+                            </div>
                         </div>
                         <FormField
                             control={form.control}
@@ -288,4 +342,3 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
     </Dialog>
   );
 }
-
