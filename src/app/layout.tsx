@@ -5,14 +5,16 @@ import { Providers } from './providers';
 export const metadata: Metadata = {
   title: 'Signature Property CRM',
   description: 'The ultimate real-estate CRM, simplified.',
-  manifest: '/manifest.json',
   appleWebApp: {
       capable: true,
       statusBarStyle: 'default',
       title: 'Signature Property CRM',
   },
   icons: {
-      icon: '/icon-512x512.png',
+      icon: [
+        { url: '/icon-512x512.png', type: 'image/png' },
+      ],
+      shortcut: '/icon-512x512.png',
       apple: '/icon-512x512.png',
   },
   formatDetection: {
