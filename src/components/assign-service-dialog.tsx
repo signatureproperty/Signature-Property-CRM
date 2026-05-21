@@ -37,6 +37,8 @@ import { formatPhoneNumber } from '@/lib/utils';
 import { ScrollArea } from './ui/scroll-area';
 import { Badge } from './ui/badge';
 import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
+import { useCurrency } from '@/context/currency-context';
+import { formatCurrency } from '@/lib/formatters';
 
 const formSchema = z.object({
   priceCharged: z.coerce.number().min(0, 'Amount is required'),
@@ -58,6 +60,7 @@ interface AssignServiceDialogProps {
 
 export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServiceDialogProps) {
   const { profile } = useProfile();
+  const { currency } = useCurrency();
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
@@ -245,7 +248,10 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
                         name="priceCharged"
                         render={({ field }) => (
                             <FormItem>
-                            <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60">Price Charged (PKR)</FormLabel>
+                            <div className="flex justify-between items-center">
+                                <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60">Price Charged (PKR)</FormLabel>
+                                <span className="text-[9px] font-bold text-muted-foreground bg-muted/50 px-2 rounded-full border border-border/40">Catalog Price: {formatCurrency(service.price, currency)}</span>
+                            </div>
                             <FormControl><Input type="number" {...field} className="h-11 rounded-xl font-bold text-primary" /></FormControl>
                             <FormMessage />
                             </FormItem>
