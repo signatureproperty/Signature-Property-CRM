@@ -24,7 +24,7 @@ import { useProfile } from '@/context/profile-context';
 import { useToast } from '@/hooks/use-toast';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useMemoFirebase } from '@/firebase/hooks';
-import { Loader2, Zap, User, UserPlus, Phone, Check, ChevronsUpDown, Building2, Search, Filter } from 'lucide-react';
+import { Loader2, Zap, User, UserPlus, Phone, Check, ChevronsUpDown, Building2, Search, Filter, Hash } from 'lucide-react';
 import type { Service, Buyer, Property } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
@@ -32,7 +32,7 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import { countryCodes } from '@/lib/data';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandList, CommandItem } from './ui/command';
 import { formatPhoneNumber } from '@/lib/utils';
 import { ScrollArea } from './ui/scroll-area';
 import { Badge } from './ui/badge';
@@ -68,21 +68,18 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
   const [leadPopoverOpen, setLeadPopoverOpen] = useState(false);
   const [activePrefixTab, setActivePrefixTab] = useState<string>('All');
 
-  // Fetch Buyers
   const buyersQuery = useMemoFirebase(() => 
     profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'buyers') : null,
     [profile.agency_id, firestore]
   );
   const { data: buyers } = useCollection<Buyer>(buyersQuery);
 
-  // Fetch Properties
   const propertiesQuery = useMemoFirebase(() => 
     profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'properties') : null,
     [profile.agency_id, firestore]
   );
   const { data: properties } = useCollection<Property>(propertiesQuery);
 
-  // Combine and Filter Leads based on Service target and Tabs
   const applicableLeads = useMemo(() => {
     const list: Array<{ id: string; name: string; serial: string; type: 'Buyer' | 'Property'; searchStr: string }> = [];
     
@@ -96,7 +93,7 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
                 name: b.name, 
                 serial: b.serial_no, 
                 type: 'Buyer',
-                searchStr: `${b.name} ${b.serial_no} ${numPart}`.toLowerCase() 
+                searchStr: `${b.serial_no} ${numPart} ${b.name}`.toLowerCase() 
             });
         });
     }
@@ -109,7 +106,7 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
                 name: p.auto_title, 
                 serial: p.serial_no, 
                 type: 'Property',
-                searchStr: `${p.auto_title} ${p.serial_no} ${numPart}`.toLowerCase()
+                searchStr: `${p.serial_no} ${numPart} ${p.auto_title}`.toLowerCase()
             });
         });
     }
@@ -206,7 +203,6 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
         errorEmitter.emit('permission-error', permissionError);
     });
 
-    // Log Activity
     const activityColRef = collection(firestore, 'agencies', profile.agency_id, 'activityLogs');
     addDoc(activityColRef, {
         userName: profile.name,
@@ -221,6 +217,11 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
     setIsLoading(false);
     setIsOpen(false);
   };
+
+  const currentSearchPlaceholder = useMemo(() => {
+    if (activePrefixTab === 'All') return "Type Name or Numbers...";
+    return `Searching ${activePrefixTab}- (type number only)`;
+  }, [activePrefixTab]);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -306,7 +307,9 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
                             name="leadId"
                             render={({ field }) => (
                                 <FormItem className="flex flex-col">
-                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60">Lead Lookup (Proper Serial Search)</FormLabel>
+                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60 flex items-center gap-2">
+                                        <Hash className="h-3 w-3" /> Lead Selection & Quick Serial Search
+                                    </FormLabel>
                                     <Popover open={leadPopoverOpen} onOpenChange={setLeadPopoverOpen}>
                                         <PopoverTrigger asChild>
                                             <FormControl>
@@ -314,27 +317,30 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
                                                     variant="outline"
                                                     role="combobox"
                                                     className={cn(
-                                                        "w-full justify-between h-11 rounded-xl font-bold",
+                                                        "w-full justify-between h-11 rounded-xl font-bold text-left",
                                                         !field.value && "text-muted-foreground font-normal"
                                                     )}
                                                 >
-                                                    {field.value
-                                                        ? applicableLeads.find((l) => l.id === field.value)?.name.substring(0, 30) + '...'
-                                                        : "Search by Name or Number..."}
+                                                    <span className="truncate">
+                                                        {field.value
+                                                            ? applicableLeads.find((l) => l.id === field.value)?.name
+                                                            : "Search by Name or Number..."}
+                                                    </span>
                                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                 </Button>
                                             </FormControl>
                                         </PopoverTrigger>
                                         <PopoverContent 
-                                            className="w-[--radix-popover-trigger-width] p-0 rounded-2xl overflow-hidden shadow-2xl border-none"
+                                            className="w-[--radix-popover-trigger-width] p-0 rounded-2xl overflow-hidden shadow-2xl border-none bg-background"
                                             onWheel={(e) => e.stopPropagation()}
+                                            align="start"
                                         >
-                                            <div className="bg-muted/30 p-2 border-b">
-                                                <Tabs value={activePrefixTab} onValueChange={setActivePrefixTab}>
-                                                    <TabsList className="grid grid-cols-5 h-9 bg-background/50 rounded-lg p-1">
+                                            <div className="bg-muted/40 p-2 border-b">
+                                                <Tabs value={activePrefixTab} onValueChange={setActivePrefixTab} className="w-full">
+                                                    <TabsList className="grid grid-cols-5 h-10 bg-background/50 rounded-xl p-1 gap-1">
                                                         <TabsTrigger 
                                                             value="All" 
-                                                            className="text-[9px] font-black uppercase rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+                                                            className="text-[10px] font-black uppercase rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all"
                                                         >
                                                             All
                                                         </TabsTrigger>
@@ -342,7 +348,7 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
                                                             <TabsTrigger 
                                                                 key={p} 
                                                                 value={p} 
-                                                                className="text-[9px] font-black uppercase rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+                                                                className="text-[10px] font-black uppercase rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all"
                                                             >
                                                                 {p}
                                                             </TabsTrigger>
@@ -350,10 +356,16 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
                                                     </TabsList>
                                                 </Tabs>
                                             </div>
-                                            <Command className="bg-background">
-                                                <CommandInput placeholder="Type Name or Just Numbers..." className="h-11" />
-                                                <CommandList>
-                                                    <CommandEmpty className="py-6 text-center text-xs font-bold text-muted-foreground uppercase opacity-40">No matching records found.</CommandEmpty>
+                                            <Command className="bg-transparent" shouldFilter={true}>
+                                                <div className="flex items-center px-3 border-b bg-background">
+                                                    <Search className="mr-2 h-4 w-4 shrink-0 opacity-40" />
+                                                    <CommandInput 
+                                                        placeholder={currentSearchPlaceholder} 
+                                                        className="h-11 bg-transparent w-full focus:ring-0 border-none" 
+                                                    />
+                                                </div>
+                                                <CommandList className="max-h-64 overflow-y-auto">
+                                                    <CommandEmpty className="py-8 text-center text-xs font-bold text-muted-foreground uppercase opacity-40">No matches found.</CommandEmpty>
                                                     <CommandGroup>
                                                         {applicableLeads.map((l) => (
                                                             <CommandItem
@@ -363,23 +375,25 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
                                                                     form.setValue("leadId", l.id);
                                                                     setLeadPopoverOpen(false);
                                                                 }}
-                                                                className="flex items-center justify-between py-3 cursor-pointer"
+                                                                className="flex items-center justify-between py-3 px-4 cursor-pointer hover:bg-primary/5 transition-colors"
                                                             >
-                                                                <div className="flex items-center gap-2">
-                                                                    <Check
-                                                                        className={cn(
-                                                                            "h-4 w-4 text-primary",
-                                                                            l.id === field.value ? "opacity-100" : "opacity-0"
-                                                                        )}
-                                                                    />
-                                                                    <div className="flex flex-col">
-                                                                        <span className="font-bold text-sm line-clamp-1">{l.name}</span>
+                                                                <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                                    <div className={cn(
+                                                                        "h-4 w-4 rounded-full border-2 flex items-center justify-center transition-all",
+                                                                        l.id === field.value ? "border-primary bg-primary" : "border-muted-foreground/30"
+                                                                    )}>
+                                                                        {l.id === field.value && <Check className="h-2.5 w-2.5 text-white" />}
+                                                                    </div>
+                                                                    <div className="flex flex-col min-w-0">
+                                                                        <span className="font-bold text-sm truncate">{l.name}</span>
                                                                         <span className="text-[9px] font-black text-muted-foreground uppercase flex items-center gap-1 opacity-60">
                                                                             {l.type === 'Buyer' ? <User className="h-2.5 w-2.5"/> : <Building2 className="h-2.5 w-2.5"/>} {l.type}
                                                                         </span>
                                                                     </div>
                                                                 </div>
-                                                                <Badge variant="outline" className="font-mono text-[9px] font-black bg-primary/5 text-primary border-primary/20">{l.serial}</Badge>
+                                                                <Badge variant="outline" className="font-mono text-[10px] font-black bg-primary/5 text-primary border-primary/20 shrink-0">
+                                                                    {l.serial}
+                                                                </Badge>
                                                             </CommandItem>
                                                         ))}
                                                     </CommandGroup>
