@@ -9,7 +9,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Buyer, PriceUnit, SizeUnit } from '@/lib/types';
+import { Buyer, PriceUnit, SizeUnit, PropertyType } from '@/lib/types';
 import { ScrollArea } from './ui/scroll-area';
 import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
@@ -32,7 +32,9 @@ import {
   Calendar,
   Check,
   Undo2,
-  Loader2
+  Loader2,
+  ChevronDown,
+  Info
 } from 'lucide-react';
 import { useCurrency } from '@/context/currency-context';
 import { formatCurrency, formatUnit } from '@/lib/formatters';
@@ -59,6 +61,16 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Checkbox } from './ui/checkbox';
+import { punjabCities } from '@/lib/data';
+
+const propertyTypeValues = [
+    'House', 'Flat', 'Farm House', 'Penthouse', 'Plot', 'Residential Plot', 'Commercial Plot', 'Agricultural Land', 'Industrial Land', 'Office', 'Shop', 'Warehouse', 'Factory', 'Building', 'Residential Property', 'Commercial Property', 'Semi Commercial', 'Other'
+];
+
+const sizeUnitValues: SizeUnit[] = ['Marla', 'SqFt', 'Kanal', 'Acre', 'Maraba'];
+const priceUnitValues: PriceUnit[] = ['Thousand', 'Lacs', 'Crore'];
 
 interface BuyerDetailsDialogProps {
   buyer: Buyer;
@@ -123,12 +135,23 @@ export function BuyerDetailsDialog({
   const [isReleasing, setIsReleasing] = useState(false);
   const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false);
   const [returnDetails, setReturnDetails] = useState({
+      name: '',
+      email: '',
+      city: '',
       area_preference: '',
+      property_type_preference: '' as PropertyType,
+      budget_min_amount: 0,
+      budget_min_unit: 'Lacs' as PriceUnit,
       budget_max_amount: 0,
+      budget_max_unit: 'Lacs' as PriceUnit,
+      size_min_value: 0,
+      size_min_unit: 'Marla' as SizeUnit,
+      size_max_value: 0,
+      size_max_unit: 'Marla' as SizeUnit,
+      is_investor: false,
       notes: ''
   });
 
-  // Mark notes as read when details are viewed
   useEffect(() => {
     if (isOpen && buyer?.timeline_notes && profile.agency_id) {
         const unreadNotes = buyer.timeline_notes.filter(n => !n.readBy?.includes(profile.user_id));
@@ -146,8 +169,20 @@ export function BuyerDetailsDialog({
   useEffect(() => {
       if (isReturnDialogOpen && buyer) {
           setReturnDetails({
+              name: buyer.name || '',
+              email: buyer.email || '',
+              city: buyer.city || 'Lahore',
               area_preference: buyer.area_preference || '',
+              property_type_preference: (buyer.property_type_preference || 'House') as PropertyType,
+              budget_min_amount: buyer.budget_min_amount || 0,
+              budget_min_unit: (buyer.budget_min_unit || 'Lacs') as PriceUnit,
               budget_max_amount: buyer.budget_max_amount || 0,
+              budget_max_unit: (buyer.budget_max_unit || 'Lacs') as PriceUnit,
+              size_min_value: buyer.size_min_value || 0,
+              size_min_unit: (buyer.size_min_unit || 'Marla') as SizeUnit,
+              size_max_value: buyer.size_max_value || 0,
+              size_max_unit: (buyer.size_max_unit || 'Marla') as SizeUnit,
+              is_investor: !!buyer.is_investor,
               notes: buyer.notes || ''
           });
       }
@@ -189,20 +224,21 @@ export function BuyerDetailsDialog({
         const buyerRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', buyer.id);
         
         const hasChanges = 
+            returnDetails.name !== buyer.name ||
+            returnDetails.email !== buyer.email ||
+            returnDetails.city !== buyer.city ||
             returnDetails.area_preference !== buyer.area_preference ||
+            returnDetails.property_type_preference !== buyer.property_type_preference ||
             returnDetails.budget_max_amount !== (buyer.budget_max_amount || 0) ||
             returnDetails.notes !== (buyer.notes || '');
 
         const updateData: any = { 
             assignedTo: null,
-            area_preference: returnDetails.area_preference,
-            budget_max_amount: returnDetails.budget_max_amount,
-            notes: returnDetails.notes
+            ...returnDetails
         };
 
         await updateDoc(buyerRef, updateData);
         
-        // Log activity
         const activityLogRef = collection(firestore, 'agencies', profile.agency_id, 'activityLogs');
         const actionText = hasChanges 
             ? 'updated details and returned the lead back to agency pool' 
@@ -423,57 +459,142 @@ export function BuyerDetailsDialog({
         </DialogContent>
       </Dialog>
 
-      {/* Return Lead & Verification Dialog */}
+      {/* Return Lead & A-Z Edit Verification Dialog */}
       <Dialog open={isReturnDialogOpen} onOpenChange={setIsReturnDialogOpen}>
-          <DialogContent className="sm:max-w-md border-none shadow-3xl rounded-[2rem] overflow-hidden">
-              <DialogHeader>
-                  <div className="mx-auto bg-destructive/10 w-12 h-12 rounded-full flex items-center justify-center mb-2">
-                    <Undo2 className="text-destructive h-6 w-6" />
-                  </div>
-                  <DialogTitle className="text-center font-headline text-2xl font-black tracking-tight">Return Lead to Pool</DialogTitle>
-                  <DialogDescription className="text-center font-medium">
-                      Before returning <strong>{buyer.name}</strong>, please verify and update their requirements so others can find better matches.
-                  </DialogDescription>
-              </DialogHeader>
-
-              <div className="space-y-4 py-4">
-                  <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Update Area Preference</Label>
-                      <Input 
-                        value={returnDetails.area_preference}
-                        onChange={e => setReturnDetails(prev => ({ ...prev, area_preference: e.target.value }))}
-                        placeholder="e.g. DHA Phase 6, Gulberg"
-                        className="h-11 rounded-xl bg-muted/30"
-                      />
-                  </div>
-                  <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Verify Max Budget</Label>
-                      <div className="relative">
-                        <Input 
-                            type="number"
-                            value={returnDetails.budget_max_amount}
-                            onChange={e => setReturnDetails(prev => ({ ...prev, budget_max_amount: Number(e.target.value) }))}
-                            className="h-11 rounded-xl bg-muted/30 pl-10"
-                        />
-                        <Wallet className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
-                      </div>
-                  </div>
-                  <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Final Feedback / Notes</Label>
-                      <Textarea 
-                        value={returnDetails.notes}
-                        onChange={e => setReturnDetails(prev => ({ ...prev, notes: e.target.value }))}
-                        placeholder="Why are you returning this lead? Any new info?"
-                        className="rounded-xl bg-muted/30 min-h-[100px] resize-none"
-                      />
-                  </div>
+          <DialogContent className="sm:max-w-2xl border-none shadow-3xl rounded-[2rem] overflow-hidden flex flex-col p-0">
+              <div className="p-8 pb-4 shrink-0">
+                  <DialogHeader>
+                    <div className="flex items-center gap-4">
+                        <div className="bg-destructive/10 w-12 h-12 rounded-2xl flex items-center justify-center">
+                            <Undo2 className="text-destructive h-6 w-6" />
+                        </div>
+                        <div>
+                            <DialogTitle className="font-headline text-2xl font-black tracking-tight text-destructive">Return Lead to Pool</DialogTitle>
+                            <DialogDescription className="font-medium">
+                                Edit/Verify buyer details before releasing. Phone number is locked.
+                            </DialogDescription>
+                        </div>
+                    </div>
+                  </DialogHeader>
               </div>
 
-              <DialogFooter className="gap-2 sm:gap-0">
-                  <Button variant="ghost" onClick={() => setIsReturnDialogOpen(false)} className="rounded-xl font-bold flex-1">Cancel</Button>
-                  <Button onClick={handleReleaseLead} disabled={isReleasing} className="rounded-xl font-bold bg-destructive text-white hover:bg-destructive/90 flex-1">
+              <ScrollArea className="flex-1 overflow-y-auto px-8">
+                  <div className="space-y-8 py-2 pb-8">
+                      {/* Basic Info */}
+                      <div className="space-y-4">
+                          <h4 className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                              <User className="h-3 w-3" /> Basic Information
+                          </h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-1.5">
+                                  <Label className="text-[10px] font-bold uppercase opacity-60">Full Name</Label>
+                                  <Input value={returnDetails.name} onChange={e => setReturnDetails(p => ({...p, name: e.target.value}))} className="h-10 rounded-xl" />
+                              </div>
+                              <div className="space-y-1.5">
+                                  <Label className="text-[10px] font-bold uppercase opacity-60">Email Address</Label>
+                                  <Input value={returnDetails.email} onChange={e => setReturnDetails(p => ({...p, email: e.target.value}))} className="h-10 rounded-xl" />
+                              </div>
+                              <div className="space-y-1.5">
+                                  <Label className="text-[10px] font-bold uppercase opacity-60">Phone (Locked)</Label>
+                                  <Input value={buyer.phone} disabled className="h-10 rounded-xl bg-muted/30 opacity-50 cursor-not-allowed" />
+                              </div>
+                              <div className="space-y-1.5">
+                                  <Label className="text-[10px] font-bold uppercase opacity-60">City</Label>
+                                  <Select value={returnDetails.city} onValueChange={v => setReturnDetails(p => ({...p, city: v}))}>
+                                      <SelectTrigger className="h-10 rounded-xl"><SelectValue /></SelectTrigger>
+                                      <SelectContent className="rounded-xl shadow-2xl">
+                                          {punjabCities.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                                      </SelectContent>
+                                  </Select>
+                              </div>
+                          </div>
+                      </div>
+
+                      <Separator className="opacity-40" />
+
+                      {/* Requirements */}
+                      <div className="space-y-4">
+                          <h4 className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                              <MapPin className="h-3 w-3" /> Area & Property Details
+                          </h4>
+                          <div className="space-y-1.5">
+                              <Label className="text-[10px] font-bold uppercase opacity-60">Preferred Areas</Label>
+                              <Input value={returnDetails.area_preference} onChange={e => setReturnDetails(p => ({...p, area_preference: e.target.value}))} placeholder="e.g. DHA, Gulberg" className="h-10 rounded-xl" />
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-1.5">
+                                  <Label className="text-[10px] font-bold uppercase opacity-60">Property Type</Label>
+                                  <Select value={returnDetails.property_type_preference} onValueChange={v => setReturnDetails(p => ({...p, property_type_preference: v as any}))}>
+                                      <SelectTrigger className="h-10 rounded-xl"><SelectValue /></SelectTrigger>
+                                      <SelectContent className="rounded-xl shadow-2xl">
+                                          {propertyTypeValues.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                                      </SelectContent>
+                                  </Select>
+                              </div>
+                              <div className="flex items-center space-x-2 pt-6">
+                                  <Checkbox id="investor-check" checked={returnDetails.is_investor} onCheckedChange={v => setReturnDetails(p => ({...p, is_investor: !!v}))} />
+                                  <Label htmlFor="investor-check" className="font-bold cursor-pointer">Buyer is an Investor</Label>
+                              </div>
+                          </div>
+                      </div>
+
+                      <Separator className="opacity-40" />
+
+                      {/* Budget & Size */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                          <div className="space-y-4">
+                              <h4 className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                                  <Wallet className="h-3 w-3" /> Budget Range
+                              </h4>
+                              <div className="grid grid-cols-2 gap-2">
+                                  <Input type="number" value={returnDetails.budget_min_amount} onChange={e => setReturnDetails(p => ({...p, budget_min_amount: Number(e.target.value)}))} placeholder="Min" className="h-10 rounded-xl" />
+                                  <Input type="number" value={returnDetails.budget_max_amount} onChange={e => setReturnDetails(p => ({...p, budget_max_amount: Number(e.target.value)}))} placeholder="Max" className="h-10 rounded-xl" />
+                              </div>
+                              <Select value={returnDetails.budget_max_unit} onValueChange={v => setReturnDetails(p => ({...p, budget_max_unit: v as any, budget_min_unit: v as any}))}>
+                                  <SelectTrigger className="h-10 rounded-xl"><SelectValue /></SelectTrigger>
+                                  <SelectContent className="rounded-xl shadow-2xl">
+                                      {priceUnitValues.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                                  </SelectContent>
+                              </Select>
+                          </div>
+
+                          <div className="space-y-4">
+                              <h4 className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                                  <Ruler className="h-3 w-3" /> Size Range
+                              </h4>
+                              <div className="grid grid-cols-2 gap-2">
+                                  <Input type="number" value={returnDetails.size_min_value} onChange={e => setReturnDetails(p => ({...p, size_min_value: Number(e.target.value)}))} placeholder="Min" className="h-10 rounded-xl" />
+                                  <Input type="number" value={returnDetails.size_max_value} onChange={e => setReturnDetails(p => ({...p, size_max_value: Number(e.target.value)}))} placeholder="Max" className="h-10 rounded-xl" />
+                              </div>
+                              <Select value={returnDetails.size_max_unit} onValueChange={v => setReturnDetails(p => ({...p, size_max_unit: v as any, size_min_unit: v as any}))}>
+                                  <SelectTrigger className="h-10 rounded-xl"><SelectValue /></SelectTrigger>
+                                  <SelectContent className="rounded-xl shadow-2xl">
+                                      {sizeUnitValues.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                                  </SelectContent>
+                              </Select>
+                          </div>
+                      </div>
+
+                      <Separator className="opacity-40" />
+
+                      {/* Final Notes */}
+                      <div className="space-y-2">
+                          <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Final Feedback / Returning Notes</Label>
+                          <Textarea 
+                            value={returnDetails.notes}
+                            onChange={e => setReturnDetails(prev => ({ ...prev, notes: e.target.value }))}
+                            placeholder="Why are you returning this lead? Any special instructions for the next agent?"
+                            className="rounded-2xl bg-muted/30 min-h-[120px] resize-none p-4"
+                          />
+                      </div>
+                  </div>
+              </ScrollArea>
+
+              <DialogFooter className="p-6 border-t bg-muted/10 gap-2 sm:gap-0">
+                  <Button variant="ghost" onClick={() => setIsReturnDialogOpen(false)} className="rounded-xl h-12 px-8 font-bold flex-1">Cancel</Button>
+                  <Button onClick={handleReleaseLead} disabled={isReleasing} className="rounded-xl h-12 px-12 font-black bg-destructive text-white hover:bg-destructive/90 flex-1 glowing-btn">
                       {isReleasing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
-                      Confirm & Return
+                      Update & Return Lead
                   </Button>
               </DialogFooter>
           </DialogContent>
