@@ -34,7 +34,8 @@ import {
   Undo2,
   Loader2,
   ChevronDown,
-  Info
+  Info,
+  X
 } from 'lucide-react';
 import { useCurrency } from '@/context/currency-context';
 import { formatCurrency, formatUnit } from '@/lib/formatters';
@@ -461,25 +462,28 @@ export function BuyerDetailsDialog({
 
       {/* Return Lead & A-Z Edit Verification Dialog */}
       <Dialog open={isReturnDialogOpen} onOpenChange={setIsReturnDialogOpen}>
-          <DialogContent className="sm:max-w-2xl border-none shadow-3xl rounded-[2rem] overflow-hidden flex flex-col p-0">
-              <div className="p-8 pb-4 shrink-0">
+          <DialogContent className="sm:max-w-2xl w-full h-full sm:h-auto sm:max-h-[90vh] border-none shadow-3xl rounded-none sm:rounded-[2rem] overflow-hidden flex flex-col p-0">
+              <div className="p-6 sm:p-8 pb-4 shrink-0 border-b bg-background relative">
                   <DialogHeader>
                     <div className="flex items-center gap-4">
                         <div className="bg-destructive/10 w-12 h-12 rounded-2xl flex items-center justify-center">
                             <Undo2 className="text-destructive h-6 w-6" />
                         </div>
-                        <div>
-                            <DialogTitle className="font-headline text-2xl font-black tracking-tight text-destructive">Return Lead to Pool</DialogTitle>
-                            <DialogDescription className="font-medium">
-                                Edit/Verify buyer details before releasing. Phone number is locked.
+                        <div className="flex-1 min-w-0">
+                            <DialogTitle className="font-headline text-xl sm:text-2xl font-black tracking-tight text-destructive truncate">Return Lead to Pool</DialogTitle>
+                            <DialogDescription className="font-medium text-xs sm:text-sm">
+                                Edit details before releasing. Phone is locked.
                             </DialogDescription>
                         </div>
+                        <Button variant="ghost" size="icon" className="sm:hidden -mr-2" onClick={() => setIsReturnDialogOpen(false)}>
+                            <X className="h-5 w-5" />
+                        </Button>
                     </div>
                   </DialogHeader>
               </div>
 
-              <ScrollArea className="flex-1 overflow-y-auto px-8">
-                  <div className="space-y-8 py-2 pb-8">
+              <ScrollArea className="flex-1 min-h-0">
+                  <div className="px-6 sm:px-8 py-6 space-y-8">
                       {/* Basic Info */}
                       <div className="space-y-4">
                           <h4 className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
@@ -578,24 +582,28 @@ export function BuyerDetailsDialog({
                       <Separator className="opacity-40" />
 
                       {/* Final Notes */}
-                      <div className="space-y-2">
+                      <div className="space-y-2 pb-6">
                           <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Final Feedback / Returning Notes</Label>
                           <Textarea 
                             value={returnDetails.notes}
                             onChange={e => setReturnDetails(prev => ({ ...prev, notes: e.target.value }))}
-                            placeholder="Why are you returning this lead? Any special instructions for the next agent?"
+                            placeholder="Why are you returning this lead? Any special instructions?"
                             className="rounded-2xl bg-muted/30 min-h-[120px] resize-none p-4"
                           />
                       </div>
                   </div>
               </ScrollArea>
 
-              <DialogFooter className="p-6 border-t bg-muted/10 gap-2 sm:gap-0">
-                  <Button variant="ghost" onClick={() => setIsReturnDialogOpen(false)} className="rounded-xl h-12 px-8 font-bold flex-1">Cancel</Button>
-                  <Button onClick={handleReleaseLead} disabled={isReleasing} className="rounded-xl h-12 px-12 font-black bg-destructive text-white hover:bg-destructive/90 flex-1 glowing-btn">
-                      {isReleasing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
-                      Update & Return Lead
-                  </Button>
+              <DialogFooter className="p-4 sm:p-8 border-t bg-muted/10 shrink-0">
+                  <div className="flex flex-col sm:flex-row w-full gap-3">
+                      <Button variant="ghost" onClick={() => setIsReturnDialogOpen(false)} className="rounded-xl h-12 px-8 font-bold flex-1 order-2 sm:order-1">
+                          Cancel
+                      </Button>
+                      <Button onClick={handleReleaseLead} disabled={isReleasing} className="rounded-xl h-12 px-12 font-black bg-destructive text-white hover:bg-destructive/90 flex-1 sm:flex-[2] glowing-btn order-1 sm:order-2">
+                          {isReleasing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
+                          Update & Return Lead
+                      </Button>
+                  </div>
               </DialogFooter>
           </DialogContent>
       </Dialog>
