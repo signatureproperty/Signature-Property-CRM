@@ -465,6 +465,13 @@ function BuyersPageContent() {
         });
     }, [allBuyers, activeListingType, activeStatus, activeCustomTags, searchQuery, sortOrder, filters]);
 
+    const anySelectedIsAssigned = useMemo(() => {
+        return selectedBuyers.some(id => {
+            const buyer = allBuyers?.find(b => b.id === id);
+            return !!buyer?.assignedTo;
+        });
+    }, [selectedBuyers, allBuyers]);
+
     const totalPages = Math.ceil(filteredBuyers.length / ITEMS_PER_PAGE);
     const paginatedBuyers = useMemo(() => {
         const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -664,7 +671,7 @@ function BuyersPageContent() {
                                         <span className="truncate max-w-[100px]">{buyer.area_preference || 'No area'}</span>
                                     </div>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-80 p-4 rounded-xl shadow-2xl border-none z-[100]" onClick={e => e.stopPropagation()}>
+                                <PopoverContent className="w-80 p-4 rounded-xl shadow-2xl border-none z-[110]" onClick={e => e.stopPropagation()}>
                                     <div className="space-y-2">
                                         <p className="text-[10px] font-black uppercase tracking-widest text-primary/60 flex items-center gap-2">
                                             <MapPin className="h-3 w-3" /> Area Preference
@@ -754,9 +761,11 @@ function BuyersPageContent() {
                                 ))}
                                 </DropdownMenuContent>
                             </DropdownMenu>
-                            <Button variant="outline" className="rounded-full text-destructive border-destructive/20 hover:bg-destructive/5" onClick={handleBulkUnassign}>
-                                <UserMinus className="mr-2 h-4 w-4" /> Unassign ({selectedBuyers.length})
-                            </Button>
+                            {anySelectedIsAssigned && (
+                                <Button variant="outline" className="rounded-full text-destructive border-destructive/20 hover:bg-destructive/5" onClick={handleBulkUnassign}>
+                                    <UserMinus className="mr-2 h-4 w-4" /> Unassign ({selectedBuyers.length})
+                                </Button>
+                            )}
                             <Button variant="destructive" className="rounded-full" onClick={handleBulkDelete}>
                                 <Trash2 className="mr-2 h-4 w-4" /> Delete ({selectedBuyers.length})
                             </Button>

@@ -340,6 +340,15 @@ function PropertiesPageContent() {
     });
   }, [searchQuery, filters, allProperties, activeListingType, activeStatus, activeCustomTags, sortOrder]);
 
+  const anySelectedIsAssigned = useMemo(() => {
+    return selectedProperties.some(id => {
+      const prop = allProperties?.find(p => p.id === id);
+      if (!prop) return false;
+      if (Array.isArray(prop.assignedTo)) return prop.assignedTo.length > 0;
+      return !!prop.assignedTo;
+    });
+  }, [selectedProperties, allProperties]);
+
   const totalPages = Math.ceil(filteredProperties.length / ITEMS_PER_PAGE);
   const paginatedProperties = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -774,7 +783,9 @@ function PropertiesPageContent() {
                     <DropdownMenuTrigger asChild><Button variant="outline" className="rounded-full"><UserPlus className="mr-2 h-4 w-4" /> Assign</Button></DropdownMenuTrigger>
                     <DropdownMenuContent className="bg-background">{teamMembers?.filter((m: any) => m.status === 'Active' && (m.role === 'Agent' || m.role === 'Admin')).map((member: any) => <DropdownMenuItem key={member.id} onSelect={() => handleBulkAssign(member.id) as any}>{member.name}</DropdownMenuItem>)}</DropdownMenuContent>
                   </DropdownMenu>
-                  <Button variant="outline" className="rounded-full text-destructive border-destructive/20 hover:bg-destructive/5" onClick={handleBulkUnassign}><UserMinus className="mr-2 h-4 w-4" /> Unassign ({selectedProperties.length})</Button>
+                  {anySelectedIsAssigned && (
+                    <Button variant="outline" className="rounded-full text-destructive border-destructive/20 hover:bg-destructive/5" onClick={handleBulkUnassign}><UserMinus className="mr-2 h-4 w-4" /> Unassign ({selectedProperties.length})</Button>
+                  )}
                   <Button variant="destructive" className="rounded-full" onClick={handleBulkDelete}><Trash2 className="mr-2 h-4 w-4" /> Delete ({selectedProperties.length})</Button>
                 </div>
               )}
