@@ -400,6 +400,8 @@ export type Service = {
 
 export type ServiceStatus = 'Pending' | 'In Progress' | 'Completed' | string;
 export type AssignedToType = 'Lead' | 'External';
+export type ServicePaymentStatus = 'Pending' | 'Partial' | 'Paid';
+export type ServicePaymentMethod = 'Cash' | 'Online' | 'N/A';
 
 export type ProvidedService = {
     id: string;
@@ -415,4 +417,9 @@ export type ProvidedService = {
     status: string; // Dynamic status based on service definition
     agency_id: string;
     created_at: string;
+    // Payment Tracking
+    paymentStatus?: ServicePaymentStatus;
+    paymentMethod?: ServicePaymentMethod;
+    amountPaid?: number;
+    paymentNote?: string;
 };

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -29,7 +28,11 @@ import {
     Phone,
     FileText,
     Info,
-    RefreshCw
+    RefreshCw,
+    Wallet,
+    DollarSign,
+    CreditCard,
+    Banknote
 } from 'lucide-react';
 import { 
     DropdownMenu, 
@@ -41,6 +44,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { AddServiceDialog } from '@/components/add-service-dialog';
 import { AssignServiceDialog } from '@/components/assign-service-dialog';
+import { UpdateServicePaymentDialog } from '@/components/update-service-payment-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
 import { useCurrency } from '@/context/currency-context';
@@ -72,6 +76,14 @@ const getStatusIcon = (status: string) => {
     }
 };
 
+const getPaymentBadge = (status?: string) => {
+    switch (status) {
+        case 'Paid': return <Badge className="bg-emerald-600/10 text-emerald-600 border-emerald-600/20 font-black text-[10px] gap-1.5"><CheckCircle className="h-3 w-3"/> FULLY PAID</Badge>;
+        case 'Partial': return <Badge className="bg-amber-600/10 text-amber-600 border-amber-600/20 font-black text-[10px] gap-1.5"><Clock className="h-3 w-3"/> PARTIAL</Badge>;
+        default: return <Badge className="bg-destructive/10 text-destructive border-destructive/20 font-black text-[10px] gap-1.5"><Wallet className="h-3 w-3"/> PENDING</Badge>;
+    }
+};
+
 export default function ServicesPage() {
     const { profile } = useProfile();
     const { currency } = useCurrency();
@@ -81,7 +93,9 @@ export default function ServicesPage() {
     
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [isAssignOpen, setIsAssignOpen] = useState(false);
+    const [isPaymentOpen, setIsPaymentOpen] = useState(false);
     const [selectedService, setSelectedService] = useState<Service | null>(null);
+    const [selectedLog, setSelectedLog] = useState<ProvidedService | null>(null);
     const [serviceSearch, setServiceSearch] = useState('');
 
     // State for viewing details
@@ -259,7 +273,7 @@ export default function ServicesPage() {
                     <Card className="border-none shadow-2xl rounded-[2rem] overflow-hidden bg-card/60 backdrop-blur-xl ring-1 ring-border/50">
                         <CardHeader className="bg-muted/30 pb-6">
                             <CardTitle className="flex items-center gap-2 font-headline text-xl font-black"><History className="h-5 w-5 text-primary" /> Active Service Logs</CardTitle>
-                            <CardDescription className="font-medium">Track progress of every service assigned to clients.</CardDescription>
+                            <CardDescription className="font-medium">Track progress and payments for every service provisioned.</CardDescription>
                         </CardHeader>
                         <CardContent className="p-0">
                             {isProvidedLoading ? (
@@ -269,10 +283,10 @@ export default function ServicesPage() {
                                     <Table>
                                         <TableHeader className="bg-muted/10">
                                             <TableRow className="border-none">
-                                                <TableHead className="font-black text-[10px] uppercase pl-6 py-4">Service Type</TableHead>
+                                                <TableHead className="font-black text-[10px] uppercase pl-6 py-4">Service & Status</TableHead>
                                                 <TableHead className="font-black text-[10px] uppercase">Client / Lead</TableHead>
-                                                <TableHead className="font-black text-[10px] uppercase">Net Amount</TableHead>
-                                                <TableHead className="font-black text-[10px] uppercase">Status Tracker</TableHead>
+                                                <TableHead className="font-black text-[10px] uppercase">Finances</TableHead>
+                                                <TableHead className="font-black text-[10px] uppercase">Payment Status</TableHead>
                                                 <TableHead className="font-black text-[10px] uppercase text-right">Provisioned</TableHead>
                                                 <TableHead className="w-20"></TableHead>
                                             </TableRow>
@@ -282,10 +296,17 @@ export default function ServicesPage() {
                                                 const parentService = services?.find(s => s.id === log.serviceId);
                                                 const customOptions = parentService?.customStatuses || [];
                                                 const statusOptions = ['Pending', ...customOptions, 'Completed'];
+                                                const balance = log.priceCharged - (log.amountPaid || 0);
                                                 
                                                 return (
                                                     <TableRow key={log.id} className="group hover:bg-primary/5 transition-colors border-border/30">
-                                                        <TableCell className="font-bold pl-6">{log.serviceName}</TableCell>
+                                                        <TableCell className="pl-6">
+                                                            <div className="font-bold">{log.serviceName}</div>
+                                                            <Badge className={cn("mt-1 rounded-lg border font-black gap-1.5 px-2 py-0.5 text-[9px] uppercase", getStatusColor(log.status))}>
+                                                                {getStatusIcon(log.status)}
+                                                                {log.status}
+                                                            </Badge>
+                                                        </TableCell>
                                                         <TableCell className="cursor-pointer" onClick={() => handleClientClick(log)}>
                                                             {log.assignedToType === 'Lead' ? (
                                                                 <div className="flex items-center gap-2">
@@ -301,12 +322,18 @@ export default function ServicesPage() {
                                                                 </div>
                                                             )}
                                                         </TableCell>
-                                                        <TableCell className="font-black text-primary">{formatCurrency(log.priceCharged, currency)}</TableCell>
                                                         <TableCell>
-                                                            <Badge className={cn("rounded-lg border font-black gap-1.5 px-3 py-1 text-[10px]", getStatusColor(log.status))}>
-                                                                {getStatusIcon(log.status)}
-                                                                {log.status.toUpperCase()}
-                                                            </Badge>
+                                                            <div className="font-black text-primary text-xs">{formatCurrency(log.priceCharged, currency)}</div>
+                                                            <div className="text-[10px] font-bold text-muted-foreground mt-0.5">Rec: {formatCurrency(log.amountPaid || 0, currency)}</div>
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            {getPaymentBadge(log.paymentStatus)}
+                                                            {log.paymentMethod && log.paymentMethod !== 'N/A' && (
+                                                                <div className="text-[9px] font-black uppercase text-muted-foreground mt-1 flex items-center gap-1">
+                                                                    {log.paymentMethod === 'Cash' ? <Banknote className="h-2.5 w-2.5"/> : <CreditCard className="h-2.5 w-2.5"/>}
+                                                                    {log.paymentMethod}
+                                                                </div>
+                                                            )}
                                                         </TableCell>
                                                         <TableCell className="text-right text-[11px] font-bold text-muted-foreground">{format(new Date(log.created_at), 'PP')}</TableCell>
                                                         <TableCell className="text-right pr-6">
@@ -315,7 +342,7 @@ export default function ServicesPage() {
                                                                     <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full shadow-sm border border-transparent group-hover:border-border"><MoreHorizontal className="h-4 w-4" /></Button>
                                                                 </DropdownMenuTrigger>
                                                                 <DropdownMenuContent align="end" className="bg-background w-56">
-                                                                    <DropdownMenuLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Change Status</DropdownMenuLabel>
+                                                                    <DropdownMenuLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Workflow State</DropdownMenuLabel>
                                                                     <DropdownMenuSeparator />
                                                                     {statusOptions.map(opt => (
                                                                         <DropdownMenuItem 
@@ -327,6 +354,11 @@ export default function ServicesPage() {
                                                                             {opt}
                                                                         </DropdownMenuItem>
                                                                     ))}
+                                                                    <DropdownMenuSeparator />
+                                                                    <DropdownMenuLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Accounting</DropdownMenuLabel>
+                                                                    <DropdownMenuItem className="gap-2 font-bold text-emerald-600" onClick={() => { setSelectedLog(log); setIsPaymentOpen(true); }}>
+                                                                        <DollarSign className="h-4 w-4" /> Record Payment
+                                                                    </DropdownMenuItem>
                                                                     <DropdownMenuSeparator />
                                                                     <DropdownMenuItem className="text-destructive font-bold"><Trash2 className="mr-2 h-4 w-4" /> Remove Log</DropdownMenuItem>
                                                                 </DropdownMenuContent>
@@ -360,6 +392,14 @@ export default function ServicesPage() {
                     isOpen={isAssignOpen} 
                     setIsOpen={setIsAssignOpen} 
                     service={selectedService} 
+                />
+            )}
+
+            {selectedLog && (
+                <UpdateServicePaymentDialog 
+                    isOpen={isPaymentOpen}
+                    setIsOpen={setIsPaymentOpen}
+                    log={selectedLog}
                 />
             )}
 
