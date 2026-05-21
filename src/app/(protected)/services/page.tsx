@@ -148,6 +148,15 @@ export default function ServicesPage() {
         toast({ title: "Deleting service definition..." });
     };
 
+    const handleDeleteLog = (id: string) => {
+        if (!profile.agency_id) return;
+        const docRef = doc(firestore, 'agencies', profile.agency_id, 'providedServices', id);
+        deleteDoc(docRef).catch(() => {
+            toast({ title: "Deletion failed", variant: "destructive" });
+        });
+        toast({ title: "Removing entry from pipeline..." });
+    };
+
     const handleClientClick = (log: ProvidedService) => {
         if (log.assignedToType === 'Lead' && log.leadId) {
             const buyer = buyers?.find(b => b.id === log.leadId);
@@ -195,7 +204,7 @@ export default function ServicesPage() {
                         </div>
                         {log.tags && log.tags.length > 0 && (
                             <div className="mt-4 flex flex-wrap gap-1 border-t border-dashed pt-3">
-                                {log.tags.map(t => <Badge key={t} variant="outline" className="text-[8px] bg-primary/5 border-primary/20 text-primary font-bold px-1.5">{t}</Badge>)}
+                                {log.tags.map(t => <Badge key={t} variant="outline" className="text-[8px] bg-primary/5 border-primary/20 text-primary/70 font-bold px-1.5">{t}</Badge>)}
                             </div>
                         )}
                     </CardContent>
@@ -235,7 +244,9 @@ export default function ServicesPage() {
                     <DropdownMenuLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest flex items-center gap-1.5"><DollarSign className="h-3 w-3"/> Financials</DropdownMenuLabel>
                     <DropdownMenuItem className="gap-2 font-bold text-emerald-600" onClick={() => { setSelectedLog(log); setIsPaymentOpen(true); }}><DollarSign className="h-4 w-4" /> Record Payment</DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem className="text-destructive font-bold"><Trash2 className="mr-2 h-4 w-4" /> Remove Entry</DropdownMenuItem>
+                    <DropdownMenuItem className="text-destructive font-bold" onClick={() => handleDeleteLog(log.id)}>
+                        <Trash2 className="mr-2 h-4 w-4" /> Remove Entry
+                    </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
         );
@@ -257,8 +268,8 @@ export default function ServicesPage() {
 
             <Tabs defaultValue="directory" className="w-full">
                 <TabsList className="bg-muted/50 p-1 rounded-full grid grid-cols-2 max-w-sm mb-8 shadow-inner ring-1 ring-border/50">
-                    <TabsTrigger value="directory" className="rounded-full font-bold">Services</TabsTrigger>
-                    <TabsTrigger value="logs" className="rounded-full font-bold">Log History</TabsTrigger>
+                    <TabsTrigger value="directory" className="rounded-full font-bold">Service Directory</TabsTrigger>
+                    <TabsTrigger value="logs" className="rounded-full font-bold">Service Pipeline</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="directory" className="space-y-6">
@@ -340,7 +351,9 @@ export default function ServicesPage() {
                                                     <div className="mt-1">{getPaymentBadge(log.paymentStatus)}</div>
                                                 </TableCell>
                                                 <TableCell className="text-right text-[11px] font-bold text-muted-foreground">{format(new Date(log.created_at), 'PP')}</TableCell>
-                                                <TableCell className="text-right pr-6">{renderActionMenu(log)}</TableCell>
+                                                <TableCell className="text-right pr-6">
+                                                    {renderActionMenu(log)}
+                                                </TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>
