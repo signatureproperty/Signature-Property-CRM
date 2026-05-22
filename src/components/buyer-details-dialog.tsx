@@ -463,7 +463,7 @@ export function BuyerDetailsDialog({
 
       {/* Return Lead & A-Z Edit Verification Dialog */}
       <Dialog open={isReturnDialogOpen} onOpenChange={setIsReturnDialogOpen}>
-          <DialogContent className="sm:max-w-2xl w-full h-full sm:h-auto sm:max-h-[90vh] border-none shadow-3xl rounded-none sm:rounded-[2rem] overflow-hidden flex flex-col p-0">
+          <DialogContent className="sm:max-w-2xl w-full h-full sm:h-auto sm:max-h-[90vh] border-none shadow-3xl rounded-none sm:rounded-[2rem] overflow-hidden flex flex-col p-0 bg-background">
               <div className="p-6 sm:p-8 pb-4 shrink-0 border-b bg-background relative">
                   <DialogHeader>
                     <div className="flex items-center gap-4">
@@ -480,7 +480,7 @@ export function BuyerDetailsDialog({
                   </DialogHeader>
               </div>
 
-              <ScrollArea className="flex-1 min-h-0">
+              <div className="flex-1 overflow-y-auto min-h-0 touch-pan-y">
                   <div className="px-6 sm:px-8 py-6 space-y-8">
                       {/* Basic Info */}
                       <div className="space-y-4">
@@ -504,7 +504,7 @@ export function BuyerDetailsDialog({
                                   <Label className="text-[10px] font-bold uppercase opacity-60">City</Label>
                                   <Select value={returnDetails.city} onValueChange={v => setReturnDetails(p => ({...p, city: v}))}>
                                       <SelectTrigger className="h-10 rounded-xl"><SelectValue /></SelectTrigger>
-                                      <SelectContent className="rounded-xl shadow-2xl">
+                                      <SelectContent className="rounded-xl shadow-2xl border-none">
                                           {punjabCities.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                                       </SelectContent>
                                   </Select>
@@ -528,7 +528,7 @@ export function BuyerDetailsDialog({
                                   <Label className="text-[10px] font-bold uppercase opacity-60">Property Type</Label>
                                   <Select value={returnDetails.property_type_preference} onValueChange={v => setReturnDetails(p => ({...p, property_type_preference: v as any}))}>
                                       <SelectTrigger className="h-10 rounded-xl"><SelectValue /></SelectTrigger>
-                                      <SelectContent className="rounded-xl shadow-2xl">
+                                      <SelectContent className="rounded-xl shadow-2xl border-none">
                                           {propertyTypeValues.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                                       </SelectContent>
                                   </Select>
@@ -554,7 +554,7 @@ export function BuyerDetailsDialog({
                               </div>
                               <Select value={returnDetails.budget_max_unit} onValueChange={v => setReturnDetails(p => ({...p, budget_max_unit: v as any, budget_min_unit: v as any}))}>
                                   <SelectTrigger className="h-10 rounded-xl"><SelectValue /></SelectTrigger>
-                                  <SelectContent className="rounded-xl shadow-2xl">
+                                  <SelectContent className="rounded-xl shadow-2xl border-none">
                                       {priceUnitValues.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
                                   </SelectContent>
                               </Select>
@@ -570,7 +570,7 @@ export function BuyerDetailsDialog({
                               </div>
                               <Select value={returnDetails.size_max_unit} onValueChange={v => setReturnDetails(p => ({...p, size_max_unit: v as any, size_min_unit: v as any}))}>
                                   <SelectTrigger className="h-10 rounded-xl"><SelectValue /></SelectTrigger>
-                                  <SelectContent className="rounded-xl shadow-2xl">
+                                  <SelectContent className="rounded-xl shadow-2xl border-none">
                                       {sizeUnitValues.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
                                   </SelectContent>
                               </Select>
@@ -580,17 +580,17 @@ export function BuyerDetailsDialog({
                       <Separator className="opacity-40" />
 
                       {/* Final Notes */}
-                      <div className="space-y-2 pb-6">
+                      <div className="space-y-2 pb-10">
                           <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Final Feedback / Returning Notes</Label>
                           <Textarea 
                             value={returnDetails.notes}
                             onChange={e => setReturnDetails(prev => ({ ...prev, notes: e.target.value }))}
                             placeholder="Why are you returning this lead? Any special instructions?"
-                            className="rounded-2xl bg-muted/30 min-h-[120px] resize-none p-4"
+                            className="rounded-2xl bg-muted/30 min-h-[120px] resize-none p-4 focus-visible:ring-primary/20"
                           />
                       </div>
                   </div>
-              </ScrollArea>
+              </div>
 
               <DialogFooter className="p-4 sm:p-8 border-t bg-muted/10 shrink-0">
                   <div className="flex flex-col sm:flex-row w-full gap-3">
