@@ -37,6 +37,7 @@ import {
   MessageSquareText,
   User as UserIcon,
   Users,
+  X,
 } from 'lucide-react';
 import {
   DropdownMenu,
