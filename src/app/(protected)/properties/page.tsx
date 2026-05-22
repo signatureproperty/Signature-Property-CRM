@@ -919,7 +919,7 @@ function PropertiesPageContent() {
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-              {profile.role !== 'Agent' && (
+              {profile.role === 'Admin' && (
                 <Button className="rounded-full glowing-btn px-3 md:px-6" onClick={() => { setIsAddPropertyOpen(true); setPropertyToEdit(null); }}>
                   <PlusCircle className="h-4 w-4" />
                   <span className="hidden md:inline ml-2">Add Property</span>
@@ -1037,30 +1037,32 @@ function PropertiesPageContent() {
                 </div>
 
                 {/* --- Agent Selection Filter --- */}
-                <div className="flex items-center gap-3 pb-2">
-                    <div className="flex items-center gap-2 bg-card/60 backdrop-blur-sm border border-primary/10 rounded-full px-4 py-1.5 shadow-sm">
-                        <Users className="h-4 w-4 text-primary" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Assigned Agent:</span>
-                        <Select value={activeAgentFilter} onValueChange={setActiveAgentFilter}>
-                            <SelectTrigger className="h-7 border-none bg-transparent focus:ring-0 text-xs font-bold w-[180px] p-0 shadow-none">
-                                <SelectValue placeholder="All Agency Inventory" />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl shadow-2xl border-none">
-                                <SelectItem value="All" className="font-bold">All Agency Inventory</SelectItem>
-                                {activeAgents.map((agent: any) => (
-                                    <SelectItem key={agent.id} value={agent.user_id || agent.id}>
-                                        {agent.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                {profile.role === 'Admin' && (
+                    <div className="flex items-center gap-3 pb-2">
+                        <div className="flex items-center gap-2 bg-card/60 backdrop-blur-sm border border-primary/10 rounded-full px-4 py-1.5 shadow-sm">
+                            <Users className="h-4 w-4 text-primary" />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Assigned Agent:</span>
+                            <Select value={activeAgentFilter} onValueChange={setActiveAgentFilter}>
+                                <SelectTrigger className="h-7 border-none bg-transparent focus:ring-0 text-xs font-bold w-[180px] p-0 shadow-none">
+                                    <SelectValue placeholder="All Agency Inventory" />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl shadow-2xl border-none">
+                                    <SelectItem value="All" className="font-bold">All Agency Inventory</SelectItem>
+                                    {activeAgents.map((agent: any) => (
+                                        <SelectItem key={agent.id} value={agent.user_id || agent.id}>
+                                            {agent.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        {activeAgentFilter !== 'All' && (
+                            <Button variant="ghost" size="sm" onClick={() => setActiveAgentFilter('All')} className="h-8 rounded-full text-[10px] font-black uppercase tracking-tighter hover:bg-destructive/10 hover:text-destructive">
+                                <X className="h-3 w-3 mr-1" /> Clear Filter
+                            </Button>
+                        )}
                     </div>
-                    {activeAgentFilter !== 'All' && (
-                        <Button variant="ghost" size="sm" onClick={() => setActiveAgentFilter('All')} className="h-8 rounded-full text-[10px] font-black uppercase tracking-tighter hover:bg-destructive/10 hover:text-destructive">
-                            <X className="h-3 w-3 mr-1" /> Clear Filter
-                        </Button>
-                    )}
-                </div>
+                )}
             </div>
           </Card>
 

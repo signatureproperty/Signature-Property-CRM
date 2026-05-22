@@ -41,7 +41,7 @@ function AuthGuard({ children }: { children: ReactNode }) {
         console.error("Error resending verification email:", error);
         toast({ title: 'Error', description: 'Could not send email. Please try again later.', variant: 'destructive' });
       } finally {
-        setIsResending(false);
+        setResending(false);
       }
   }
 
@@ -68,7 +68,7 @@ function AuthGuard({ children }: { children: ReactNode }) {
       return <>{children}</>;
   }
 
-  const agentForbiddenPaths = ['/team', '/analytics', '/reports', '/finance'];
+  const agentForbiddenPaths = ['/team', '/analytics', '/reports', '/finance', '/services'];
   const recorderForbiddenPaths = [
     '/team', '/upgrade', '/buyers', '/analytics', '/reports', '/tools', 
     '/follow-ups', '/appointments', '/activities', '/trash', '/settings', 
