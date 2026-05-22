@@ -795,18 +795,33 @@ function PropertiesPageContent() {
               {selectedProperties.length > 0 && profile.role === 'Admin' && (
                 <div className="flex items-center gap-2">
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild><Button variant="outline" className="rounded-full"><UserPlus className="mr-2 h-4 w-4" /> Assign</Button></DropdownMenuTrigger>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="rounded-full px-3 md:px-4">
+                            <UserPlus className="h-4 w-4" />
+                            <span className="hidden md:inline ml-2">Assign</span>
+                        </Button>
+                    </DropdownMenuTrigger>
                     <DropdownMenuContent className="bg-background">{teamMembers?.filter((m: any) => m.status === 'Active' && (m.role === 'Agent' || m.role === 'Admin')).map((member: any) => <DropdownMenuItem key={member.id} onSelect={() => handleBulkAssign(member.id) as any}>{member.name}</DropdownMenuItem>)}</DropdownMenuContent>
                   </DropdownMenu>
                   {anySelectedIsAssigned && (
-                    <Button variant="outline" className="rounded-full text-destructive border-destructive/20 hover:bg-destructive/5" onClick={handleBulkUnassign}><UserMinus className="mr-2 h-4 w-4" /> Unassign ({selectedProperties.length})</Button>
+                    <Button variant="outline" className="rounded-full text-destructive border-destructive/20 hover:bg-destructive/5 px-3 md:px-4" onClick={handleBulkUnassign}>
+                        <UserMinus className="h-4 w-4" />
+                        <span className="hidden md:inline ml-2">Unassign ({selectedProperties.length})</span>
+                    </Button>
                   )}
-                  <Button variant="destructive" className="rounded-full" onClick={handleBulkDelete}><Trash2 className="mr-2 h-4 w-4" /> Delete ({selectedProperties.length})</Button>
+                  <Button variant="destructive" className="rounded-full px-3 md:px-4" onClick={handleBulkDelete}>
+                    <Trash2 className="h-4 w-4" />
+                    <span className="hidden md:inline ml-2">Delete ({selectedProperties.length})</span>
+                  </Button>
                 </div>
               )}
               <AlertDialog open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
                 <AlertDialogTrigger asChild>
-                  <Button variant="outline" className="rounded-full"><Filter className="mr-2 h-4 w-4" /> Filters {filters.area.length > 0 ? `(${filters.area.length})` : ''}</Button>
+                  <Button variant="outline" className="rounded-full px-3 md:px-4">
+                    <Filter className="h-4 w-4" />
+                    <span className="hidden md:inline ml-2">Filters</span>
+                    {filters.area.length > 0 && <span className="ml-1 text-xs">({filters.area.length})</span>}
+                  </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent className="max-w-md bg-background">
                   <AlertDialogHeader><AlertDialogTitle>Refine Property Search</AlertDialogTitle></AlertDialogHeader>
@@ -905,8 +920,9 @@ function PropertiesPageContent() {
                 </AlertDialogContent>
               </AlertDialog>
               {profile.role !== 'Agent' && (
-                <Button className="rounded-full glowing-btn" onClick={() => { setIsAddPropertyOpen(true); setPropertyToEdit(null); }}>
-                  <PlusCircle className="mr-2 h-4 w-4" /> Add Property
+                <Button className="rounded-full glowing-btn px-3 md:px-6" onClick={() => { setIsAddPropertyOpen(true); setPropertyToEdit(null); }}>
+                  <PlusCircle className="h-4 w-4" />
+                  <span className="hidden md:inline ml-2">Add Property</span>
                 </Button>
               )}
             </div>

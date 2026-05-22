@@ -754,8 +754,9 @@ function BuyersPageContent() {
                         <div className="flex items-center gap-2">
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                <Button variant="outline" className="rounded-full">
-                                    <UserPlus className="mr-2 h-4 w-4" /> Assign
+                                <Button variant="outline" className="rounded-full px-3 md:px-4">
+                                    <UserPlus className="h-4 w-4" />
+                                    <span className="hidden md:inline ml-2">Assign</span>
                                 </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent className="bg-background">
@@ -767,18 +768,24 @@ function BuyersPageContent() {
                                 </DropdownMenuContent>
                             </DropdownMenu>
                             {anySelectedIsAssigned && (
-                                <Button variant="outline" className="rounded-full text-destructive border-destructive/20 hover:bg-destructive/5" onClick={handleBulkUnassign}>
-                                    <UserMinus className="mr-2 h-4 w-4" /> Unassign ({selectedBuyers.length})
+                                <Button variant="outline" className="rounded-full text-destructive border-destructive/20 hover:bg-destructive/5 px-3 md:px-4" onClick={handleBulkUnassign}>
+                                    <UserMinus className="h-4 w-4" />
+                                    <span className="hidden md:inline ml-2">Unassign ({selectedBuyers.length})</span>
                                 </Button>
                             )}
-                            <Button variant="destructive" className="rounded-full" onClick={handleBulkDelete}>
-                                <Trash2 className="mr-2 h-4 w-4" /> Delete ({selectedBuyers.length})
+                            <Button variant="destructive" className="rounded-full px-3 md:px-4" onClick={handleBulkDelete}>
+                                <Trash2 className="h-4 w-4" />
+                                <span className="hidden md:inline ml-2">Delete ({selectedBuyers.length})</span>
                             </Button>
                         </div>
                     )}
                     <AlertDialog open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
                         <AlertDialogTrigger asChild>
-                            <Button variant="outline" className="rounded-full"><Filter className="mr-2 h-4 w-4" /> Filters {filters.area.length > 0 ? `(${filters.area.length})` : ''}</Button>
+                            <Button variant="outline" className="rounded-full px-3 md:px-4">
+                                <Filter className="h-4 w-4" />
+                                <span className="hidden md:inline ml-2">Filters</span>
+                                {filters.area.length > 0 && <span className="ml-1 text-xs">({filters.area.length})</span>}
+                            </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent className="max-w-md bg-background">
                             <AlertDialogHeader><AlertDialogTitle>Refine Buyer Search</AlertDialogTitle></AlertDialogHeader>
@@ -835,7 +842,10 @@ function BuyersPageContent() {
                             </AlertDialogFooter>
                         </AlertDialogContent>
                     </AlertDialog>
-                    <Button className="rounded-full glowing-btn" onClick={() => { setBuyerToEdit(null); setIsAddBuyerOpen(true); }}><PlusCircle className="mr-2 h-4 w-4" /> Add Buyer</Button>
+                    <Button className="rounded-full glowing-btn px-3 md:px-6" onClick={() => { setBuyerToEdit(null); setIsAddBuyerOpen(true); }}>
+                        <PlusCircle className="h-4 w-4" />
+                        <span className="hidden md:inline ml-2">Add Buyer</span>
+                    </Button>
                 </div>
             </div>
 
