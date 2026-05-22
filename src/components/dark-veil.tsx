@@ -27,6 +27,7 @@ export default function DarkVeil({
     // Dynamic import to ensure ogl is only loaded on the client
     const initGL = async () => {
         try {
+            // @ts-ignore
             const { Renderer } = await import('ogl');
             const renderer = new Renderer({ canvas: ref.current!, antialias: true });
             const gl = renderer.gl;
