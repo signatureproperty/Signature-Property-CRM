@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -93,11 +93,11 @@ export function AssignPropertyToAgentDialog({ property, isOpen, setIsOpen }: Ass
         batch.update(propRef, { assignedTo: arrayUnion(selectedAgentId) });
 
         // 2. Assign selected Buyers to Agent (Buyers are exclusive)
+        // FIX: Removed forced status change to 'Interested' to preserve original agency tags/status
         selectedBuyerIds.forEach(buyerId => {
             const buyerRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', buyerId);
             batch.update(buyerRef, { 
-                assignedTo: selectedAgentId,
-                status: 'Interested' // Automatically set to interested when assigned for a specific property
+                assignedTo: selectedAgentId
             });
         });
 
@@ -126,7 +126,7 @@ export function AssignPropertyToAgentDialog({ property, isOpen, setIsOpen }: Ass
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0 border-none shadow-3xl overflow-hidden rounded-[2rem]">
         <div className="p-6 pb-2">
             <DialogHeader>
                 <div className="flex items-center gap-3">
@@ -153,7 +153,7 @@ export function AssignPropertyToAgentDialog({ property, isOpen, setIsOpen }: Ass
                             <SelectItem key={agent.user_id || agent.id} value={agent.user_id || agent.id}>
                                 <div className="flex items-center gap-2">
                                     <span className="font-bold">{agent.name}</span>
-                                    <Badge variant="outline" className="text-[9px] uppercase tracking-tighter h-4 px-1">{agent.role}</Badge>
+                                    <Badge variant="outline" className="text-[9px] uppercase tracking-tighter h-4 px-1 font-bold">{agent.role}</Badge>
                                 </div>
                             </SelectItem>
                         ))}
@@ -178,7 +178,7 @@ export function AssignPropertyToAgentDialog({ property, isOpen, setIsOpen }: Ass
                     )}
                 </div>
 
-                <div className="flex-1 border rounded-2xl bg-muted/5 overflow-hidden">
+                <div className="flex-1 border rounded-2xl bg-muted/5 overflow-hidden ring-1 ring-border/50">
                     <ScrollArea className="h-[40vh]">
                         <div className="p-2 space-y-2">
                             {matchingBuyers.length > 0 ? matchingBuyers.map(buyer => (
@@ -186,7 +186,7 @@ export function AssignPropertyToAgentDialog({ property, isOpen, setIsOpen }: Ass
                                     key={buyer.id}
                                     className={cn(
                                         "flex items-start gap-4 p-4 rounded-xl border transition-all cursor-pointer group",
-                                        selectedBuyerIds.includes(buyer.id) ? "bg-primary/5 border-primary shadow-sm" : "hover:bg-accent border-transparent"
+                                        selectedBuyerIds.includes(buyer.id) ? "bg-primary/5 border-primary shadow-sm" : "hover:bg-accent border-transparent bg-background"
                                     )}
                                     onClick={() => handleToggleBuyer(buyer.id)}
                                 >
@@ -219,14 +219,14 @@ export function AssignPropertyToAgentDialog({ property, isOpen, setIsOpen }: Ass
             </div>
         </div>
 
-        <DialogFooter className="p-6 border-t bg-muted/5 mt-4">
-            <Button variant="ghost" onClick={() => setIsOpen(false)} className="rounded-xl h-11 px-6">Cancel</Button>
+        <DialogFooter className="p-6 border-t bg-muted/5 mt-4 flex items-center justify-end">
+            <Button variant="ghost" onClick={() => setIsOpen(false)} className="rounded-xl h-11 px-6 font-bold">Cancel</Button>
             <Button 
                 onClick={handleAssign} 
                 disabled={!selectedAgentId || isSubmitting} 
                 className="rounded-xl h-11 px-10 font-bold glowing-btn flex-1 sm:flex-none"
             >
-                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
                 Assign {selectedBuyerIds.length > 0 ? `with ${selectedBuyerIds.length} Buyers` : 'Property Only'}
             </Button>
         </DialogFooter>
