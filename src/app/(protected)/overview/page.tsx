@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useMemo, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
@@ -8,7 +7,7 @@ import {
     CheckCircle, Video, PlayCircle, Gem, ArrowRight, 
     VideoOff, Circle, Clock, History, FilePlus, UserPlus, Edit, ArrowUpRight,
     Plus, MessageSquareText, Calendar, MapPin, User, MessageSquare, Eye,
-    Briefcase, Trash2
+    Briefcase, Trash2, Undo2
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useProfile } from '@/context/profile-context';
@@ -299,7 +298,8 @@ export default function OverviewPage() {
             newProps30d,
             newBuyers30d,
             interested: activeBuyers.filter(b => b.status === 'Interested').length,
-            upcomingAppts: (allAppointments || []).filter(a => a.status === 'Scheduled' && new Date(a.date) >= now).length
+            upcomingAppts: (allAppointments || []).filter(a => a.status === 'Scheduled' && new Date(a.date) >= now).length,
+            returnedLeads: activeBuyers.filter(b => b.tags?.includes('Returned') && !b.assignedTo).length
         };
     }, [properties, buyers, allAppointments, last30DaysStart, now]);
 
@@ -311,6 +311,18 @@ export default function OverviewPage() {
         { title: "Revenue (30d)", value: formatCurrency(stats.revenue, currency, { notation: 'compact' }), change: `From ${stats.soldCount} deals`, icon: <DollarSign className="h-5 w-5" />, color: "bg-amber-500/10 text-amber-600", href: "/reports", isLoading },
         { title: "Interested", value: stats.interested, change: "Hot leads", icon: <Star className="h-5 w-5" />, color: "bg-purple-500/10 text-purple-600", href: "/buyers?status=Interested", isLoading },
     ];
+
+    if (!isAgent && !isRecorder) {
+        statCards.push({
+            title: "Returned Leads",
+            value: stats.returnedLeads,
+            change: "From Agents",
+            icon: <Undo2 className="h-5 w-5" />,
+            color: "bg-red-500/10 text-red-600",
+            href: "/buyers",
+            isLoading
+        });
+    }
 
     if (isRecorder) {
         const assigned = properties || [];

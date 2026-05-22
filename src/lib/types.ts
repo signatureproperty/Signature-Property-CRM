@@ -220,6 +220,10 @@ export type Buyer = {
     }[];
     deal_lost_date?: string; // New field
     tags?: string[];
+    // Return tracking
+    returned_by_id?: string;
+    returned_by_name?: string;
+    returned_at?: string;
 };
 
 export type FollowUpStatus = 'Scheduled' | 'Completed';

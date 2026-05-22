@@ -13,6 +13,8 @@ import { Buyer, PriceUnit, SizeUnit, PropertyType } from '@/lib/types';
 import { ScrollArea } from './ui/scroll-area';
 import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
+import { SharePropertyDialog } from './share-property-dialog';
+import { useState, useEffect } from 'react';
 import { 
   Home, 
   Tag, 
@@ -38,7 +40,6 @@ import {
 } from 'lucide-react';
 import { useCurrency } from '@/context/currency-context';
 import { formatCurrency, formatUnit } from '@/lib/formatters';
-import { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import {
   AlertDialog,
@@ -64,7 +65,6 @@ import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Checkbox } from './ui/checkbox';
 import { punjabCities } from '@/lib/data';
-import { SharePropertyDialog } from './share-property-dialog';
 
 const propertyTypeValues = [
     'House', 'Flat', 'Farm House', 'Penthouse', 'Plot', 'Residential Plot', 'Commercial Plot', 'Agricultural Land', 'Industrial Land', 'Office', 'Shop', 'Warehouse', 'Factory', 'Building', 'Residential Property', 'Commercial Property', 'Semi Commercial', 'Other'
@@ -234,17 +234,22 @@ export function BuyerDetailsDialog({
             returnDetails.budget_max_amount !== (buyer.budget_max_amount || 0) ||
             returnDetails.notes !== (buyer.notes || '');
 
+        const currentTags = buyer.tags || [];
         const updateData: any = { 
             assignedTo: null,
-            ...returnDetails
+            ...returnDetails,
+            returned_by_id: profile.user_id,
+            returned_by_name: profile.name,
+            returned_at: new Date().toISOString(),
+            tags: Array.from(new Set([...currentTags, 'Returned']))
         };
 
         await updateDoc(buyerRef, updateData);
         
         const activityLogRef = collection(firestore, 'agencies', profile.agency_id, 'activityLogs');
         const actionText = hasChanges 
-            ? 'updated details and returned the lead back to agency pool' 
-            : 'returned the lead back to agency pool';
+            ? `updated details and returned lead ${buyer.serial_no} back to agency pool` 
+            : `returned lead ${buyer.serial_no} back to agency pool`;
 
         await addDoc(activityLogRef, {
             userName: profile.name,
@@ -286,6 +291,9 @@ export function BuyerDetailsDialog({
                         </Badge>
                         {buyer.is_investor && (
                             <Badge className="bg-indigo-600 text-white border-0 text-[10px] font-bold px-2 py-0.5">Investor</Badge>
+                        )}
+                        {buyer.tags?.includes('Returned') && (
+                            <Badge className="bg-red-500 text-white border-0 text-[10px] font-black px-2 py-0.5">Returned</Badge>
                         )}
                     </div>
                 </div>
