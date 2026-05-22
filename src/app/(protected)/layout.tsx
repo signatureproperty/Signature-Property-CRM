@@ -41,7 +41,7 @@ function AuthGuard({ children }: { children: ReactNode }) {
         console.error("Error resending verification email:", error);
         toast({ title: 'Error', description: 'Could not send email. Please try again later.', variant: 'destructive' });
       } finally {
-        setResending(false);
+        setIsResending(false);
       }
   }
 
@@ -94,6 +94,7 @@ function AuthGuard({ children }: { children: ReactNode }) {
                     <div className="mx-auto bg-destructive/10 w-12 h-12 rounded-full flex items-center justify-center mb-4">
                         <ShieldAlert className="text-destructive h-6 w-6" />
                     </div>
+                    <CardTitle className="text-xl font-bold font-headline">Access Denied</CardTitle>
                     <CardTitle className="text-xl font-bold font-headline">Access Denied</CardTitle>
                     <CardDescription className="text-sm font-medium">
                         {message}

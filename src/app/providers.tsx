@@ -1,13 +1,19 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/toaster';
 import { FirebaseProvider } from '@/firebase/provider';
 import { initializeFirebase } from '@/firebase';
 
 export function Providers({ children }: { children: React.ReactNode }) {
-    // Initialize Firebase once on the client side to avoid chunk loading conflicts
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    // Initialize Firebase once on the client side
     const firebaseServices = useMemo(() => {
         return initializeFirebase();
     }, []);
@@ -25,8 +31,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
                 firestore={firebaseServices.firestore}
                 storage={firebaseServices.storage}
             >
-                {children}
-                <Toaster />
+                {mounted ? (
+                    <>
+                        {children}
+                        <Toaster />
+                    </>
+                ) : (
+                    <div className="bg-background min-h-screen" />
+                )}
             </FirebaseProvider>
         </ThemeProvider>
     );
