@@ -579,9 +579,11 @@ function BuyersPageContent() {
                                             <DropdownMenuItem onSelect={(e: any) => handleWhatsAppChat(e, buyer) as any}><MessageSquare className="mr-2 h-4 w-4" /> WhatsApp Chat</DropdownMenuItem>
                                             <DropdownMenuItem onSelect={() => handleSetAppointment(buyer) as any}><CalendarPlus className="mr-2 h-4 w-4" /> Set Appointment</DropdownMenuItem>
                                             
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem onSelect={() => handleEdit(buyer) as any}><Edit className="mr-2 h-4 w-4" /> Edit Details</DropdownMenuItem>
+                                            
                                             {profile.role === 'Admin' && (
                                                 <>
-                                                    <DropdownMenuSeparator />
                                                     <DropdownMenuItem onSelect={() => handleSimpleAssignOpen(buyer)} className="font-bold text-primary">
                                                         <UserPlus className="mr-2 h-4 w-4" /> Direct Assign Agent
                                                     </DropdownMenuItem>
@@ -593,13 +595,8 @@ function BuyersPageContent() {
                                                             <UserMinus className="mr-2 h-4 w-4" /> Unassign Agent
                                                         </DropdownMenuItem>
                                                     )}
+                                                    <DropdownMenuItem onSelect={() => handleDelete(buyer) as any} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete Buyer</DropdownMenuItem>
                                                 </>
-                                            )}
-                                            {profile.role === 'Admin' && (
-                                                <DropdownMenuItem onSelect={() => handleEdit(buyer) as any}><Edit className="mr-2 h-4 w-4" /> Edit Details</DropdownMenuItem>
-                                            )}
-                                            {profile.role === 'Admin' && (
-                                                <DropdownMenuItem onSelect={() => handleDelete(buyer) as any} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete Buyer</DropdownMenuItem>
                                             )}
                                         </DropdownMenuContent>
                                     </DropdownMenu>
@@ -711,9 +708,11 @@ function BuyersPageContent() {
                                 <DropdownMenuItem onSelect={(e: any) => handleWhatsAppChat(e as any, buyer) as any}><MessageSquare className="mr-2 h-4 w-4" /> WhatsApp Chat</DropdownMenuItem>
                                 <DropdownMenuItem onSelect={() => handleSetAppointment(buyer) as any}><CalendarPlus className="mr-2 h-4 w-4" /> Set Appointment</DropdownMenuItem>
                                 
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onSelect={() => handleEdit(buyer) as any}><Edit className="mr-2 h-4 w-4" /> Edit Details</DropdownMenuItem>
+                                
                                 {profile.role === 'Admin' && (
                                     <>
-                                        <DropdownMenuSeparator />
                                         <DropdownMenuItem onSelect={() => handleSimpleAssignOpen(buyer)} className="font-bold text-primary">
                                             <UserPlus className="mr-2 h-4 w-4" /> Direct Assign Agent
                                         </DropdownMenuItem>
@@ -725,13 +724,8 @@ function BuyersPageContent() {
                                                 <UserMinus className="mr-2 h-4 w-4" /> Unassign Agent
                                             </DropdownMenuItem>
                                         )}
+                                        <DropdownMenuItem onSelect={() => handleDelete(buyer) as any} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete Buyer</DropdownMenuItem>
                                     </>
-                                )}
-                                {profile.role === 'Admin' && (
-                                    <DropdownMenuItem onSelect={() => handleEdit(buyer) as any}><Edit className="mr-2 h-4 w-4" /> Edit Details</DropdownMenuItem>
-                                )}
-                                {profile.role === 'Admin' && (
-                                    <DropdownMenuItem onSelect={() => handleDelete(buyer) as any} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete Buyer</DropdownMenuItem>
                                 )}
                             </DropdownMenuContent>
                         </DropdownMenu>
