@@ -356,138 +356,192 @@ export default function OverviewPage() {
                 {statCards.map(card => <StatCard key={card.title} {...card} />)}
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-                <div className="xl:col-span-2 space-y-8">
-                    <PerformanceChart properties={properties || []} />
-                    
-                    {/* Latest Remarks Section */}
-                    <Card className="border-none shadow-xl bg-card/60 backdrop-blur-sm rounded-2xl overflow-hidden">
-                        <CardHeader className="pb-3 border-b border-border/30">
-                            <div className="flex items-center justify-between">
-                                <CardTitle className="text-sm font-black uppercase tracking-wider flex items-center gap-2">
-                                    <MessageSquareText className="h-4 w-4 text-primary" /> Latest Lead Remarks
-                                </CardTitle>
-                                <span className="text-[10px] font-bold text-muted-foreground uppercase">Real-time Feed</span>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="p-0">
-                            <ScrollArea className="h-[300px]">
-                                {latestRemarks.length > 0 ? (
-                                    <div className="divide-y divide-border/30">
-                                        {latestRemarks.map((remark) => (
-                                            <div 
-                                                key={remark.id} 
-                                                className="p-4 hover:bg-primary/5 transition-colors cursor-pointer group"
-                                                onClick={() => handleRemarkClick(remark)}
-                                            >
-                                                <div className="flex items-start justify-between gap-4">
-                                                    <div className="flex-1">
-                                                        <div className="flex items-center gap-2 mb-1">
-                                                            <span className="font-bold text-xs">{remark.authorName}</span>
-                                                            <Badge variant="outline" className="text-[9px] uppercase h-4 px-1">{remark.authorRole}</Badge>
-                                                            <span className="text-[10px] text-muted-foreground ml-auto">
-                                                                {mounted ? formatDistanceToNow(new Date(remark.timestamp), { addSuffix: true }) : '...'}
-                                                            </span>
-                                                            {profile.role === 'Admin' && (
-                                                                <Button 
-                                                                    size="icon" 
-                                                                    variant="ghost" 
-                                                                    className="h-6 w-6 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-all"
-                                                                    onClick={(e) => { e.stopPropagation(); handleDeleteRemark(remark); }}
-                                                                >
-                                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                                </Button>
-                                                            )}
-                                                        </div>
-                                                        <p className="text-sm text-foreground mb-2 leading-relaxed line-clamp-2">"{remark.text}"</p>
-                                                        <div className="inline-flex items-center gap-1.5 text-[10px] font-black text-primary hover:underline uppercase tracking-wider">
-                                                            {remark.leadType === 'Buyer' ? <Briefcase className="h-3 w-3" /> : <Building2 className="h-3 w-3" />}
-                                                            {remark.leadSerial}: {remark.leadName}
+            {/* Dashboard Content filtered by Role */}
+            {!isAgent ? (
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                    <div className="xl:col-span-2 space-y-8">
+                        <PerformanceChart properties={properties || []} />
+                        
+                        {/* Latest Remarks Section */}
+                        <Card className="border-none shadow-xl bg-card/60 backdrop-blur-sm rounded-2xl overflow-hidden">
+                            <CardHeader className="pb-3 border-b border-border/30">
+                                <div className="flex items-center justify-between">
+                                    <CardTitle className="text-sm font-black uppercase tracking-wider flex items-center gap-2">
+                                        <MessageSquareText className="h-4 w-4 text-primary" /> Latest Lead Remarks
+                                    </CardTitle>
+                                    <span className="text-[10px] font-bold text-muted-foreground uppercase">Real-time Feed</span>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="p-0">
+                                <ScrollArea className="h-[300px]">
+                                    {latestRemarks.length > 0 ? (
+                                        <div className="divide-y divide-border/30">
+                                            {latestRemarks.map((remark) => (
+                                                <div 
+                                                    key={remark.id} 
+                                                    className="p-4 hover:bg-primary/5 transition-colors cursor-pointer group"
+                                                    onClick={() => handleRemarkClick(remark)}
+                                                >
+                                                    <div className="flex items-start justify-between gap-4">
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <span className="font-bold text-xs">{remark.authorName}</span>
+                                                                <Badge variant="outline" className="text-[9px] uppercase h-4 px-1">{remark.authorRole}</Badge>
+                                                                <span className="text-[10px] text-muted-foreground ml-auto">
+                                                                    {mounted ? formatDistanceToNow(new Date(remark.timestamp), { addSuffix: true }) : '...'}
+                                                                </span>
+                                                                {profile.role === 'Admin' && (
+                                                                    <Button 
+                                                                        size="icon" 
+                                                                        variant="ghost" 
+                                                                        className="h-6 w-6 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-all"
+                                                                        onClick={(e) => { e.stopPropagation(); handleDeleteRemark(remark); }}
+                                                                    >
+                                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                                    </Button>
+                                                                )}
+                                                            </div>
+                                                            <p className="text-sm text-foreground mb-2 leading-relaxed line-clamp-2">"{remark.text}"</p>
+                                                            <div className="inline-flex items-center gap-1.5 text-[10px] font-black text-primary hover:underline uppercase tracking-wider">
+                                                                {remark.leadType === 'Buyer' ? <Briefcase className="h-3 w-3" /> : <Building2 className="h-3 w-3" />}
+                                                                {remark.leadSerial}: {remark.leadName}
+                                                            </div>
                                                         </div>
                                                     </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground opacity-40">
+                                            <MessageSquareText className="h-10 w-10 mb-2" />
+                                            <p className="text-xs font-bold uppercase tracking-widest">No remarks yet</p>
+                                        </div>
+                                    )}
+                                </ScrollArea>
+                            </CardContent>
+                        </Card>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <LeadsChart properties={properties || []} buyers={buyers || []} />
+                            <SalesBreakdownChart properties={properties || []} />
+                        </div>
+                    </div>
+
+                    <div className="space-y-8">
+                        <UpcomingEvents 
+                            appointments={allAppointments || []} 
+                            isLoading={isAppointmentsLoading}
+                            onAddAppointment={() => setIsAppointmentOpen(true)}
+                            onAddEvent={() => setIsEventOpen(true)}
+                            onUpdateStatus={async (a, s) => { 
+                                if (!profile.agency_id) return;
+                                await setDoc(doc(firestore, 'agencies', profile.agency_id, 'appointments', a.id), { status: s }, { merge: true });
+                                toast({ title: `Marked as ${s}` });
+                            }}
+                            onDelete={async (a) => {
+                                if (!profile.agency_id) return;
+                                await deleteDoc(doc(firestore, 'agencies', profile.agency_id, 'appointments', a.id));
+                                toast({ title: 'Appointment Deleted' });
+                            }}
+                            onAddToCalendar={(e, a) => {
+                                const start = format(new Date(`${a.date}T${a.time}`), "yyyyMMdd'T'HHmmss");
+                                const end = format(new Date(`${a.date}T${a.time}`), "yyyyMMdd'T'HHmmss"); 
+                                window.open(`https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(a.contactName)}&dates=${start}/${end}&details=${encodeURIComponent(a.message)}`, '_blank');
+                            }}
+                            onAllEventsClick={() => setIsAllEventsOpen(true)}
+                            onViewDetails={(a) => setSelectedApptForDetails(a)}
+                        />
+
+                        <Card className="border-none shadow-xl bg-card/60 backdrop-blur-sm rounded-2xl overflow-hidden">
+                            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                <CardTitle className="text-sm font-black uppercase tracking-wider flex items-center gap-2">
+                                    <History className="h-4 w-4 text-primary" /> Recent Actions
+                                </CardTitle>
+                                <Link href="/activities" className="text-[10px] font-bold text-primary hover:underline">VIEW ALL</Link>
+                            </CardHeader>
+                            <CardContent className="p-0">
+                                {isActivitiesLoading ? (
+                                    <div className="p-4 space-y-4">
+                                        {[1, 2, 3].map(i => <Skeleton key={i} className="h-12 w-full rounded-xl" />)}
+                                    </div>
+                                ) : !activities || activities.length === 0 ? (
+                                    <p className="text-center text-xs text-muted-foreground py-10">No recent activity.</p>
+                                ) : (
+                                    <div className="divide-y divide-border/30">
+                                        {activities.map(act => (
+                                            <div key={act.id} className="p-4 flex items-start gap-3 hover:bg-accent/30 transition-colors">
+                                                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+                                                    {getActionIcon(act.action)}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-xs font-bold truncate">
+                                                        {act.userName} <span className="font-normal text-muted-foreground">{act.action}</span>
+                                                    </p>
+                                                    <p className="text-[10px] font-medium text-primary/80 truncate mt-0.5">{act.target}</p>
+                                                    <p className="text-[9px] text-muted-foreground mt-1 uppercase font-bold tracking-tighter">
+                                                        {mounted ? format(new Date(act.timestamp), 'p') : '...'}
+                                                    </p>
                                                 </div>
                                             </div>
                                         ))}
                                     </div>
-                                ) : (
-                                    <div className="flex flex-col items-center justify-center py-20 text-muted-foreground opacity-40">
-                                        <MessageSquareText className="h-10 w-10 mb-2" />
-                                        <p className="text-xs font-bold uppercase tracking-widest">No remarks yet</p>
-                                    </div>
                                 )}
-                            </ScrollArea>
-                        </CardContent>
-                    </Card>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <LeadsChart properties={properties || []} buyers={buyers || []} />
-                        <SalesBreakdownChart properties={properties || []} />
+                            </CardContent>
+                        </Card>
                     </div>
                 </div>
+            ) : (
+                /* Simplified Agent View: Only Planner and Welcome Card */
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="lg:col-span-2">
+                        <UpcomingEvents 
+                            appointments={allAppointments || []} 
+                            isLoading={isAppointmentsLoading}
+                            onAddAppointment={() => setIsAppointmentOpen(true)}
+                            onAddEvent={() => setIsEventOpen(true)}
+                            onUpdateStatus={async (a, s) => { 
+                                if (!profile.agency_id) return;
+                                await setDoc(doc(firestore, 'agencies', profile.agency_id, 'appointments', a.id), { status: s }, { merge: true });
+                                toast({ title: `Marked as ${s}` });
+                            }}
+                            onDelete={async (a) => {
+                                if (!profile.agency_id) return;
+                                await deleteDoc(doc(firestore, 'agencies', profile.agency_id, 'appointments', a.id));
+                                toast({ title: 'Appointment Deleted' });
+                            }}
+                            onAddToCalendar={(e, a) => {
+                                const start = format(new Date(`${a.date}T${a.time}`), "yyyyMMdd'T'HHmmss");
+                                const end = format(new Date(`${a.date}T${a.time}`), "yyyyMMdd'T'HHmmss"); 
+                                window.open(`https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(a.contactName)}&dates=${start}/${end}&details=${encodeURIComponent(a.message)}`, '_blank');
+                            }}
+                            onAllEventsClick={() => setIsAllEventsOpen(true)}
+                            onViewDetails={(a) => setSelectedApptForDetails(a)}
+                        />
+                    </div>
+                    <div className="space-y-6">
+                        <Card className="border-none shadow-xl bg-gradient-to-br from-primary/10 to-blue-500/10 p-8 rounded-3xl border-primary/20">
+                            <h3 className="text-2xl font-black font-headline mb-3 text-primary tracking-tight">Welcome, {profile.name}!</h3>
+                            <p className="text-sm font-medium text-muted-foreground leading-relaxed">
+                                This is your personalized workspace. Stay updated with your daily planner and manage your assigned leads efficiently.
+                            </p>
+                            <Button asChild variant="outline" className="mt-6 w-full rounded-xl font-bold bg-background/50 border-primary/20 hover:bg-primary/5">
+                                <Link href="/appointments">Manage All Appointments</Link>
+                            </Button>
+                        </Card>
 
-                <div className="space-y-8">
-                    <UpcomingEvents 
-                        appointments={allAppointments || []} 
-                        isLoading={isAppointmentsLoading}
-                        onAddAppointment={() => setIsAppointmentOpen(true)}
-                        onAddEvent={() => setIsEventOpen(true)}
-                        onUpdateStatus={async (a, s) => { 
-                            if (!profile.agency_id) return;
-                            await setDoc(doc(firestore, 'agencies', profile.agency_id, 'appointments', a.id), { status: s }, { merge: true });
-                            toast({ title: `Marked as ${s}` });
-                        }}
-                        onDelete={async (a) => {
-                            if (!profile.agency_id) return;
-                            await deleteDoc(doc(firestore, 'agencies', profile.agency_id, 'appointments', a.id));
-                            toast({ title: 'Appointment Deleted' });
-                        }}
-                        onAddToCalendar={(e, a) => {
-                            const start = format(new Date(`${a.date}T${a.time}`), "yyyyMMdd'T'HHmmss");
-                            const end = format(new Date(`${a.date}T${a.time}`), "yyyyMMdd'T'HHmmss"); 
-                            window.open(`https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(a.contactName)}&dates=${start}/${end}&details=${encodeURIComponent(a.message)}`, '_blank');
-                        }}
-                        onAllEventsClick={() => setIsAllEventsOpen(true)}
-                        onViewDetails={(a) => setSelectedApptForDetails(a)}
-                    />
-
-                    <Card className="border-none shadow-xl bg-card/60 backdrop-blur-sm rounded-2xl overflow-hidden">
-                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-black uppercase tracking-wider flex items-center gap-2">
-                                <History className="h-4 w-4 text-primary" /> Recent Actions
-                            </CardTitle>
-                            <Link href="/activities" className="text-[10px] font-bold text-primary hover:underline">VIEW ALL</Link>
-                        </CardHeader>
-                        <CardContent className="p-0">
-                            {isActivitiesLoading ? (
-                                <div className="p-4 space-y-4">
-                                    {[1, 2, 3].map(i => <Skeleton key={i} className="h-12 w-full rounded-xl" />)}
-                                </div>
-                            ) : !activities || activities.length === 0 ? (
-                                <p className="text-center text-xs text-muted-foreground py-10">No recent activity.</p>
-                            ) : (
-                                <div className="divide-y divide-border/30">
-                                    {activities.map(act => (
-                                        <div key={act.id} className="p-4 flex items-start gap-3 hover:bg-accent/30 transition-colors">
-                                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
-                                                {getActionIcon(act.action)}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-xs font-bold truncate">
-                                                    {act.userName} <span className="font-normal text-muted-foreground">{act.action}</span>
-                                                </p>
-                                                <p className="text-[10px] font-medium text-primary/80 truncate mt-0.5">{act.target}</p>
-                                                <p className="text-[9px] text-muted-foreground mt-1 uppercase font-bold tracking-tighter">
-                                                    {mounted ? format(new Date(act.timestamp), 'p') : '...'}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
+                        <Card className="border-none shadow-xl bg-card/60 backdrop-blur-md rounded-2xl p-6 text-center">
+                            <div className="h-12 w-12 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-3 text-emerald-600">
+                                <CheckCircle className="h-6 w-6" />
+                            </div>
+                            <h4 className="font-bold text-sm">Personal Goal</h4>
+                            <p className="text-xs text-muted-foreground mt-1">Focus on following up with your "Interested" buyers today.</p>
+                            <Button asChild size="sm" variant="link" className="mt-2 text-xs font-bold text-primary p-0">
+                                <Link href="/buyers?status=Interested">View Interested Buyers <ArrowRight className="h-3 w-3 ml-1" /></Link>
+                            </Button>
+                        </Card>
+                    </div>
                 </div>
-            </div>
+            )}
 
             {profile.role === 'Admin' && (
                 <Card className="bg-gradient-to-br from-primary to-blue-600 text-primary-foreground border-none shadow-2xl rounded-[2rem] overflow-hidden relative group">
