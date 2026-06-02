@@ -434,7 +434,7 @@ function BuyersPageContent() {
 
     const getTagColor = (tagName: string) => {
         const tagObj = agencyTags?.find(t => t.name === tagName);
-        if (tagObj) return tagObj.class || tagObj.color;
+        if (tagObj) return tagObj.color;
         return (statusVariant as any)[tagName] || 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700';
     };
 

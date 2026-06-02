@@ -163,6 +163,7 @@ export function AddRentPropertyForm({
       tags: tagsArray,
       is_recorded: propertyToEdit?.is_recorded ?? false,
       auto_title: values.auto_title || 'Untitled Rental',
+      address: values.address || '',
     };
 
     onSave(propertyData);

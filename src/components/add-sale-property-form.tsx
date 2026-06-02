@@ -174,6 +174,7 @@ export function AddSalePropertyForm({
       tags: tagsArray,
       is_recorded: propertyToEdit?.is_recorded ?? false,
       auto_title: values.auto_title || 'Untitled Property',
+      address: values.address || '',
     };
 
     onSave(propertyData);
