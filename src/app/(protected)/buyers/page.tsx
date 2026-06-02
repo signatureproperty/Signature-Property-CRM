@@ -38,6 +38,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import dynamic from 'next/dynamic';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 // --- Lazy Loaded Components ---
 const AddBuyerDialog = dynamic(() => import('@/components/add-buyer-dialog').then(mod => mod.AddBuyerDialog), { ssr: false });
@@ -273,20 +275,45 @@ function BuyersPageContent() {
     };
 
     const handleSaveBuyer = async (buyerData: Omit<Buyer, 'id'> & { id?: string }) => {
-        if (!profile.agency_id) return;
+        if (!profile.agency_id) {
+            toast({ title: 'Error', description: 'Agency identity not found. Please refresh the page.', variant: 'destructive' });
+            return;
+        }
         
         const finalId = buyerData.id || buyerToEdit?.id;
         
-        if (finalId) {
-            const docRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', finalId);
-            await setDoc(docRef, buyerData, { merge: true });
-            toast({ title: 'Buyer Updated' });
-        } else {
-            const collectionRef = collection(firestore, 'agencies', profile.agency_id, 'buyers');
-            const { id, ...restOfData } = buyerData;
-            await addDoc(collectionRef, { ...restOfData, agency_id: profile.agency_id, created_by: user?.uid });
-            await logActivity('added a new buyer', buyerData.name, 'Buyer');
-            toast({ title: 'Buyer Added' });
+        try {
+            if (finalId) {
+                const docRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', finalId);
+                // merge: true ensures we don't wipe out other fields like assignedTo
+                setDoc(docRef, { ...buyerData, agency_id: profile.agency_id }, { merge: true })
+                    .catch(async (serverError) => {
+                        const permissionError = new FirestorePermissionError({
+                            path: docRef.path,
+                            operation: 'update',
+                            requestResourceData: buyerData,
+                        } satisfies SecurityRuleContext);
+                        errorEmitter.emit('permission-error', permissionError);
+                    });
+                toast({ title: 'Buyer Updated' });
+            } else {
+                const collectionRef = collection(firestore, 'agencies', profile.agency_id, 'buyers');
+                const { id, ...restOfData } = buyerData;
+                addDoc(collectionRef, { ...restOfData, agency_id: profile.agency_id, created_by: user?.uid })
+                    .catch(async (serverError) => {
+                        const permissionError = new FirestorePermissionError({
+                            path: collectionRef.path,
+                            operation: 'create',
+                            requestResourceData: restOfData,
+                        } satisfies SecurityRuleContext);
+                        errorEmitter.emit('permission-error', permissionError);
+                    });
+                await logActivity('added a new buyer', buyerData.name, 'Buyer');
+                toast({ title: 'Buyer Added' });
+            }
+        } catch (err) {
+            console.error("Save Buyer Error:", err);
+            toast({ title: 'System Error', description: 'An unexpected error occurred during save.', variant: 'destructive' });
         }
     };
 

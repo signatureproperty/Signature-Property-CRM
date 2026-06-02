@@ -46,10 +46,10 @@ const formSchema = z.object({
   id: z.string().optional(),
   serial_no: z.string().optional(),
   listing_type: z.enum(['For Sale', 'For Rent']),
-  name: z.string().optional(), // Now optional
+  name: z.string().optional(),
   country_code: z.string().default('+92'),
   phone: z.string().min(1, 'Phone number is required'),
-  email: z.string().email().optional().or(z.literal('')),
+  email: z.string().optional().or(z.literal('')),
   status: z.string().default('New'),
   is_investor: z.boolean().optional().default(false),
   city: z.string().optional(),
@@ -68,6 +68,7 @@ const formSchema = z.object({
   tags: z.string().optional(),
   created_at: z.string().optional(),
   created_by: z.string().optional(),
+  agency_id: z.string().optional(),
 });
 
 type AddBuyerFormValues = z.infer<typeof formSchema>;
@@ -86,7 +87,6 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
   const { profile } = useProfile();
   const [countryCodePopoverOpen, setCountryCodePopoverOpen] = useState(false);
   
-  const isAgent = profile.role === 'Agent';
   const isEditing = !!buyerToEdit;
 
   const form = useForm<AddBuyerFormValues>({
@@ -96,7 +96,7 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
         name: buyerToEdit?.name || '',
         listing_type: listingType,
         country_code: buyerToEdit?.country_code || '+92',
-        phone: buyerToEdit?.phone ? buyerToEdit.phone.replace(buyerToEdit.country_code || '+92', '') : '',
+        phone: buyerToEdit?.phone ? (buyerToEdit.phone.startsWith(buyerToEdit.country_code || '+92') ? buyerToEdit.phone.substring((buyerToEdit.country_code || '+92').length) : buyerToEdit.phone) : '',
         email: buyerToEdit?.email || '',
         city: buyerToEdit?.city || 'Lahore',
         area_preference: buyerToEdit?.area_preference || '',
@@ -117,6 +117,7 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
         tags: buyerToEdit?.tags?.join(', ') || 'New',
         created_at: buyerToEdit?.created_at || new Date().toISOString(),
         created_by: buyerToEdit?.created_by || user?.uid || '',
+        agency_id: buyerToEdit?.agency_id || profile.agency_id || '',
     }
   });
 
@@ -142,12 +143,14 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
         tagsArray.push('New');
      }
 
+     const formattedPhone = formatPhoneNumber(values.phone, values.country_code);
+
      const buyerData = {
         ...values,
         id: buyerToEdit?.id || values.id || '',
         name: values.name?.trim() || values.serial_no || 'Unnamed Lead',
         property_type_preference: finalPropertyType,
-        phone: formatPhoneNumber(values.phone, values.country_code),
+        phone: formattedPhone,
         serial_no: values.serial_no || '',
         created_at: buyerToEdit?.created_at || new Date().toISOString(),
         is_deleted: buyerToEdit?.is_deleted || false,
