@@ -276,7 +276,7 @@ function BuyersPageContent() {
 
     const handleSaveBuyer = async (buyerData: Omit<Buyer, 'id'> & { id?: string }) => {
         if (!profile.agency_id) {
-            toast({ title: 'Error', description: 'Agency identity not found. Please refresh the page.', variant: 'destructive' });
+            toast({ title: 'Error', description: 'Agency identity not found.', variant: 'destructive' });
             return;
         }
         
@@ -285,34 +285,23 @@ function BuyersPageContent() {
         try {
             if (finalId) {
                 const docRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', finalId);
-                // merge: true ensures we don't wipe out other fields like assignedTo
-                setDoc(docRef, { ...buyerData, agency_id: profile.agency_id }, { merge: true })
-                    .catch(async (serverError) => {
-                        const permissionError = new FirestorePermissionError({
-                            path: docRef.path,
-                            operation: 'update',
-                            requestResourceData: buyerData,
-                        } satisfies SecurityRuleContext);
-                        errorEmitter.emit('permission-error', permissionError);
-                    });
+                await setDoc(docRef, { ...buyerData, agency_id: profile.agency_id }, { merge: true });
                 toast({ title: 'Buyer Updated' });
             } else {
                 const collectionRef = collection(firestore, 'agencies', profile.agency_id, 'buyers');
                 const { id, ...restOfData } = buyerData;
-                addDoc(collectionRef, { ...restOfData, agency_id: profile.agency_id, created_by: user?.uid })
-                    .catch(async (serverError) => {
-                        const permissionError = new FirestorePermissionError({
-                            path: collectionRef.path,
-                            operation: 'create',
-                            requestResourceData: restOfData,
-                        } satisfies SecurityRuleContext);
-                        errorEmitter.emit('permission-error', permissionError);
-                    });
-                await logActivity('added a new buyer', buyerData.name, 'Buyer');
+                await addDoc(collectionRef, { ...restOfData, agency_id: profile.agency_id, created_by: user?.uid });
+                await logActivity('added a new buyer', buyerData.name || 'Lead', 'Buyer');
                 toast({ title: 'Buyer Added' });
             }
         } catch (err) {
             console.error("Save Buyer Error:", err);
+            const contextualError = new FirestorePermissionError({
+                path: `agencies/${profile.agency_id}/buyers/${finalId || 'new'}`,
+                operation: finalId ? 'update' : 'create',
+                requestResourceData: buyerData,
+            } satisfies SecurityRuleContext);
+            errorEmitter.emit('permission-error', contextualError);
             toast({ title: 'System Error', description: 'An unexpected error occurred during save.', variant: 'destructive' });
         }
     };

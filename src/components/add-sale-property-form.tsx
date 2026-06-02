@@ -93,9 +93,6 @@ export function AddSalePropertyForm({
   const { profile } = useProfile();
   const [countryCodePopoverOpen, setCountryCodePopoverOpen] = useState(false);
 
-  const isAgent = profile.role === 'Agent';
-  const isEditing = !!propertyToEdit;
-
   const form = useForm<AddSalePropertyFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -103,7 +100,7 @@ export function AddSalePropertyForm({
         serial_no: propertyToEdit?.serial_no || `P-${totalProperties + 1}`,
         auto_title: propertyToEdit?.auto_title || '',
         country_code: propertyToEdit?.country_code || '+92',
-        owner_number: propertyToEdit?.owner_number ? propertyToEdit.owner_number.replace(propertyToEdit.country_code || '+92', '') : '',
+        owner_number: propertyToEdit?.owner_number ? (propertyToEdit.owner_number.startsWith('+') ? propertyToEdit.owner_number : propertyToEdit.owner_number.replace(propertyToEdit.country_code || '+92', '')) : '',
         city: propertyToEdit?.city || 'Lahore',
         area: propertyToEdit?.area || '',
         address: propertyToEdit?.address || '',
@@ -175,6 +172,10 @@ export function AddSalePropertyForm({
       is_recorded: propertyToEdit?.is_recorded ?? false,
       auto_title: values.auto_title || 'Untitled Property',
       address: values.address || '',
+      road_size_ft: values.road_size_ft ?? undefined,
+      front_ft: values.front_ft ?? undefined,
+      length_ft: values.length_ft ?? undefined,
+      potential_rent_amount: values.potential_rent_amount ?? undefined,
     };
 
     onSave(propertyData);
@@ -206,7 +207,6 @@ export function AddSalePropertyForm({
                   className="bg-muted/50 h-9"
                 />
               </FormItem>
-              <div className="col-span-2 hidden md:block"></div>
             </div>
 
             <FormField
@@ -268,7 +268,7 @@ export function AddSalePropertyForm({
                         <FormItem className="md:col-span-2">
                             <FormLabel>Area / Neighborhood</FormLabel>
                             <FormControl>
-                            <Input placeholder="e.g. DHA Phase 5, Gulberg III" {...field} className="h-9" />
+                            <Input placeholder="e.g. DHA Phase 5" {...field} className="h-9" />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
@@ -471,7 +471,7 @@ export function AddSalePropertyForm({
                                 <FormItem className="flex-1">
                                 <FormControl><Input placeholder="3001234567" {...field} className="h-9" /></FormControl>
                                 <FormMessage />
-                                </FormItem>
+                            </FormItem>
                             )}
                             />
                         </div>

@@ -30,6 +30,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Separator } from '@/components/ui/separator';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { AppLoader } from '@/components/ui/loader';
 
 // --- Lazy Loaded Components ---
 const SetAppointmentDialog = dynamic(() => import('@/components/set-appointment-dialog').then(mod => mod.SetAppointmentDialog), { ssr: false });
@@ -119,6 +120,7 @@ export default function OverviewPage() {
     const firestore = useFirestore();
     const { currency } = useCurrency();
     const { toast } = useToast();
+    
     const [isAppointmentOpen, setIsAppointmentOpen] = useState(false);
     const [isEventOpen, setIsEventOpen] = useState(false);
     const [isAllEventsOpen, setIsAllEventsOpen] = useState(false);
@@ -322,6 +324,17 @@ export default function OverviewPage() {
             href: "/buyers",
             isLoading
         });
+    }
+
+    if (!mounted) {
+        return (
+            <div className="flex h-[calc(100vh-140px)] items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                    <AppLoader />
+                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground animate-pulse">Loading Workspace...</p>
+                </div>
+            </div>
+        );
     }
 
     if (isRecorder) {

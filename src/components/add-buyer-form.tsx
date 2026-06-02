@@ -66,9 +66,6 @@ const formSchema = z.object({
   budget_max_unit: z.enum(['Thousand', 'Lacs', 'Crore']).optional(),
   notes: z.string().optional(),
   tags: z.string().optional(),
-  created_at: z.string().optional(),
-  created_by: z.string().optional(),
-  agency_id: z.string().optional(),
 });
 
 type AddBuyerFormValues = z.infer<typeof formSchema>;
@@ -87,8 +84,6 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
   const { profile } = useProfile();
   const [countryCodePopoverOpen, setCountryCodePopoverOpen] = useState(false);
   
-  const isEditing = !!buyerToEdit;
-
   const form = useForm<AddBuyerFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -96,7 +91,7 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
         name: buyerToEdit?.name || '',
         listing_type: listingType,
         country_code: buyerToEdit?.country_code || '+92',
-        phone: buyerToEdit?.phone ? (buyerToEdit.phone.startsWith(buyerToEdit.country_code || '+92') ? buyerToEdit.phone.substring((buyerToEdit.country_code || '+92').length) : buyerToEdit.phone) : '',
+        phone: buyerToEdit?.phone ? (buyerToEdit.phone.startsWith('+') ? buyerToEdit.phone : buyerToEdit.phone) : '',
         email: buyerToEdit?.email || '',
         city: buyerToEdit?.city || 'Lahore',
         area_preference: buyerToEdit?.area_preference || '',
@@ -115,9 +110,6 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
         budget_min_amount: buyerToEdit?.budget_min_amount ?? 0,
         budget_max_amount: buyerToEdit?.budget_max_amount ?? 0,
         tags: buyerToEdit?.tags?.join(', ') || 'New',
-        created_at: buyerToEdit?.created_at || new Date().toISOString(),
-        created_by: buyerToEdit?.created_by || user?.uid || '',
-        agency_id: buyerToEdit?.agency_id || profile.agency_id || '',
     }
   });
 
@@ -151,9 +143,7 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
         name: values.name?.trim() || values.serial_no || 'Unnamed Lead',
         property_type_preference: finalPropertyType,
         phone: formattedPhone,
-        serial_no: values.serial_no || '',
         created_at: buyerToEdit?.created_at || new Date().toISOString(),
-        is_deleted: buyerToEdit?.is_deleted || false,
         created_by: buyerToEdit?.created_by || user?.uid || '',
         agency_id: buyerToEdit?.agency_id || profile.agency_id || '',
         tags: tagsArray,
@@ -180,7 +170,7 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
                 />
                 <FormItem>
                     <FormLabel className="flex items-center gap-2 text-xs text-muted-foreground uppercase"><Calendar className="h-3.5 w-3.5" /> Date Added</FormLabel>
-                    <Input value={new Date(form.getValues('created_at') || new Date()).toLocaleDateString()} readOnly className="bg-muted/50 h-9" />
+                    <Input value={new Date(buyerToEdit?.created_at || new Date()).toLocaleDateString()} readOnly className="bg-muted/50 h-9" />
                 </FormItem>
             </div>
             

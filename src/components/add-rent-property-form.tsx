@@ -86,9 +86,6 @@ export function AddRentPropertyForm({
   const { profile } = useProfile();
   const [countryCodePopoverOpen, setCountryCodePopoverOpen] = useState(false);
 
-  const isAgent = profile.role === 'Agent';
-  const isEditing = !!propertyToEdit;
-
   const form = useForm<AddRentPropertyFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -96,7 +93,7 @@ export function AddRentPropertyForm({
       serial_no: propertyToEdit?.serial_no || `RP-${totalProperties + 1}`,
       auto_title: propertyToEdit?.auto_title || '',
       country_code: propertyToEdit?.country_code || '+92',
-      owner_number: propertyToEdit?.owner_number ? propertyToEdit.owner_number.replace(propertyToEdit.country_code || '+92', '') : '',
+      owner_number: propertyToEdit?.owner_number ? (propertyToEdit.owner_number.startsWith('+') ? propertyToEdit.owner_number : propertyToEdit.owner_number.replace(propertyToEdit.country_code || '+92', '')) : '',
       city: propertyToEdit?.city || 'Lahore',
       area: propertyToEdit?.area || '',
       address: propertyToEdit?.address || '',
@@ -149,8 +146,6 @@ export function AddRentPropertyForm({
       id: propertyToEdit?.id || values.id || '',
       listing_type: 'For Rent',
       is_for_rent: true,
-      potential_rent_amount: propertyToEdit?.potential_rent_amount || 0,
-      potential_rent_unit: propertyToEdit?.potential_rent_unit || 'Thousand',
       serial_no: values.serial_no || `RP-${totalProperties + 1}`,
       status: values.status as PropertyStatus,
       created_at: propertyToEdit?.created_at || new Date().toISOString(),
