@@ -42,16 +42,17 @@ const sizeUnitValues = ['Marla', 'SqFt', 'Kanal', 'Acre', 'Maraba'] as const;
 const priceUnitValues = ['Thousand', 'Lacs', 'Crore'] as const;
 
 const formSchema = z.object({
+  id: z.string().optional(),
   serial_no: z.string().optional(),
   auto_title: z.string().optional(),
   country_code: z.string().default('+92'),
   owner_number: z.string().min(1, 'Owner number is required'),
   city: z.string().default('Lahore'),
   area: z.string().min(1, 'Area is required'),
-  address: z.string().min(1, 'Address is required'),
-  property_type: z.enum(propertyTypeValues),
+  address: z.string().optional(),
+  property_type: z.enum(propertyTypeValues).default('House'),
   property_type_other: z.string().optional(),
-  size_value: z.coerce.number().positive('Size must be positive'),
+  size_value: z.coerce.number().optional().default(0),
   size_unit: z.enum(sizeUnitValues).default('Marla'),
   storey: z.string().optional(),
   meters: z.object({
@@ -59,9 +60,7 @@ const formSchema = z.object({
     gas: z.boolean().default(false),
     water: z.boolean().default(false),
   }),
-  demand_amount: z.coerce
-    .number({ invalid_type_error: 'Rent amount must be a number.' })
-    .positive('Rent amount must be positive'),
+  demand_amount: z.coerce.number().optional().default(0),
   demand_unit: z.enum(priceUnitValues).default('Thousand'),
   message: z.string().optional(),
   tags: z.string().optional(),
@@ -89,18 +88,18 @@ export function AddRentPropertyForm({
 
   const isAgent = profile.role === 'Agent';
   const isEditing = !!propertyToEdit;
-  const isPhoneRestricted = isAgent && isEditing;
 
   const form = useForm<AddRentPropertyFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      id: propertyToEdit?.id || '',
       serial_no: propertyToEdit?.serial_no || `RP-${totalProperties + 1}`,
       auto_title: propertyToEdit?.auto_title || '',
       country_code: propertyToEdit?.country_code || '+92',
-      owner_number: propertyToEdit?.owner_number.replace(propertyToEdit.country_code || '+92', '') || '',
+      owner_number: propertyToEdit?.owner_number ? propertyToEdit.owner_number.replace(propertyToEdit.country_code || '+92', '') : '',
       city: propertyToEdit?.city || 'Lahore',
       area: propertyToEdit?.area || '',
-      address: propertyToEdit?.area || '',
+      address: propertyToEdit?.address || '',
       property_type: propertyToEdit?.property_type && propertyTypeValues.includes(propertyToEdit.property_type as any) ? (propertyToEdit.property_type as any) : (propertyToEdit ? 'Other' : 'House'),
       property_type_other: propertyToEdit?.property_type && !propertyTypeValues.includes(propertyToEdit.property_type as any) ? propertyToEdit.property_type : '',
       size_value: propertyToEdit?.size_value || 0,
@@ -147,12 +146,12 @@ export function AddRentPropertyForm({
     const propertyData: Omit<Property, 'id'> & { id?: string } = {
       ...propertyToEdit,
       ...values,
+      id: propertyToEdit?.id || values.id || '',
       listing_type: 'For Rent',
       is_for_rent: true,
       potential_rent_amount: propertyToEdit?.potential_rent_amount || 0,
       potential_rent_unit: propertyToEdit?.potential_rent_unit || 'Thousand',
-      id: propertyToEdit?.id || '',
-      serial_no: propertyToEdit?.serial_no || `RP-${totalProperties + 1}`,
+      serial_no: values.serial_no || `RP-${totalProperties + 1}`,
       status: values.status as PropertyStatus,
       created_at: propertyToEdit?.created_at || new Date().toISOString(),
       created_by: propertyToEdit?.created_by || user?.uid || '',
@@ -163,17 +162,7 @@ export function AddRentPropertyForm({
       demand_unit: (values.demand_unit as 'Lacs' | 'Crore' | 'Thousand') || 'Thousand',
       tags: tagsArray,
       is_recorded: propertyToEdit?.is_recorded ?? false,
-      auto_title: values.auto_title || '',
-      country_code: values.country_code || '+92',
-      city: values.city || 'Lahore',
-      area: values.area || '',
-      address: values.address || '',
-      size_value: values.size_value,
-      size_unit: values.size_unit,
-      storey: values.storey || '',
-      meters: values.meters,
-      demand_amount: values.demand_amount,
-      message: values.message || '',
+      auto_title: values.auto_title || 'Untitled Rental',
     };
 
     onSave(propertyData);
@@ -192,7 +181,7 @@ export function AddRentPropertyForm({
                   <FormItem>
                     <FormLabel className="flex items-center gap-2"><Hash className="h-3.5 w-3.5" /> Serial No</FormLabel>
                     <FormControl>
-                      <Input {...field} readOnly className="bg-muted/50 h-9" />
+                      <Input {...field} value={field.value ?? ''} readOnly className="bg-muted/50 h-9" />
                     </FormControl>
                   </FormItem>
                 )}
@@ -278,7 +267,7 @@ export function AddRentPropertyForm({
                     name="address"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Full Address</FormLabel>
+                        <FormLabel>Full Address (Optional)</FormLabel>
                         <FormControl>
                             <Textarea placeholder="Full property address" {...field} rows={2} />
                         </FormControl>
@@ -353,7 +342,7 @@ export function AddRentPropertyForm({
                     name="storey"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Portion / Unit Details</FormLabel>
+                        <FormLabel>Portion / Unit Details (Optional)</FormLabel>
                         <FormControl>
                             <Input placeholder="e.g. Ground Portion, Upper Portion" {...field} className="h-9" />
                         </FormControl>
@@ -405,11 +394,11 @@ export function AddRentPropertyForm({
                             name="country_code"
                             render={({ field }) => (
                             <FormItem className="w-24">
-                                <Popover open={!isPhoneRestricted && countryCodePopoverOpen} onOpenChange={setCountryCodePopoverOpen}>
+                                <Popover open={countryCodePopoverOpen} onOpenChange={setCountryCodePopoverOpen}>
                                     <PopoverTrigger asChild>
                                     <FormControl>
-                                        <Button variant="outline" role="combobox" className="w-full justify-between h-9" disabled={isPhoneRestricted}>
-                                        {field.value || "Code"}
+                                        <Button variant="outline" role="combobox" className="w-full justify-between h-9">
+                                        {field.value || "+92"}
                                         </Button>
                                     </FormControl>
                                     </PopoverTrigger>
@@ -437,7 +426,8 @@ export function AddRentPropertyForm({
                             name="owner_number"
                             render={({ field }) => (
                             <FormItem className="flex-1">
-                                <FormControl><Input placeholder="3001234567" {...field} className="h-9" disabled={isPhoneRestricted} /></FormControl>
+                                <FormControl><Input placeholder="3001234567" {...field} className="h-9" /></FormControl>
+                                <FormMessage />
                             </FormItem>
                             )}
                         />
@@ -489,7 +479,7 @@ export function AddRentPropertyForm({
                   name="tags"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Tags (comma separated)</FormLabel>
+                      <FormLabel>Tags (Optional)</FormLabel>
                       <FormControl><Input {...field} placeholder="e.g. Urgent, Hot" /></FormControl>
                     </FormItem>
                   )}
@@ -501,7 +491,7 @@ export function AddRentPropertyForm({
               name="message"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="font-bold uppercase tracking-wider text-[10px] text-muted-foreground">Rental Policy / Notes</FormLabel>
+                  <FormLabel className="font-bold uppercase tracking-wider text-[10px] text-muted-foreground">Rental Policy / Notes (Optional)</FormLabel>
                   <FormControl>
                     <Textarea placeholder="e.g. Only for small families, no pets allowed, etc." {...field} value={field.value ?? ''} rows={4} />
                   </FormControl>

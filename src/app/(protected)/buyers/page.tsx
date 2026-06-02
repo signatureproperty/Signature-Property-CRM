@@ -274,8 +274,11 @@ function BuyersPageContent() {
 
     const handleSaveBuyer = async (buyerData: Omit<Buyer, 'id'> & { id?: string }) => {
         if (!profile.agency_id) return;
-        if (buyerToEdit && buyerData.id) {
-            const docRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', buyerData.id);
+        
+        const finalId = buyerData.id || buyerToEdit?.id;
+        
+        if (finalId) {
+            const docRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', finalId);
             await setDoc(docRef, buyerData, { merge: true });
             toast({ title: 'Buyer Updated' });
         } else {
@@ -404,7 +407,7 @@ function BuyersPageContent() {
 
     const getTagColor = (tagName: string) => {
         const tagObj = agencyTags?.find(t => t.name === tagName);
-        if (tagObj) return tagObj.color;
+        if (tagObj) return tagObj.class || tagObj.color;
         return (statusVariant as any)[tagName] || 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700';
     };
 

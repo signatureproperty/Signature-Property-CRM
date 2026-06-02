@@ -43,16 +43,17 @@ const priceUnitValues = ['Lacs', 'Crore'] as const;
 const potentialRentUnitValues = ['Thousand', 'Lacs', 'Crore'] as const;
 
 const formSchema = z.object({
+  id: z.string().optional(),
   serial_no: z.string().optional(),
   auto_title: z.string().optional(),
   country_code: z.string().default('+92'),
   owner_number: z.string().min(1, 'Owner number is required'),
   city: z.string().default('Lahore'),
   area: z.string().min(1, 'Area is required'),
-  address: z.string().min(1, 'Address is required'),
-  property_type: z.enum(propertyTypeValues),
+  address: z.string().optional(),
+  property_type: z.enum(propertyTypeValues).default('House'),
   property_type_other: z.string().optional(),
-  size_value: z.coerce.number().positive('Size must be positive'),
+  size_value: z.coerce.number().optional().default(0),
   size_unit: z.enum(sizeUnitValues).default('Marla'),
   road_size_ft: z.coerce.number().int().optional().nullable(),
   storey: z.string().optional(),
@@ -65,7 +66,7 @@ const formSchema = z.object({
   potential_rent_unit: z.enum(potentialRentUnitValues).optional(),
   front_ft: z.coerce.number().int().optional().nullable(),
   length_ft: z.coerce.number().int().optional().nullable(),
-  demand_amount: z.coerce.number().positive('Demand must be positive'),
+  demand_amount: z.coerce.number().optional().default(0),
   demand_unit: z.enum(priceUnitValues).default('Lacs'),
   documents: z.string().optional(),
   message: z.string().optional(),
@@ -94,15 +95,15 @@ export function AddSalePropertyForm({
 
   const isAgent = profile.role === 'Agent';
   const isEditing = !!propertyToEdit;
-  const isPhoneRestricted = isAgent && isEditing;
 
   const form = useForm<AddSalePropertyFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+        id: propertyToEdit?.id || '',
         serial_no: propertyToEdit?.serial_no || `P-${totalProperties + 1}`,
         auto_title: propertyToEdit?.auto_title || '',
         country_code: propertyToEdit?.country_code || '+92',
-        owner_number: propertyToEdit?.owner_number.replace(propertyToEdit.country_code || '+92', '') || '',
+        owner_number: propertyToEdit?.owner_number ? propertyToEdit.owner_number.replace(propertyToEdit.country_code || '+92', '') : '',
         city: propertyToEdit?.city || 'Lahore',
         area: propertyToEdit?.area || '',
         address: propertyToEdit?.address || '',
@@ -118,7 +119,7 @@ export function AddSalePropertyForm({
         front_ft: propertyToEdit?.front_ft || 0,
         length_ft: propertyToEdit?.length_ft || 0,
         demand_amount: propertyToEdit?.demand_amount || 0,
-        demand_unit: propertyToEdit?.demand_unit === 'Lacs' || propertyToEdit?.demand_unit === 'Crore' ? propertyToEdit.demand_unit : 'Lacs',
+        demand_unit: propertyToEdit?.demand_unit === 'Lacs' || propertyToEdit?.demand_unit === 'Crore' ? (propertyToEdit.demand_unit as any) : 'Lacs',
         documents: propertyToEdit?.documents || '',
         message: propertyToEdit?.message || '',
         tags: propertyToEdit?.tags?.join(', ') || 'New',
@@ -158,10 +159,10 @@ export function AddSalePropertyForm({
     const propertyData: Omit<Property, 'id'> & { id?: string } = {
       ...propertyToEdit,
       ...values,
+      id: propertyToEdit?.id || values.id || '',
       listing_type: 'For Sale',
       is_for_rent: false,
-      id: propertyToEdit?.id || '',
-      serial_no: propertyToEdit?.serial_no || `P-${totalProperties + 1}`,
+      serial_no: values.serial_no || `P-${totalProperties + 1}`,
       status: values.status as PropertyStatus,
       created_at: propertyToEdit?.created_at || new Date().toISOString(),
       created_by: propertyToEdit?.created_by || user?.uid || '',
@@ -172,23 +173,7 @@ export function AddSalePropertyForm({
       demand_unit: (values.demand_unit as 'Lacs' | 'Crore' | 'Thousand') || 'Lacs',
       tags: tagsArray,
       is_recorded: propertyToEdit?.is_recorded ?? false,
-      auto_title: values.auto_title || '',
-      country_code: values.country_code || '+92',
-      city: values.city || 'Lahore',
-      area: values.area || '',
-      address: values.address || '',
-      size_value: values.size_value,
-      size_unit: values.size_unit,
-      road_size_ft: values.road_size_ft ?? 0,
-      storey: values.storey || '',
-      meters: values.meters,
-      potential_rent_amount: values.potential_rent_amount ?? 0,
-      potential_rent_unit: (values.potential_rent_unit as PriceUnit) || 'Thousand',
-      front_ft: values.front_ft ?? 0,
-      length_ft: values.length_ft ?? 0,
-      demand_amount: values.demand_amount,
-      documents: values.documents || '',
-      message: values.message || '',
+      auto_title: values.auto_title || 'Untitled Property',
     };
 
     onSave(propertyData);
@@ -294,7 +279,7 @@ export function AddSalePropertyForm({
                     name="address"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Street Address</FormLabel>
+                        <FormLabel>Street Address (Optional)</FormLabel>
                         <FormControl>
                             <Input placeholder="Plot #, Street #, House #" {...field} className="h-9" />
                         </FormControl>
@@ -451,11 +436,11 @@ export function AddSalePropertyForm({
                             name="country_code"
                             render={({ field }) => (
                                 <FormItem className="w-24">
-                                    <Popover open={!isPhoneRestricted && countryCodePopoverOpen} onOpenChange={setCountryCodePopoverOpen}>
+                                    <Popover open={countryCodePopoverOpen} onOpenChange={setCountryCodePopoverOpen}>
                                         <PopoverTrigger asChild>
                                         <FormControl>
-                                            <Button variant="outline" role="combobox" className="w-full justify-between h-9" disabled={isPhoneRestricted}>
-                                            {field.value || "Code"}
+                                            <Button variant="outline" role="combobox" className="w-full justify-between h-9">
+                                            {field.value || "+92"}
                                             </Button>
                                         </FormControl>
                                         </PopoverTrigger>
@@ -483,7 +468,8 @@ export function AddSalePropertyForm({
                             name="owner_number"
                             render={({ field }) => (
                                 <FormItem className="flex-1">
-                                <FormControl><Input placeholder="3001234567" {...field} className="h-9" disabled={isPhoneRestricted} /></FormControl>
+                                <FormControl><Input placeholder="3001234567" {...field} className="h-9" /></FormControl>
+                                <FormMessage />
                                 </FormItem>
                             )}
                             />
@@ -510,7 +496,7 @@ export function AddSalePropertyForm({
                     </div>
                 </div>
                 <div className="space-y-2">
-                    <FormLabel className="flex items-center gap-2 font-bold uppercase tracking-wider text-[10px] text-muted-foreground"><FileText className="h-3 w-3" /> Property Documents</FormLabel>
+                    <FormLabel className="flex items-center gap-2 font-bold uppercase tracking-wider text-[10px] text-muted-foreground"><FileText className="h-3 w-3" /> Property Documents (Optional)</FormLabel>
                     <FormField control={control} name="documents" render={({ field }) => (
                         <FormItem><FormControl><Input placeholder="e.g. Registry, NOC, Fard" {...field} value={field.value ?? ''} className="h-9" /></FormControl></FormItem>
                     )} />
@@ -541,7 +527,7 @@ export function AddSalePropertyForm({
                   name="tags"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Tags (comma separated)</FormLabel>
+                      <FormLabel>Tags (Optional)</FormLabel>
                       <FormControl><Input {...field} placeholder="e.g. Urgent, Hot" /></FormControl>
                     </FormItem>
                   )}
@@ -553,7 +539,7 @@ export function AddSalePropertyForm({
               name="message"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="font-bold uppercase tracking-wider text-[10px] text-muted-foreground">General Notes</FormLabel>
+                  <FormLabel className="font-bold uppercase tracking-wider text-[10px] text-muted-foreground">General Notes (Optional)</FormLabel>
                   <FormControl>
                     <Textarea placeholder="Add any extra notes about the property..." {...field} value={field.value ?? ''} rows={3} />
                   </FormControl>

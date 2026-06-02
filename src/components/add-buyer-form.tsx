@@ -46,7 +46,7 @@ const formSchema = z.object({
   id: z.string().optional(),
   serial_no: z.string().optional(),
   listing_type: z.enum(['For Sale', 'For Rent']),
-  name: z.string().min(1, 'Buyer name is required'),
+  name: z.string().optional(), // Now optional
   country_code: z.string().default('+92'),
   phone: z.string().min(1, 'Phone number is required'),
   email: z.string().email().optional().or(z.literal('')),
@@ -88,15 +88,15 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
   
   const isAgent = profile.role === 'Agent';
   const isEditing = !!buyerToEdit;
-  const isPhoneRestricted = isAgent && isEditing;
 
   const form = useForm<AddBuyerFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+        id: buyerToEdit?.id || '',
         name: buyerToEdit?.name || '',
         listing_type: listingType,
         country_code: buyerToEdit?.country_code || '+92',
-        phone: buyerToEdit?.phone.replace(buyerToEdit.country_code || '+92', '') || '',
+        phone: buyerToEdit?.phone ? buyerToEdit.phone.replace(buyerToEdit.country_code || '+92', '') : '',
         email: buyerToEdit?.email || '',
         city: buyerToEdit?.city || 'Lahore',
         area_preference: buyerToEdit?.area_preference || '',
@@ -120,7 +120,7 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
     }
   });
 
-  const { reset, setValue, watch } = form;
+  const { setValue, watch } = form;
   const watchedPropertyType = watch('property_type_preference');
 
   useEffect(() => {
@@ -138,13 +138,14 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
         : values.property_type_preference;
 
      const tagsArray = values.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [];
-     // Ensure 'New' is in tags if this is a new lead and status is New
      if (!buyerToEdit && values.status === 'New' && !tagsArray.includes('New')) {
         tagsArray.push('New');
      }
 
      const buyerData = {
         ...values,
+        id: buyerToEdit?.id || values.id || '',
+        name: values.name?.trim() || values.serial_no || 'Unnamed Lead',
         property_type_preference: finalPropertyType,
         phone: formatPhoneNumber(values.phone, values.country_code),
         serial_no: values.serial_no || '',
@@ -190,7 +191,7 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
                     name="name"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Buyer Name</FormLabel>
+                        <FormLabel>Buyer Name (Optional)</FormLabel>
                         <FormControl>
                             <Input {...field} placeholder="e.g. Ahmed Khan" className="h-9" />
                         </FormControl>
@@ -206,11 +207,11 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
                             name="country_code"
                             render={({ field }) => (
                                 <FormItem className="w-24">
-                                <Popover open={!isPhoneRestricted && countryCodePopoverOpen} onOpenChange={setCountryCodePopoverOpen}>
+                                <Popover open={countryCodePopoverOpen} onOpenChange={setCountryCodePopoverOpen}>
                                     <PopoverTrigger asChild>
                                     <FormControl>
-                                        <Button variant="outline" role="combobox" className="w-full justify-between h-9 px-2" disabled={isPhoneRestricted}>
-                                        {field.value || "Code"}
+                                        <Button variant="outline" role="combobox" className="w-full justify-between h-9 px-2">
+                                        {field.value || "+92"}
                                         </Button>
                                     </FormControl>
                                     </PopoverTrigger>
@@ -246,8 +247,9 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
                             render={({ field }) => (
                                 <FormItem className="flex-1">
                                     <FormControl>
-                                        <Input {...field} placeholder="3001234567" className="h-9" disabled={isPhoneRestricted} />
+                                        <Input {...field} placeholder="3001234567" className="h-9" />
                                     </FormControl>
+                                    <FormMessage />
                                 </FormItem>
                             )}
                             />
