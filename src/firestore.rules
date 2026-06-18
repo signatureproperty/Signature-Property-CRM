@@ -1,52 +1,67 @@
-
 rules_version = '2';
 
 function isAgencyMember(agencyId) {
-    return exists(/databases/$(database)/documents/agencies/$(agencyId)/teamMembers/$(request.auth.uid));
+    return request.auth != null && exists(/databases/$(database)/documents/agencies/$(agencyId)/teamMembers/$(request.auth.uid));
 }
 
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Allow any authenticated user to read/write to any valid document path.
-    // This is a broad rule for development and can be tightened later.
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+    // System branding (needed for SSR metadata)
+    match /system_config/branding {
+      allow read: if true; // Public read for branding so server can fetch it
+      allow write: if request.auth != null; // Restrict writes to authenticated users
     }
-
+    
+    // Global Access Control: All data is agency-scoped or user-scoped.
+    
+    // 1. Agencies collection:
     match /agencies/{agencyId} {
+       // Agency details are readable by its members or the owner (admin)
        allow read: if request.auth.uid == agencyId || isAgencyMember(agencyId);
+       // Only the owner (Admin) can write/update agency root details
        allow write: if request.auth.uid == agencyId;
-    }
-    
-    // This rule allows any authenticated member of an agency to read/write to its subcollections.
-    match /agencies/{agencyId}/{subcollection}/{documentId} {
-      allow read, write: if isAgencyMember(agencyId);
-    }
-    
-    // Admin can read/write to inbox messages, members can create.
-    match /agencies/{agencyId}/inboxMessages/{messageId} {
-      allow read, update, delete: if request.auth.uid == resource.data.agency_id; // Admin is owner
-      allow create: if isAgencyMember(agencyId);
+       
+       // 2. Subcollections (properties, buyers, teamMembers, appointments, followUps, etc.)
+       match /{subcollection}/{documentId} {
+          // Read/Write restricted to agency members or the admin
+          allow read, write: if request.auth.uid == agencyId || isAgencyMember(agencyId);
+       }
+       
+       // 3. Inbox Messages specifically:
+       match /inboxMessages/{messageId} {
+          // Admins can read/delete any message in their inbox
+          allow read, update, delete: if request.auth.uid == agencyId;
+          // Members (Agents) can create messages to the admin
+          // Members can also read messages they sent
+          allow create: if isAgencyMember(agencyId);
+          allow read: if isAgencyMember(agencyId) && resource.data.fromUserId == request.auth.uid;
+       }
     }
 
+    // User personal profiles
     match /users/{userId} {
       allow read, write: if request.auth.uid == userId;
     }
 
-     match /agents/{agentId} {
+    // Personal Agent records (outside specific agency)
+    match /agents/{agentId} {
        allow read, write: if request.auth.uid == agentId;
     }
 
-    match /upgradeRequests/{requestId} {
+    // Invitation handling
+    match /invitations/{inviteId} {
+      // Admins create invitations
       allow create: if request.auth != null;
+      // Readable/Deletable by target user or sender admin
+      allow read, update, delete: if request.auth != null && 
+        (resource.data.toEmail == request.auth.token.email || request.auth.uid == resource.data.fromAgencyId);
     }
 
-    match /invitations/{inviteId} {
-      // Allow creation if the user is authenticated (Agency Owner)
+    // Payment/Upgrade requests
+    match /upgradeRequests/{requestId} {
       allow create: if request.auth != null;
-      // Allow READ/UPDATE only if the 'toEmail' field matches the logged-in user's email
-      allow read, update: if request.auth != null && resource.data.toEmail == request.auth.token.email;
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
     }
   }
 }

@@ -1,6 +1,3 @@
-
-"use client";
-
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
@@ -39,4 +36,3 @@ export { getFirestore } from 'firebase/firestore';
 export { getStorage } from 'firebase/storage';
 
 export * from './config';
-

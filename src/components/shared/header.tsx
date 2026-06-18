@@ -1,9 +1,7 @@
-
 'use client';
-import React, { useState } from 'react';
-import Link from 'next/link';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
+import { SidebarTrigger } from '@/components/ui/sidebar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,22 +12,19 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Bell, ChevronDown, LogOut, Moon, Search, Settings, Sun, User, MessageSquare, Check, X, Loader2, Menu, CalendarClock, Phone, CheckCheck, Edit, RotateCw } from 'lucide-react';
+import { Bell, ChevronDown, LogOut, Moon, Search, Settings, Sun, User, MessageSquare, Check, X, Loader2, CalendarClock, Phone, CheckCheck, Edit, RotateCw } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Input } from '../ui/input';
 import { useProfile } from '@/context/profile-context';
-import { useAuth, useFirestore } from '@/firebase/provider';
+import { useAuth } from '@/firebase/provider';
 import { useUser } from '@/firebase/auth/use-user';
 import { signOut } from 'firebase/auth';
 import { useNotifications } from '@/hooks/use-notifications';
-import { doc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-is-mobile';
 import { formatDistanceToNow } from 'date-fns';
-import { AppointmentNotification, FollowUpNotification, Notification, ActivityNotification, InvitationNotification } from '@/lib/types';
+import { AppointmentNotification, FollowUpNotification, Notification, ActivityNotification, InvitationNotification, MessageNotification } from '@/lib/types';
 import { NotificationAppointmentDialog } from '../notification-appointment-dialog';
 import { NotificationFollowupDialog } from '../notification-followup-dialog';
 import { NotificationActivityDialog } from '../notification-activity-dialog';
@@ -45,6 +40,8 @@ const getNotificationIcon = (type: string) => {
             return <Phone className="h-4 w-4 text-purple-500" />;
         case 'activity':
             return <Edit className="h-4 w-4 text-orange-500" />;
+        case 'message':
+            return <MessageSquare className="h-4 w-4 text-primary" />;
         default:
             return <Bell className="h-4 w-4" />;
     }
@@ -61,15 +58,18 @@ export function AppHeader({
 }) {
   const router = useRouter();
   const isMobile = useIsMobile();
-  const firestore = useFirestore();
   const { toast } = useToast();
   const { setTheme, theme } = useTheme();
   const { profile } = useProfile();
   const auth = useAuth();
   const { user } = useUser();
-  const { toggleSidebar } = useSidebar();
   const { notifications, isLoading: areNotificationsLoading, acceptInvitation, rejectInvitation, markAsRead, markAllAsRead, deleteNotification, forceRefresh } = useNotifications();
   const [updatingInvite, setUpdatingInvite] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
   const [isAppointmentDialogOpen, setIsAppointmentDialogOpen] = useState(false);
@@ -77,7 +77,7 @@ export function AppHeader({
   const [isActivityDialogOpen, setIsActivityDialogOpen] = useState(false);
 
   const displayName = profile.name || 'User';
-  const displayImage = profile.avatar || user?.photoURL;
+  const displayImage = profile.avatar || user?.photoURL || undefined;
   const firstName = displayName.split(' ')[0];
   
   const handleLogout = async () => {
@@ -117,7 +117,10 @@ export function AppHeader({
   };
 
   const handleNotificationClick = (notification: Notification) => {
-    if (notification.type !== 'invitation') {
+    if (notification.type === 'message') {
+        const msg = notification as MessageNotification;
+        router.push(msg.leadType === 'Buyer' ? '/buyers' : '/properties');
+    } else if (notification.type !== 'invitation') {
         setSelectedNotification(notification);
         if (notification.type === 'appointment') {
             setIsAppointmentDialogOpen(true);
@@ -132,8 +135,8 @@ export function AppHeader({
     }
   };
   
-  const handleDeleteNotification = (e: React.MouseEvent, notificationId: string) => {
-    e.stopPropagation();
+  const handleDeleteNotification = (e: any, notificationId: string) => {
+    if(e && e.stopPropagation) e.stopPropagation();
     deleteNotification(notificationId);
   }
 
@@ -143,7 +146,8 @@ export function AppHeader({
   return (
     <>
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-transparent backdrop-blur-md px-4 sm:px-6">
-      
+      <SidebarTrigger className="md:hidden" />
+
       {isMobile === false && (
         <div className="flex-1">
             <h1 className="text-xl font-bold text-foreground font-headline">Hello, {firstName}</h1>
@@ -179,16 +183,16 @@ export function AppHeader({
                     <span className="sr-only">Notifications</span>
                 </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="glass-card w-96">
+            <DropdownMenuContent align="end" className="bg-background w-96">
                 <div className="flex items-center justify-between pr-2">
                     <DropdownMenuLabel>Notifications</DropdownMenuLabel>
                     <div className="flex items-center">
-                        <Button variant="ghost" size="sm" className="text-xs" onClick={forceRefresh}>
+                        <Button variant="ghost" size="sm" className="text-xs" onClick={() => forceRefresh()}>
                             <RotateCw className="mr-1 h-3 w-3" />
                             Refresh
                         </Button>
                         {unreadCount > 0 && (
-                            <Button variant="ghost" size="sm" className="text-xs" onClick={markAllAsRead}>
+                            <Button variant="ghost" size="sm" className="text-xs" onClick={() => markAllAsRead()}>
                                 <CheckCheck className="mr-1 h-3 w-3" />
                                 Mark all as read
                             </Button>
@@ -204,17 +208,18 @@ export function AppHeader({
                 ) : notifications && notifications.length > 0 ? (
                     <div className="max-h-80 overflow-y-auto">
                         {notifications.map(notification => (
-                            <DropdownMenuItem 
+                            <div 
                                 key={notification.id} 
-                                className={cn("flex justify-between items-start gap-3 cursor-pointer group", notification.isRead && "opacity-60")} 
-                                onSelect={(e) => e.preventDefault()}
+                                className={cn("flex justify-between items-start gap-3 cursor-pointer group p-2 hover:bg-accent", notification.isRead && "opacity-60")} 
                                 onClick={() => handleNotificationClick(notification)}
                             >
                                 <div className="flex-shrink-0 pt-1">{getNotificationIcon(notification.type)}</div>
                                 <div className="flex-1">
-                                    <p className="font-semibold">{notification.title}</p>
+                                    <p className="font-semibold text-sm">{notification.title}</p>
                                     <p className="text-xs text-muted-foreground">{notification.description}</p>
-                                    <p className="text-xs text-muted-foreground mt-1">{formatDistanceToNow(notification.timestamp, { addSuffix: true })}</p>
+                                    <p className="text-[10px] text-muted-foreground mt-1">
+                                        {mounted ? formatDistanceToNow(notification.timestamp, { addSuffix: true }) : '...'}
+                                    </p>
                                 </div>
                                 {notification.type === 'invitation' ? (
                                     <div className="flex items-center gap-1 w-20 justify-end">
@@ -241,11 +246,11 @@ export function AppHeader({
                                     </Tooltip>
                                    </TooltipProvider>
                                 )}
-                            </DropdownMenuItem>
+                            </div>
                         ))}
                     </div>
                 ) : (
-                    <DropdownMenuItem disabled>No new notifications</DropdownMenuItem>
+                    <div className="p-4 text-center text-sm text-muted-foreground">No new notifications</div>
                 )}
             </DropdownMenuContent>
         </DropdownMenu>
@@ -254,31 +259,31 @@ export function AppHeader({
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="flex items-center gap-2 rounded-full p-1 h-auto">
               <Avatar className="h-9 w-9 border-2 border-primary/50">
-                <AvatarImage src={displayImage} alt={displayName} />
+                <AvatarImage src={displayImage ?? undefined} alt={displayName} />
                 <AvatarFallback>{displayName.split(' ').map(n => n[0]).join('')}</AvatarFallback>
               </Avatar>
               <span className="hidden sm:inline font-semibold">{displayName}</span>
               <ChevronDown className="h-4 w-4 text-muted-foreground" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="glass-card">
+          <DropdownMenuContent align="end" className="bg-background">
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {(profile.role === 'Admin' || profile.role === 'Agent') && (
+            {(profile.role === 'Admin' || profile.role === 'Agent' || (profile.role as string) === 'Super Admin') && (
               <DropdownMenuItem onClick={() => router.push('/settings')}>
-                  <Settings />
+                  <Settings className="mr-2 h-4 w-4" />
                   Settings
               </DropdownMenuItem>
             )}
             {(profile.role === 'Admin' || profile.role === 'Agent') && (
                 <DropdownMenuItem onClick={() => router.push('/support')}>
-                    <MessageSquare />
+                    <MessageSquare className="mr-2 h-4 w-4" />
                     Support
                 </DropdownMenuItem>
             )}
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout}>
-                <LogOut />
+            <DropdownMenuItem onClick={() => handleLogout()}>
+                <LogOut className="mr-2 h-4 w-4" />
                 Logout
             </DropdownMenuItem>
           </DropdownMenuContent>

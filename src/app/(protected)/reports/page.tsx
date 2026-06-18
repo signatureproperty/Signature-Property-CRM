@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -13,7 +12,7 @@ import { useProfile } from '@/context/profile-context';
 import { useMemoFirebase } from '@/firebase/hooks';
 import { formatCurrency, formatUnit } from '@/lib/formatters';
 import { useCurrency } from '@/context/currency-context';
-import { LineChart, Download, MoreHorizontal, Edit, RotateCcw } from 'lucide-react';
+import { Download, MoreHorizontal, Edit, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import jsPDF from 'jspdf';
@@ -60,8 +59,9 @@ export default function ReportsPage() {
   };
   
   const handleRevertToAvailable = async (prop: Property) => {
+    if (!profile.agency_id) return;
     const isForRent = prop.is_for_rent;
-    let dataToReset: Partial<Property> = { status: 'Available' };
+    let dataToReset: any = { status: 'Available' };
 
     const batch = writeBatch(firestore);
     const propRef = doc(firestore, 'agencies', profile.agency_id, 'properties', prop.id);
@@ -69,41 +69,41 @@ export default function ReportsPage() {
     if (isForRent) {
         dataToReset = {
             ...dataToReset,
-            rent_out_date: null,
-            rented_by_agent_id: null,
-            final_rent_amount: null,
-            final_rent_unit: null,
-            rent_commission_from_tenant: null,
-            rent_commission_from_tenant_unit: null,
-            rent_commission_from_owner: null,
-            rent_commission_from_owner_unit: null,
-            rent_total_commission: null,
-            rent_agent_share: null,
-            rent_agent_share_unit: null,
+            rent_out_date: undefined,
+            rented_by_agent_id: undefined,
+            final_rent_amount: undefined,
+            final_rent_unit: undefined,
+            rent_commission_from_tenant: undefined,
+            rent_commission_from_tenant_unit: undefined,
+            rent_commission_from_owner: undefined,
+            rent_commission_from_owner_unit: undefined,
+            rent_total_commission: undefined,
+            rent_agent_share: undefined,
+            rent_agent_share_unit: undefined,
         };
     } else {
         dataToReset = {
             ...dataToReset,
-            sold_price: null,
-            sold_price_unit: null,
-            sale_date: null,
-            sold_by_agent_id: null,
-            buyerId: null,
-            buyerName: null,
-            buyerSerialNo: null,
-            commission_from_buyer: null,
-            commission_from_buyer_unit: null,
-            commission_from_seller: null,
-            commission_from_seller_unit: null,
-            total_commission: null,
-            agent_commission_amount: null,
-            agent_commission_unit: null,
-            agent_share_percentage: null,
+            sold_price: undefined,
+            sold_price_unit: undefined,
+            sale_date: undefined,
+            sold_by_agent_id: undefined,
+            buyerId: undefined,
+            buyerName: undefined,
+            buyerSerialNo: undefined,
+            commission_from_buyer: undefined,
+            commission_from_buyer_unit: undefined,
+            commission_from_seller: undefined,
+            commission_from_seller_unit: undefined,
+            total_commission: undefined,
+            agent_commission_amount: undefined,
+            agent_commission_unit: undefined,
+            agent_share_percentage: undefined,
         };
         // Revert buyer's status if they were linked to this sale
         if (prop.buyerId) {
             const buyerRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', prop.buyerId);
-            batch.update(buyerRef, { status: 'Interested' }); // Or 'Follow Up', depending on desired logic
+            batch.update(buyerRef, { status: 'Interested' }); 
         }
     }
     
@@ -127,13 +127,13 @@ export default function ReportsPage() {
         
         const agencyProfit = (p.total_commission || 0) - agentShare;
 
-        totals.soldPrice += p.sold_price || 0;
-        totals.totalCommission += p.total_commission || 0;
+        totals.soldPrice += (p.sold_price || 0);
+        totals.totalCommission += (p.total_commission || 0);
         totals.agentShare += agentShare;
         totals.agencyProfit += agencyProfit;
 
         return { ...p, agentShare, agencyProfit };
-    });
+    }) as any[];
     
     return { rows, totals };
   }, [properties, buyers]);
@@ -159,7 +159,7 @@ export default function ReportsPage() {
         totals.agencyProfit += agencyProfit;
         
         return { ...p, agencyProfit, agentShare, finalRent };
-    });
+    }) as any[];
 
     return { rows, totals };
   }, [properties]);
@@ -176,14 +176,14 @@ export default function ReportsPage() {
   const handleDownloadPdf = (type: 'sales' | 'rental') => {
     const doc = new jsPDF() as jsPDFWithAutoTable;
     const isSales = type === 'sales';
-    const data = isSales ? salesReportData : rentalReportData;
+    const data: any = isSales ? salesReportData : rentalReportData;
     const title = isSales ? 'Sales Performance Report' : 'Rental Performance Report';
     
     const head = isSales 
       ? [['Property', 'Buyer', 'Sale Date', 'Sold Price', 'Total Commission', 'Agent\'s Share', 'Agency Profit']]
       : [['Property', 'Rent Out Date', 'Monthly Rent', 'Total Commission', 'Agent\'s Share', 'Agency Profit']];
       
-    const body = data.rows.map(p => isSales ? [
+    const body = data.rows.map((p: any) => isSales ? [
         `${p.auto_title}\n${p.serial_no}`,
         `${p.buyerName || '-'}\n${p.buyerSerialNo || '-'}`,
         p.sale_date ? new Date(p.sale_date).toLocaleDateString() : 'N/A',
@@ -194,7 +194,7 @@ export default function ReportsPage() {
     ] : [
         `${p.auto_title}\n${p.serial_no}`,
         p.rent_out_date ? new Date(p.rent_out_date).toLocaleDateString() : 'N/A',
-        formatCurrency(p.finalRent || 0, currency),
+        formatCurrency(p.finalRent, currency),
         formatCurrency(p.rent_total_commission || 0, currency),
         formatCurrency(p.agentShare || 0, currency),
         formatCurrency(p.agencyProfit || 0, currency)
@@ -219,7 +219,7 @@ export default function ReportsPage() {
     doc.autoTable({
         head: head,
         body: body,
-        didDrawPage: (data) => {
+        didDrawPage: (data: any) => {
             doc.text(title, data.settings.margin.left, 15);
         },
     });
@@ -278,7 +278,7 @@ export default function ReportsPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight font-headline flex items-center gap-2">
-          <LineChart />
+          <MoreHorizontal />
           Reports
         </h1>
         <p className="text-muted-foreground">
@@ -339,9 +339,9 @@ export default function ReportsPage() {
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild><Button size="icon" variant="ghost"><MoreHorizontal /></Button></DropdownMenuTrigger>
                                     <DropdownMenuContent>
-                                        <DropdownMenuItem onSelect={() => handleEdit(p)}><Edit /> Edit Sale Info</DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={() => handleDownloadSinglePdf(p, 'sales')}><Download /> Download PDF</DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={() => handleRevertToAvailable(p)} className="text-destructive"><RotateCcw /> Revert to Available</DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => handleEdit(p) as any}><Edit /> Edit Sale Info</DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => handleDownloadSinglePdf(p, 'sales') as any}><Download /> Download PDF</DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => handleRevertToAvailable(p) as any} className="text-destructive"><RotateCcw /> Revert to Available</DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             </TableCell>
@@ -405,9 +405,9 @@ export default function ReportsPage() {
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild><Button size="icon" variant="ghost"><MoreHorizontal /></Button></DropdownMenuTrigger>
                                     <DropdownMenuContent>
-                                        <DropdownMenuItem onSelect={() => handleEdit(p)}><Edit /> Edit Rent Info</DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={() => handleDownloadSinglePdf(p, 'rental')}><Download /> Download PDF</DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={() => handleRevertToAvailable(p)} className="text-destructive"><RotateCcw /> Revert to Available</DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => handleEdit(p) as any}><Edit /> Edit Rent Info</DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => handleDownloadSinglePdf(p, 'rental') as any}><Download /> Download PDF</DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => handleRevertToAvailable(p) as any} className="text-destructive"><RotateCcw /> Revert to Available</DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             </TableCell>

@@ -1,8 +1,7 @@
-
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { UserRole } from '@/lib/types';
+import { UserRole, PlanName } from '@/lib/types';
 import { doc, Timestamp } from 'firebase/firestore';
 import { useUser } from '@/firebase/auth/use-user';
 import { useFirestore } from '@/firebase/provider';
@@ -44,6 +43,8 @@ const defaultProfile: ProfileData = {
     planName: 'Basic',
 };
 
+const MASTER_ADMIN_EMAIL = 'usmansagheer444@gmail.com';
+
 export function ProfileProvider({ children }: { children: ReactNode }) {
   const { user, isUserLoading: isAuthLoading } = useUser();
   const firestore = useFirestore();
@@ -52,7 +53,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const { data: userProfile, isLoading: isUserProfileLoading } = useDoc<any>(userDocRef);
 
   const agencyDocRef = useMemoFirebase(() => 
-    userProfile?.agency_id && userProfile.agency_id.trim() !== '' 
+    userProfile?.agency_id && userProfile.agency_id.trim() !== '' && userProfile.agency_id !== 'master_control'
       ? doc(firestore, 'agencies', userProfile.agency_id) 
       : null, 
     [userProfile, firestore]
@@ -60,7 +61,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const { data: agencyProfile, isLoading: isAgencyLoading } = useDoc<any>(agencyDocRef);
   
   const teamMemberDocRef = useMemoFirebase(() =>
-    userProfile?.agency_id && userProfile.agency_id.trim() !== '' && user
+    userProfile?.agency_id && userProfile.agency_id.trim() !== '' && userProfile.agency_id !== 'master_control' && user
         ? doc(firestore, 'agencies', userProfile.agency_id, 'teamMembers', user.uid)
         : null,
     [userProfile, user, firestore]
@@ -90,22 +91,31 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         avatar: user.photoURL || prev.avatar,
     }));
 
-    if (!isUserProfileLoading && userProfile) {
-        const role = userProfile.role || 'Agent';
+    if (!isUserProfileLoading) {
+        const isMasterEmail = user.email?.toLowerCase() === MASTER_ADMIN_EMAIL;
+        const role = isMasterEmail ? 'Super Admin' : (userProfile?.role || 'Agent');
         
-        let name = userProfile.name || user.displayName || 'User';
-        let phone = userProfile.phone || '';
-        let avatar = teamMemberProfile?.avatar || agencyProfile?.avatar || userProfile.avatar || user.photoURL || '';
+        let name = userProfile?.name || user.displayName || 'User';
+        let phone = userProfile?.phone || '';
+        
+        // Priority for Avatar: Team Member -> Agency -> Personal Agent -> Global Profile -> Auth
+        let avatar = teamMemberProfile?.avatar || agencyProfile?.avatar || agentProfile?.avatar || userProfile?.avatar || user.photoURL || '';
+        let agencyName = agencyProfile?.agencyName || 'My Agency';
 
         if (role === 'Agent' && agentProfile) {
             name = agentProfile.name || name;
             phone = agentProfile.phone || phone;
-        } else if (role === 'Admin' && agencyProfile) {
+        } else if ((role === 'Admin' || role === 'Super Admin') && agencyProfile) {
             name = agencyProfile.name || name;
             phone = agencyProfile.phone || phone;
         } else if (role === 'Video Recorder' && teamMemberProfile) {
              name = teamMemberProfile.name || name;
              phone = teamMemberProfile.phone || phone;
+        }
+
+        if (role === 'Super Admin') {
+             agencyName = "Platform Master Control";
+             name = name || 'System Admin';
         }
 
 
@@ -128,12 +138,12 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
         const newProfileData: ProfileData = {
             name: name,
-            agencyName: agencyProfile?.agencyName || 'My Agency',
+            agencyName: agencyName,
             phone: phone,
-            role: role, 
+            role: role as UserRole, 
             avatar: avatar,
             user_id: user.uid,
-            agency_id: userProfile.agency_id || '',
+            agency_id: userProfile?.agency_id || (isMasterEmail ? 'master_control' : ''),
             trialEndDate,
             daysLeftInTrial,
             planName: agencyProfile?.planName || 'Basic',
@@ -154,7 +164,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const isLoading = isAuthLoading || isUserProfileLoading || (!!userProfile?.agency_id && (isAgencyLoading || isTeamMemberLoading));
+  const isLoading = isAuthLoading || isUserProfileLoading;
 
   return (
     <ProfileContext.Provider value={{ profile, setProfile, isLoading }}>

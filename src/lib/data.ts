@@ -1,11 +1,10 @@
-
 import type { Property, User, Buyer, FollowUp, Appointment, BuyerStatus, Activity } from './types';
 
 export const properties: Property[] = [];
 
 export const buyerStatuses: BuyerStatus[] = [
     'New', 'Interested', 'Not Interested', 'Follow Up',
-    'Visited Property', 'Deal Closed', 'Deal Lost', 'Pending'
+    'Visited Property', 'Deal Closed', 'Deal Lost'
 ];
 
 export const buyers: Buyer[] = [];
@@ -363,7 +362,3 @@ export const punjabCities: string[] = [
     "Wazirabad",
     "Islamabad"
 ];
-
-    
-
-    

@@ -1,7 +1,6 @@
-
 'use client';
 
-export type UserRole = 'Admin' | 'Agent' | 'Video Recorder';
+export type UserRole = 'Admin' | 'Agent' | 'Video Recorder' | 'Super Admin';
 export type PlanName = 'Basic' | 'Standard' | 'Premium';
 
 export type User = {
@@ -12,6 +11,7 @@ export type User = {
   role: UserRole;
   avatar?: string;
   agency_id: string; // The ID of the agency admin user
+  agency_name?: string;
   permissions?: Record<string, boolean>;
   stats?: {
       propertiesSold: number;
@@ -20,25 +20,34 @@ export type User = {
   },
   status?: 'Pending' | 'Active'; // New status for invitations
   invitedAt?: any; // Timestamp for pending invites
+  joinedAt?: any; // Timestamp or ISO string for active members
+  updatedAt?: any;
   planName?: PlanName;
   planStartDate?: string;
+  user_id?: string; // Actual Auth UID
+};
+
+export type BrandingConfig = {
+  appName: string;
+  appDescription: string;
+  pwaIconUrl: string;
+  updatedAt: string;
 };
 
 export type Tag = {
   id: string;
   name: string;
-  color: string;
-  createdAt: string;
-  createdBy: string;
+  color: string; // Hex or tailwind class
   agency_id: string;
-  entityType: 'property' | 'buyer';
+  createdAt: string;
+  listingType?: ListingType | 'All';
 };
 
 
 export type PropertyType = 'House' | 'Flat' | 'Farm House' | 'Penthouse' | 'Plot' | 'Residential Plot' | 'Commercial Plot' | 'Agricultural Land' | 'Industrial Land' | 'Office' | 'Shop' | 'Warehouse' | 'Factory' | 'Building' | 'Commercial Property' | 'Semi Commercial' | 'Residential Property' | 'Old House' | '';
 export type SizeUnit = 'Marla' | 'SqFt' | 'Kanal' | 'Acre' | 'Maraba';
 export type PriceUnit = 'Thousand' | 'Lacs' | 'Crore';
-export type PropertyStatus = 'Available' | 'Sold' | 'Rent Out' | 'Sold (External)' | 'Pending';
+export type PropertyStatus = 'New' | 'Available' | 'Sold' | 'Rent Out' | 'Sold (External)';
 export type ListingType = 'For Sale' | 'For Rent';
 export type EditingStatus = 'In Editing' | 'Complete';
 export type RecordingPaymentStatus = 'Unpaid' | 'Paid Online' | 'Pending Cash';
@@ -94,7 +103,7 @@ export type Property = {
     other?: string;
   };
   is_deleted?: boolean;
-  assignedTo?: string | null; // ID of the agent assigned to this property
+  assignedTo?: string | string[] | null; // Properties can have multiple assignments
   // Sale details
   sold_price?: number;
   sold_price_unit?: PriceUnit;
@@ -142,6 +151,10 @@ export type Property = {
 
   // Tags
   tags?: string[];
+  
+  // Remarks & Updates
+  timeline_notes?: LeadNote[];
+  last_remark_at?: string;
 };
 
 export type RecommendedProperty = Property & {
@@ -157,9 +170,17 @@ export type BuyerStatus =
   | 'Follow Up'
   | 'Visited Property'
   | 'Deal Closed'
-  | 'Deal Lost'
-  | 'Pending';
+  | 'Deal Lost';
 
+export type LeadNote = {
+    id: string;
+    text: string;
+    authorId: string;
+    authorName: string;
+    authorRole: UserRole;
+    timestamp: string;
+    readBy?: string[]; // Track who has seen this remark
+};
 
 export type Buyer = {
     id: string;
@@ -183,12 +204,14 @@ export type Buyer = {
     size_max_value?: number;
     size_max_unit?: SizeUnit;
     notes?: string;
+    timeline_notes?: LeadNote[];
+    last_remark_at?: string;
     created_at: string;
     created_by: string;
     agency_id: string;
     is_deleted?: boolean;
     last_follow_up_note?: string;
-    assignedTo?: string | null; // ID of the agent assigned to this buyer
+    assignedTo?: string | null; // Buyers have ONE specific assignment
     sharedProperties?: {
         propertyId: string;
         propertySerialNo: string;
@@ -197,6 +220,10 @@ export type Buyer = {
     }[];
     deal_lost_date?: string; // New field
     tags?: string[];
+    // Return tracking
+    returned_by_id?: string;
+    returned_by_name?: string;
+    returned_at?: string;
 };
 
 export type FollowUpStatus = 'Scheduled' | 'Completed';
@@ -240,7 +267,7 @@ export type Activity = {
     userAvatar?: string;
     action: string;
     target: string;
-    targetType: 'Property' | 'Buyer' | 'Appointment' | 'User' | 'FollowUp' | 'Invitation';
+    targetType: 'Property' | 'Buyer' | 'Appointment' | 'User' | 'FollowUp' | 'Invitation' | 'Service';
     details: { from: string; to: string } | null;
     timestamp: string;
     agency_id: string;
@@ -248,7 +275,7 @@ export type Activity = {
     assignedToName?: string | null;
 };
 
-export type NotificationType = 'invitation' | 'appointment' | 'followup' | 'activity';
+export type NotificationType = 'invitation' | 'appointment' | 'followup' | 'activity' | 'message';
 
 export interface BaseNotification {
     id: string;
@@ -286,7 +313,15 @@ export interface ActivityNotification extends BaseNotification {
     activity: Activity;
 }
 
-export type Notification = InvitationNotification | AppointmentNotification | FollowUpNotification | ActivityNotification;
+export interface MessageNotification extends BaseNotification {
+    type: 'message';
+    leadId: string;
+    leadSerial: string;
+    authorName: string;
+    leadType: 'Buyer' | 'Property';
+}
+
+export type Notification = InvitationNotification | AppointmentNotification | FollowUpNotification | ActivityNotification | MessageNotification;
 
 export type UpgradeRequest = {
     id: string;
@@ -305,7 +340,7 @@ export type UpgradeRequest = {
     reviewerId?: string;
 };
 
-export type InboxMessageType = 'cannot_record' | 'payment_confirmation' | 'direct_message';
+export type InboxMessageType = 'cannot_record' | 'payment_confirmation' | 'lead_update';
 
 export interface InboxMessage {
     id: string;
@@ -313,9 +348,88 @@ export interface InboxMessage {
     fromUserId: string;
     fromUserName: string;
     message: string;
-    propertyId: string;
-    propertySerial: string;
+    propertyId?: string;
+    propertySerial?: string;
+    buyerId?: string;
+    buyerIdSerial?: string;
     isRead: boolean;
     createdAt: string;
     agency_id: string;
+};
+
+export type Agency = {
+    id: string;
+    agencyName: string;
+    ownerId: string;
+    name: string;
+    createdAt: any;
+    avatar?: string;
+    planName: PlanName;
+    phone?: string;
+    planStartDate?: any;
+};
+
+export interface ProfileData {
+  name: string;
+  agencyName: string;
+  phone: string;
+  role: UserRole;
+  avatar?: string;
+  user_id: string;
+  agency_id: string;
+  trialEndDate?: string;
+  daysLeftInTrial?: number;
+  planName?: PlanName;
+  planStartDate?: string;
+}
+
+export interface EventDetails {
+    title: string;
+    date: string;
+    time: string;
+    description: string;
+}
+
+// --- New Service Module Types ---
+export type ServiceTargetAudience = 'Buyers' | 'Properties' | 'Both';
+
+export type Service = {
+    id: string;
+    name: string;
+    price: number;
+    category: string;
+    description: string;
+    agency_id: string;
+    created_at: string;
+    customStatuses?: string[]; // Selection options for status (picked one)
+    tags?: string[];           // Available labels (picked many)
+    applicableTo?: ServiceTargetAudience;
+};
+
+export type ServiceStatus = 'Pending' | 'In Progress' | 'Completed' | string;
+export type AssignedToType = 'Lead' | 'External';
+export type ServicePaymentStatus = 'Pending' | 'Partial' | 'Paid';
+export type ServicePaymentMethod = 'Cash' | 'Online' | 'N/A';
+
+export type ProvidedService = {
+    id: string;
+    serviceId: string;
+    serviceName: string;
+    priceCharged: number;
+    assignedToType: AssignedToType;
+    leadId?: string;
+    leadName?: string;
+    leadType?: 'Buyer' | 'Property';
+    externalName?: string;
+    externalPhone?: string;
+    externalClientDetails?: string;
+    status: string; // Dynamic status from Service definition
+    tags?: string[]; // Dynamic labels from Service definition
+    agency_id: string;
+    created_at: string;
+    // Payment Tracking
+    paymentStatus?: ServicePaymentStatus;
+    paymentMethod?: ServicePaymentMethod;
+    amountPaid?: number;
+    paymentNote?: string;
 };

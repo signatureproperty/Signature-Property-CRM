@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -17,13 +16,7 @@ import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from './ui/form';
 import { Textarea } from './ui/textarea';
 import { useEffect } from 'react';
-
-export interface EventDetails {
-    title: string;
-    date: string;
-    time: string;
-    description: string;
-}
+import { EventDetails } from '@/lib/types';
 
 interface AddEventDialogProps {
   isOpen: boolean;
@@ -35,7 +28,7 @@ const formSchema = z.object({
   title: z.string().min(1, 'Event title is required'),
   date: z.string().min(1, 'Date is required'),
   time: z.string().min(1, 'Time is required'),
-  description: z.string().optional(),
+  description: z.string().default(''),
 });
 
 type EventFormValues = z.infer<typeof formSchema>;
@@ -69,7 +62,10 @@ export function AddEventDialog({
   }, [isOpen, form]);
 
   const onSubmit = (data: EventFormValues) => {
-    onSave(data);
+    onSave({
+        ...data,
+        description: data.description || ''
+    });
     setIsOpen(false);
   };
   

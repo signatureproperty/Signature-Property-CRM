@@ -1,12 +1,33 @@
-
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Providers } from './providers';
 
 export const metadata: Metadata = {
   title: 'Signature Property CRM',
   description: 'The ultimate real-estate CRM, simplified.',
-  manifest: '/manifest.json',
+  appleWebApp: {
+      capable: true,
+      statusBarStyle: 'default',
+      title: 'Signature Property CRM',
+  },
+  icons: {
+      icon: [
+        { url: '/icon-512x512.png', type: 'image/png' },
+      ],
+      shortcut: '/icon-512x512.png',
+      apple: '/icon-512x512.png',
+  },
+  formatDetection: {
+      telephone: false,
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#3b82f6',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({

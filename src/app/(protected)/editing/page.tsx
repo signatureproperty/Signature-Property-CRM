@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -15,7 +14,7 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, doc, updateDoc, query, where, addDoc } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/hooks';
 import { useProfile } from '@/context/profile-context';
-import { useSearch } from '../layout';
+import { useSearch } from '@/context/layout-context';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -27,7 +26,7 @@ export default function EditingPage() {
     const { toast } = useToast();
     const firestore = useFirestore();
     const { profile } = useProfile();
-    const { searchQuery, setSearchQuery } = useSearch();
+    const { searchQuery } = useSearch();
     const [propertyForDetails, setPropertyForDetails] = useState<Property | null>(null);
     const [propertyForPayment, setPropertyForPayment] = useState<Property | null>(null);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -38,7 +37,7 @@ export default function EditingPage() {
         profile.agency_id && profile.user_id
             ? query(
                 collection(firestore, 'agencies', profile.agency_id, 'properties'), 
-                where('assignedTo', '==', profile.user_id),
+                where('assignedTo', 'array-contains', profile.user_id),
                 where('is_recorded', '==', true)
             ) 
             : null, 
@@ -50,11 +49,11 @@ export default function EditingPage() {
         if (!properties) return [];
         if (!searchQuery) return properties;
 
-        const lowercasedQuery = searchQuery.toLowerCase();
+        const lowercoredQuery = searchQuery.toLowerCase();
         return properties.filter(prop => 
-            prop.serial_no.toLowerCase().includes(lowercasedQuery) ||
-            prop.auto_title.toLowerCase().includes(lowercasedQuery) ||
-            prop.address.toLowerCase().includes(lowercasedQuery)
+            prop.serial_no.toLowerCase().includes(lowercoredQuery) ||
+            prop.auto_title.toLowerCase().includes(lowercoredQuery) ||
+            prop.address.toLowerCase().includes(lowercoredQuery)
         );
     }, [properties, searchQuery]);
     
@@ -264,7 +263,7 @@ export default function EditingPage() {
                     placeholder="Search by SN, Title, or Address..."
                     className="pl-10"
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e) => {}} // Search handled by layout context
                 />
             </div>
             {isLoading ? (

@@ -1,1 +1,4 @@
-DELETED
+/**
+ * Development utilities stub.
+ */
+export const isDev = process.env.NODE_ENV === 'development';

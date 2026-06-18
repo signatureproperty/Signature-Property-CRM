@@ -1,62 +1,67 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
-import { Check, ArrowRight, Star, Info, Users, Briefcase } from 'lucide-react';
+import { Check, ArrowRight, Star, Building2, Gem } from 'lucide-react';
 import { useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useProfile } from '@/context/profile-context';
-import { format } from 'date-fns';
 import { PaymentDialog } from '@/components/payment-dialog';
 import type { Plan } from '@/components/payment-dialog';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 
-const agentPlans: Plan[] = [
+const agencyPlans: Plan[] = [
     {
-        name: 'Free',
+        name: 'Basic',
         price: { monthly: 0, yearly: 0 },
-        description: 'Perfect for getting started and working with a single agency.',
+        description: 'Perfect for individual dealers starting their digital journey.',
         features: [
-            'Connect with 1 Agency',
-            'Manage Assigned Properties',
-            'Manage Assigned Buyers',
-            'Use Core CRM Tools',
+            '25 Property Listings',
+            '25 Buyer Leads',
+            'Up to 1 Agent (Solo)',
+            'Core CRM Tools',
+            'Standard Support'
         ],
         cta: 'Current Plan',
         isPopular: false,
     },
     {
         name: 'Standard',
-        price: { monthly: 2000, yearly: 20000 },
-        description: 'For professional agents expanding their network.',
+        price: { monthly: 5000, yearly: 50000 },
+        description: 'Grow your agency with expanded limits and team collaboration.',
         features: [
-            'Connect with up to 2 Agencies',
-            'All Free Features',
-            'Priority Lead Notifications',
-            'Basic Personal Analytics',
+            '1,000 Property Listings',
+            '1,000 Buyer Leads',
+            'Up to 10 Team Members',
+            'Professional List Generator',
+            'Performance Reports',
+            'Standard Support'
         ],
         cta: 'Upgrade to Standard',
         isPopular: true,
     },
     {
-        name: 'Pro',
-        price: { monthly: 5000, yearly: 50000 },
-        description: 'For top-tier agents managing multiple agency partnerships.',
+        name: 'Premium',
+        price: { monthly: 15000, yearly: 150000 },
+        description: 'The ultimate solution for high-volume agencies and large teams.',
         features: [
-            'Connect with up to 4 Agencies',
-            'All Standard Features',
-            'Advanced Tools & Integrations',
-            'Dedicated Support',
+            '2,500 Property Listings',
+            '2,500 Buyer Leads',
+            'Up to 30 Team Members',
+            'Advanced Data Analytics',
+            'Custom Document Branding',
+            'Priority VIP Support'
         ],
-        cta: 'Upgrade to Pro',
+        cta: 'Upgrade to Premium',
         isPopular: false,
     }
 ];
 
 
-export default function AgentUpgradePage() {
+export default function AgencyUpgradePage() {
     const [isYearly, setIsYearly] = useState(false);
     const { profile } = useProfile();
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
@@ -67,100 +72,117 @@ export default function AgentUpgradePage() {
         setIsPaymentDialogOpen(true);
     }
     
-    // For agents, we can assume they are on the "Free" plan by default.
-    // This logic can be expanded if agent plans are stored in the profile.
-    const currentPlanName = 'Free'; 
+    const currentPlanName = profile.planName || 'Basic'; 
 
   return (
     <>
-    <div className="space-y-8">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold tracking-tight font-headline">Upgrade Your Agent Account</h1>
-        <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-          Expand your network by connecting with multiple agencies and unlock powerful features.
+    <div className="space-y-10 pb-20 animate-fade-in">
+      <div className="text-center space-y-4">
+        <h1 className="text-4xl md:text-5xl font-black tracking-tight font-headline">Scale Your Real Estate Agency</h1>
+        <p className="text-lg text-muted-foreground max-w-2xl mx-auto font-medium">
+          Choose a plan that fits your current volume and future ambitions.
         </p>
       </div>
       
-       <Alert className="max-w-2xl mx-auto bg-primary/10 border-primary/30">
-          <Briefcase className="h-4 w-4" />
-          <AlertTitle className="font-bold">How It Works</AlertTitle>
-          <AlertDescription>
-              Upgrading your account allows you to accept invitations from multiple agencies simultaneously, increasing your lead flow and opportunities.
+       <Alert className="max-w-2xl mx-auto bg-primary/5 border-primary/20 rounded-2xl">
+          <Building2 className="h-5 w-5 text-primary" />
+          <AlertTitle className="font-bold text-primary">Agency Plan Notice</AlertTitle>
+          <AlertDescription className="text-sm font-medium">
+              Agent accounts are free forever. These premium plans are designed to help agency owners manage higher inventory volumes and larger teams.
           </AlertDescription>
         </Alert>
 
        <div className="flex items-center justify-center space-x-4">
-        <span className={cn("font-medium", !isYearly && "text-primary")}>Monthly</span>
+        <span className={cn("font-bold text-sm uppercase tracking-widest transition-colors", !isYearly ? "text-primary" : "text-muted-foreground/60")}>Monthly</span>
         <Switch
           checked={isYearly}
           onCheckedChange={setIsYearly}
+          className="data-[state=checked]:bg-primary"
           aria-label="Toggle between monthly and yearly pricing"
         />
-        <span className={cn("font-medium", isYearly && "text-primary")}>Yearly</span>
-        <span className="text-sm font-semibold text-green-600">(Save 2 months!)</span>
+        <span className={cn("font-bold text-sm uppercase tracking-widest transition-colors", isYearly ? "text-primary" : "text-muted-foreground/60")}>Yearly</span>
+        <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-black text-[10px]">SAVE 2 MONTHS</Badge>
       </div>
 
-      <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3 items-start max-w-7xl mx-auto">
-        {agentPlans.map((plan) => {
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 items-stretch max-w-7xl mx-auto px-4">
+        {agencyPlans.map((plan) => {
           const isCurrentPlan = plan.name === currentPlanName;
           const isDisabled = isCurrentPlan;
 
-          let buttonText: React.ReactNode = plan.cta;
-           if (isDisabled) {
-              buttonText = 'Current Plan';
-          }
+          const priceData = plan.price as any;
 
           return (
-            <Card key={plan.name} className={cn("flex flex-col h-full relative", plan.isPopular && "border-primary border-2 shadow-primary/20", isCurrentPlan && "ring-2 ring-primary")}>
+            <Card key={plan.name} className={cn(
+                "flex flex-col h-full relative transition-all duration-300 rounded-[2.5rem] overflow-hidden border-none shadow-xl", 
+                plan.isPopular ? "ring-2 ring-primary shadow-primary/20 scale-105 z-10 bg-card" : "bg-card/60 backdrop-blur-sm hover:scale-[1.02]",
+                isCurrentPlan && "opacity-90"
+            )}>
               {plan.isPopular && (
-                   <div className="bg-primary text-primary-foreground text-xs font-bold uppercase tracking-wider text-center py-1 rounded-t-lg -mt-px flex items-center justify-center gap-2">
-                      <Star className="h-4 w-4" />
-                      Most Popular
+                   <div className="bg-primary text-primary-foreground text-[10px] font-black uppercase tracking-[0.2em] text-center py-2 flex items-center justify-center gap-2">
+                      <Star className="h-3 w-3 fill-current" />
+                      Recommended for Growth
                   </div>
               )}
-              <CardHeader className="text-center">
-                <CardTitle className="text-2xl font-bold font-headline">{plan.name}</CardTitle>
-                  <div className="text-4xl font-extrabold my-4">
-                      {plan.price.custom ? (
-                          'Custom'
-                      ) : plan.price.monthly === 0 ? 'Free' : (
-                         isYearly ? (
-                          <div className="flex items-center justify-center gap-2">
-                             <span>RS {plan.price.yearly.toLocaleString()}</span>
-                             <span className="text-xl font-medium text-muted-foreground line-through">RS {(plan.price.monthly * 12).toLocaleString()}</span>
-                          </div>
-                         ) : `RS ${plan.price.monthly.toLocaleString()}`
-                      )}
-                      {!plan.price.custom && plan.price.monthly > 0 && (
-                           <span className="text-sm font-normal text-muted-foreground">/{isYearly ? 'year' : 'month'}</span>
-                      )}
+              <CardHeader className="text-center pt-8">
+                <CardHeader className="p-0">
+                  <CardTitle className="text-2xl font-black font-headline uppercase tracking-tighter">{plan.name}</CardTitle>
+                </CardHeader>
+                  <div className="flex items-baseline justify-center gap-1 mt-6">
+                      <span className="text-sm font-black text-muted-foreground align-top">RS</span>
+                      <span className="text-5xl font-black tracking-tighter">
+                          {priceData.monthly === 0 ? '0' : (isYearly ? Math.floor(priceData.yearly / 12).toLocaleString() : priceData.monthly.toLocaleString())}
+                      </span>
+                      <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">/mo</span>
                   </div>
-                <CardDescription>{plan.description}</CardDescription>
+                  {isYearly && priceData.monthly > 0 && (
+                      <p className="text-[10px] font-black text-emerald-600 uppercase mt-2">Billed RS {priceData.yearly.toLocaleString()} annually</p>
+                  )}
+                <CardDescription className="pt-4 font-medium min-h-[4rem] px-4">{plan.description}</CardDescription>
               </CardHeader>
-              <CardContent className="flex-1 space-y-4">
-                <ul className="space-y-3">
+              
+              <CardContent className="flex-1 space-y-6 px-8">
+                <Separator className="bg-border/40" />
+                <ul className="space-y-4">
                   {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-start">
-                      <Check className="mr-3 h-5 w-5 flex-shrink-0 text-green-500" />
-                      <span className="text-sm">{feature}</span>
+                    <li key={feature} className="flex items-start gap-3">
+                      <div className="mt-0.5 rounded-full bg-emerald-500/10 p-0.5">
+                        <Check className="h-3.5 w-3.5 text-emerald-600" />
+                      </div>
+                      <span className="text-sm font-semibold opacity-80">{feature}</span>
                     </li>
                   ))}
                 </ul>
               </CardContent>
-              <CardFooter>
+
+              <CardFooter className="pb-8 px-8">
                 <Button 
-                  className={cn("w-full", plan.isPopular && 'glowing-btn')} 
-                  variant={plan.isPopular ? 'default' : 'outline'}
+                  className={cn(
+                    "w-full h-14 rounded-2xl text-base font-black transition-all", 
+                    plan.isPopular ? 'glowing-btn' : 'bg-muted/50 hover:bg-muted text-foreground'
+                  )} 
+                  variant={plan.isPopular ? 'default' : 'ghost'}
                   onClick={() => handleChoosePlan(plan)}
                   disabled={isDisabled}
                 >
-                  {buttonText} {!isDisabled && <ArrowRight className="ml-2 h-4 w-4" />}
+                  {isCurrentPlan ? 'CURRENT ACTIVE PLAN' : plan.cta} 
+                  {!isDisabled && <ArrowRight className="ml-2 h-5 w-5" />}
                 </Button>
               </CardFooter>
             </Card>
         )})}
       </div>
+
+      <div className="max-w-4xl mx-auto text-center space-y-4 pt-10">
+         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20">
+            <Gem className="h-4 w-4 text-primary" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-primary">Enterprise Support</span>
+         </div>
+         <h3 className="text-2xl font-black font-headline tracking-tight">Need a custom plan for 100+ members?</h3>
+         <p className="text-muted-foreground font-medium">Contact our enterprise sales team for customized volume pricing and onboarding services.</p>
+         <Button variant="link" className="font-black text-primary hover:no-underline">SALES@SIGNATURECRM.PK</Button>
+      </div>
     </div>
+
     {selectedPlan && (
         <PaymentDialog 
             isOpen={isPaymentDialogOpen}

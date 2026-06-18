@@ -1,64 +1,85 @@
-
 'use client';
-import { AddBuyerDialog } from '@/components/add-buyer-dialog';
-import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+
+import { 
+    DropdownMenu, 
+    DropdownMenuContent, 
+    DropdownMenuItem, 
+    DropdownMenuTrigger,
+    DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { buyerStatuses } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
-import { Edit, MoreHorizontal, PlusCircle, Trash2, Phone, Home, Search, Filter, Wallet, Bookmark, Upload, Download, Ruler, Eye, CalendarPlus, UserCheck, Briefcase, Check, X, UserPlus, UserX, ChevronDown, MessageSquare, Sparkles, ChevronLeft, ChevronRight, DollarSign, ArrowUpDown } from 'lucide-react';
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { Edit, MoreHorizontal, PlusCircle, Trash2, Wallet, Ruler, Eye, MessageSquare, ChevronLeft, ChevronRight, ArrowUpDown, Tag as TagIcon, MapPin, ChevronDown, UserPlus, UserMinus, CalendarPlus, Sparkles, MessageSquareText, Filter, User as UserIcon, Users, X } from 'lucide-react';
+import { useState, useMemo, Suspense } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useIsMobile } from '@/hooks/use-is-mobile';
-import { Buyer, BuyerStatus, PriceUnit, SizeUnit, PropertyType, AppointmentContactType, Appointment, FollowUp, User, Activity, ListingType, PlanName, Property } from '@/lib/types';
+import { Buyer, PriceUnit, SizeUnit, PropertyType, Activity, ListingType, Tag, Appointment, Property } from '@/lib/types';
 import { Input } from '@/components/ui/input';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useSearch, useUI } from '../layout';
-import { BuyerDetailsDialog } from '@/components/buyer-details-dialog';
-import { SetAppointmentDialog } from '@/components/set-appointment-dialog';
+import { useRouter } from 'next/navigation';
+import { useSearch } from '@/context/layout-context';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency, formatUnit, formatPhoneNumberForWhatsApp } from '@/lib/formatters';
 import { useCurrency } from '@/context/currency-context';
 import { useProfile } from '@/context/profile-context';
 import { useFirestore } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, addDoc, setDoc, doc, deleteDoc, serverTimestamp, updateDoc, writeBatch, query, where, or } from 'firebase/firestore';
+import { collection, addDoc, setDoc, doc, updateDoc, writeBatch, query, where, or } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/hooks';
-import { AddFollowUpDialog } from '@/components/add-follow-up-dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { cn, formatPhoneNumber } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import React from 'react';
 import { useUser } from '@/firebase/auth/use-user';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Separator } from '@/components/ui/separator';
-import { PropertyRecommenderDialog } from '@/components/property-recommender-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Progress } from '@/components/ui/progress';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
+import dynamic from 'next/dynamic';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
+
+// --- Lazy Loaded Components ---
+const AddBuyerDialog = dynamic(() => import('@/components/add-buyer-dialog').then(mod => mod.AddBuyerDialog), { ssr: false });
+const ManageTagsDialog = dynamic(() => import('@/components/manage-tags-dialog').then(mod => mod.ManageTagsDialog), { ssr: false });
+const BuyerDetailsDialog = dynamic(() => import('@/components/buyer-details-dialog').then(mod => mod.BuyerDetailsDialog), { ssr: false });
+const BuyerNotesDialog = dynamic(() => import('@/components/buyer-notes-dialog').then(mod => mod.BuyerNotesDialog), { ssr: false });
+const EditBuyerTagsDialog = dynamic(() => import('@/components/edit-buyer-tags-dialog').then(mod => mod.EditBuyerTagsDialog), { ssr: false });
+const SetAppointmentDialog = dynamic(() => import('@/components/set-appointment-dialog').then(mod => mod.SetAppointmentDialog), { ssr: false });
+const PropertyRecommenderDialog = dynamic(() => import('@/components/property-recommender-dialog').then(mod => mod.PropertyRecommenderDialog), { ssr: false });
+const AssignBuyerToAgentDialog = dynamic(() => import('@/components/assign-buyer-to-agent-dialog').then(mod => mod.AssignBuyerToAgentDialog), { ssr: false });
+const SimpleAssignAgentDialog = dynamic(() => import('@/components/simple-assign-agent-dialog').then(mod => mod.SimpleAssignAgentDialog), { ssr: false });
 
 const ITEMS_PER_PAGE = 50;
 
-const planLimits = {
-    Basic: { properties: 500, buyers: 500, team: 3 },
-    Standard: { properties: 2500, buyers: 2500, team: 10 },
-    Premium: { properties: Infinity, buyers: Infinity, team: Infinity },
-};
-
-
 const statusVariant = {
-    'New': 'default',
-    'Interested': 'default',
-    'Not Interested': 'destructive',
-    'Follow Up': 'default',
-    'Visited Property': 'secondary',
-    'Deal Closed': 'default',
-    'Deal Lost': 'destructive',
-    'Pending': 'default'
+    'New': 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800',
+    'Interested': 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800',
+    'Not Interested': 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800',
+    'Follow Up': 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800',
+    'Visited Property': 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800',
+    'Deal Closed': 'bg-slate-800 text-white border-slate-700 dark:bg-slate-700 dark:border-slate-600',
+    'Deal Lost': 'bg-gray-400 text-white border-gray-300 dark:bg-gray-600 dark:border-gray-500'
 } as const;
+
+const propertyTypesForFilter: (PropertyType | 'All')[] = [
+  'All', 'House', 'Flat', 'Farm House', 'Penthouse', 'Plot', 'Residential Plot', 'Commercial Plot', 'Agricultural Land', 'Industrial Land', 'Office', 'Shop', 'Warehouse', 'Factory', 'Building', 'Residential Property', 'Commercial Property', 'Semi Commercial'
+];
+
+interface Filters {
+    area: string[];
+    propertyType: PropertyType | 'All';
+    minBudget: string;
+    maxBudget: string;
+    budgetUnit: PriceUnit | 'All';
+    minSize: string;
+    maxSize: string;
+    sizeUnit: SizeUnit | 'All';
+    serialNo: string;
+    serialNoPrefix: 'All' | 'B' | 'RB';
+}
 
 function formatSize(minAmount?: number, minUnit?: SizeUnit, maxAmount?: number, maxUnit?: SizeUnit) {
     if (!minAmount || !minUnit) return 'N/A';
@@ -66,44 +87,20 @@ function formatSize(minAmount?: number, minUnit?: SizeUnit, maxAmount?: number, 
     return `${minAmount} - ${maxAmount} ${minUnit}`;
 }
 
-interface Filters {
-    status: BuyerStatus | 'All';
-    area: string;
-    minBudget: string;
-    maxBudget: string;
-    budgetUnit: PriceUnit | 'All';
-    propertyType: PropertyType | 'All';
-    minSize: string;
-    maxSize: string;
-    sizeUnit: SizeUnit | 'All';
-    serialNoPrefix: 'All' | 'B' | 'RB';
-    serialNo: string;
-}
-
-export default function BuyersPage() {
+function BuyersPageContent() {
     const isMobile = useIsMobile();
     const router = useRouter();
-    const pathname = usePathname();
     const { user } = useUser();
     const { profile } = useProfile();
-    const searchParams = useSearchParams();
     const { searchQuery } = useSearch();
-    const { isMoreMenuOpen } = useUI();
     const { toast } = useToast();
     const { currency } = useCurrency();
-    const statusFilterFromURL = searchParams.get('status') as BuyerStatus | 'All' | null;
-    const listingTypeFilterFromURL = searchParams.get('type') as ListingType | null;
-
-    const firestore = useFirestore();
-    const importInputRef = useRef<HTMLInputElement>(null);
     
-    // Fetch all buyers for the agency (Updated for Agent Assignment)
+    const firestore = useFirestore();
+    
     const allAgencyBuyersQuery = useMemoFirebase(() => {
         if (!profile.agency_id) return null;
-        
         const buyersRef = collection(firestore, 'agencies', profile.agency_id, 'buyers');
-
-        // Agar Agent hai, to sirf uske Assigned ya Created buyers mangwao
         if (profile.role === 'Agent' && user?.uid) {
             return query(buyersRef, 
                 or(
@@ -112,154 +109,116 @@ export default function BuyersPage() {
                 )
             );
         }
-
-        // Agar Admin hai, to sab uthao
         return query(buyersRef);
     }, [profile.agency_id, firestore, profile.role, user?.uid]);
     const { data: allBuyers, isLoading: isAgencyLoading } = useCollection<Buyer>(allAgencyBuyersQuery);
 
-    const agentLeads = useMemo(() => {
-        if (profile.role !== 'Agent' || !user?.uid || !allBuyers) {
-            return [];
-        }
-        return allBuyers.filter(buyer => buyer.created_by === user.uid || buyer.assignedTo === user.uid);
-    }, [profile.role, user?.uid, allBuyers]);
-
-    const buyersToDisplay = useMemo(() => {
-        if (profile.role === 'Admin') {
-            return allBuyers;
-        }
-        if (profile.role === 'Agent') {
-            return agentLeads;
-        }
-        return [];
-    }, [profile.role, allBuyers, agentLeads]);
-    
-    
     const teamMembersQuery = useMemoFirebase(() => profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'teamMembers') : null, [profile.agency_id, firestore]);
-    const { data: teamMembers } = useCollection<User>(teamMembersQuery);
+    const { data: teamMembers } = useCollection<any>(teamMembersQuery);
 
-    const followUpsQuery = useMemoFirebase(() => profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'followUps') : null, [profile.agency_id, firestore]);
-    const { data: followUps, isLoading: isFollowUpsLoading } = useCollection<FollowUp>(followUpsQuery);
+    const propertiesQuery = useMemoFirebase(() => profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'properties') : null, [profile.agency_id, firestore]);
+    const { data: properties } = useCollection<Property>(propertiesQuery);
 
-    const agencyPropertiesQuery = useMemoFirebase(() => profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'properties') : null, [profile.agency_id, firestore]);
-    const { data: allProperties } = useCollection<Property>(agencyPropertiesQuery);
-    
-    const agencyIdFromUrl = searchParams.get('agency') || (profile.role === 'Admin' ? profile.agency_id : profile.agencies?.[0]?.agency_id);
-    const activeTab = listingTypeFilterFromURL || 'For Sale';
-    const [activeAgencyTab, setActiveAgencyTab] = useState(agencyIdFromUrl);
+    const tagsQuery = useMemoFirebase(() => 
+        profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'tags') : null,
+        [profile.agency_id, firestore]
+    );
+    const { data: agencyTags } = useCollection<Tag>(tagsQuery);
 
-    useEffect(() => {
-        if (!activeAgencyTab && profile.agencies && profile.agencies.length > 0) {
-            setActiveAgencyTab(profile.agencies[0].agency_id);
-        }
-    }, [profile.agencies, activeAgencyTab]);
-
-
-    const assignableAgents = useMemo(() => {
-        return teamMembers?.filter(m => m.status === 'Active' && (m.role === 'Admin' || m.role === 'Agent')) || [];
-    }, [teamMembers]);
-    
-    const { totalSaleBuyers, totalRentBuyers } = useMemo(() => {
-        if (!allBuyers) return { totalSaleBuyers: 0, totalRentBuyers: 0 };
-        return {
-            totalSaleBuyers: allBuyers.filter(b => !b.is_deleted && (!b.listing_type || b.listing_type === 'For Sale')).length,
-            totalRentBuyers: allBuyers.filter(b => !b.is_deleted && b.listing_type === 'For Rent').length
-        };
-    }, [allBuyers]);
+    const [activeListingType, setActiveListingType] = useState<ListingType | 'All'>('All');
+    const [activeStatus, setActiveStatus] = useState<string>('All');
+    const [activeCustomTags, setActiveCustomTags] = useState<string[]>([]);
+    const [activeAgentFilter, setActiveAgentFilter] = useState<string>('All');
 
     const [isAddBuyerOpen, setIsAddBuyerOpen] = useState(false);
-    const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
-    const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
-    const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-    const [importType, setImportType] = useState<'For Sale' | 'For Rent' | null>(null);
+    const [isManageTagsOpen, setIsManageTagsOpen] = useState(false);
+    const [isEditTagsOpen, setIsEditTagsOpen] = useState(false);
+    const [isAppointmentOpen, setIsAppointmentOpen] = useState(false);
+    const [isRecommenderOpen, setIsRecommenderOpen] = useState(false);
+    const [isNotesOpen, setIsNotesOpen] = useState(false);
+    const [isAssignOpen, setIsAssignOpen] = useState(false);
+    const [isSimpleAssignOpen, setIsSimpleAssignOpen] = useState(false);
+
     const [buyerToEdit, setBuyerToEdit] = useState<Buyer | null>(null);
     const [selectedBuyers, setSelectedBuyers] = useState<string[]>([]);
-    const [buyerForFollowUp, setBuyerForFollowUp] = useState<Buyer | null>(null);
-    const [buyerForRecommendation, setBuyerForRecommendation] = useState<Buyer | null>(null);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-    const [isAppointmentOpen, setIsAppointmentOpen] = useState(false);
-    const [isFollowUpOpen, setIsFollowUpOpen] = useState(false);
-    const [isRecommenderOpen, setIsRecommenderOpen] = useState(false);
-    const [appointmentDetails, setAppointmentDetails] = useState<{ contactType: AppointmentContactType; contactName: string; contactSerialNo?: string; message: string; } | null>(null);
-    const [filters, setFilters] = useState<Filters>({ status: 'All', area: '', minBudget: '', maxBudget: '', budgetUnit: 'All', propertyType: 'All', minSize: '', maxSize: '', sizeUnit: 'All', serialNoPrefix: 'All', serialNo: '' });
-    const [activeStatusFilter, setActiveStatusFilter] = useState<BuyerStatus | 'All'>(statusFilterFromURL || 'All');
-    const [currentPage, setCurrentPage] = useState(1);
     const [selectedBuyerForDetails, setSelectedBuyerForDetails] = useState<Buyer | null>(null);
+    const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
-    // -- Limit Calculation --
-    const isAgent = profile.role === 'Agent';
-    const currentPlan = (profile?.planName as PlanName) || 'Basic';
-    const agencyLimit = planLimits[currentPlan]?.buyers || 0;
-    
-    const myLeadsCount = useMemo(() => {
-        if (!allBuyers || !user) return 0;
-        return allBuyers.filter(b => b.created_by === user.uid && !b.is_deleted).length;
-    }, [allBuyers, user]);
+    const [isTypesExpanded, setIsTypesExpanded] = useState(false);
+    const [isStatusExpanded, setIsStatusExpanded] = useState(false);
+    const [isTagsExpanded, setIsTagsExpanded] = useState(false);
 
-    const limit = isAgent ? Infinity : agencyLimit;
-    const currentCount = isAgent ? myLeadsCount : (allBuyers?.filter(b => !b.is_deleted).length || 0);
-    const progress = limit === Infinity ? 0 : (currentCount / limit) * 100;
-    const isLimitReached = !isAgent && currentCount >= limit;
+    const [filters, setFilters] = useState<Filters>({
+        area: [],
+        propertyType: 'All',
+        minBudget: '',
+        maxBudget: '',
+        budgetUnit: 'All',
+        minSize: '',
+        maxSize: '',
+        sizeUnit: 'All',
+        serialNo: '',
+        serialNoPrefix: 'All'
+    });
 
+    const activeAgents = useMemo(() => {
+        return teamMembers?.filter((m: any) => m.status === 'Active' && (m.role === 'Agent' || m.role === 'Admin')) || [];
+    }, [teamMembers]);
 
-    const buyerFollowUp = useMemo(() => {
-        if (!buyerForFollowUp || !followUps) return null;
-        return followUps.find(fu => fu.buyerId === buyerForFollowUp.id);
-    }, [buyerForFollowUp, followUps]);
+    const buyerCounts = useMemo(() => {
+        if (!allBuyers) return {};
+        const activeBuyers = allBuyers.filter(b => !b.is_deleted);
+        const counts: Record<string, number> = {
+            'For Sale': activeBuyers.filter(b => (b.listing_type || 'For Sale') === 'For Sale').length,
+            'For Rent': activeBuyers.filter(b => b.listing_type === 'For Rent').length,
+            'All': activeBuyers.length
+        };
 
-    useEffect(() => {
-        if (statusFilterFromURL) {
-            setActiveStatusFilter(statusFilterFromURL);
-        } else {
-            setActiveStatusFilter('All');
-        }
-    }, [statusFilterFromURL]);
+        buyerStatuses.forEach(status => {
+            counts[status] = activeBuyers.filter(b => b.status === status).length;
+        });
 
-    useEffect(() => {
-        if (!isAddBuyerOpen) setBuyerToEdit(null);
-    }, [isAddBuyerOpen]);
-    
-    // When the dialog closes, clear the selected buyer to ensure fresh data is loaded next time
-    useEffect(() => {
-        if (!isDetailsOpen) {
-            setSelectedBuyerForDetails(null);
-        }
-    }, [isDetailsOpen]);
+        agencyTags?.forEach(tag => {
+            counts[tag.name] = activeBuyers.filter(b => b.tags?.includes(tag.name)).length;
+        });
 
-    // When the master list of buyers changes, update the selected buyer if it exists
-    useEffect(() => {
-        if (selectedBuyerForDetails && allBuyers) {
-            const updatedBuyer = allBuyers.find(b => b.id === selectedBuyerForDetails.id);
-            if (updatedBuyer) {
-                setSelectedBuyerForDetails(updatedBuyer);
-            }
-        }
-    }, [allBuyers, selectedBuyerForDetails]);
-    
+        return counts;
+    }, [allBuyers, agencyTags]);
+
+    const handleFilterChange = (key: keyof Filters, value: any) => {
+        setFilters((prev) => ({ ...prev, [key]: value }));
+    };
+
+    const clearFilters = () => {
+        setFilters({
+            area: [],
+            propertyType: 'All',
+            minBudget: '',
+            maxBudget: '',
+            budgetUnit: 'All',
+            minSize: '',
+            maxSize: '',
+            sizeUnit: 'All',
+            serialNo: '',
+            serialNoPrefix: 'All'
+        });
+    };
+
     const logActivity = async (action: string, target: string, targetType: Activity['targetType'], details: any = null) => {
         if (!profile.agency_id) return;
         const activityLogRef = collection(firestore, 'agencies', profile.agency_id, 'activityLogs');
-        const newActivity: Omit<Activity, 'id'> = {
-        userName: profile.name,
-        action,
-        target,
-        targetType,
-        details,
-        timestamp: new Date().toISOString(),
-        agency_id: profile.agency_id,
-        };
-        await addDoc(activityLogRef, newActivity);
-    };
-
-
-    const formatBudget = (minAmount?: number, minUnit?: PriceUnit, maxAmount?: number, maxUnit?: PriceUnit) => {
-        if (!minAmount || !minUnit) return 'N/A';
-        const minVal = formatUnit(minAmount, minUnit);
-        if (!maxAmount || !maxUnit || (minAmount === maxAmount && minUnit === minUnit)) return formatCurrency(minVal, currency);
-        const maxVal = formatUnit(maxAmount, maxUnit);
-        return `${formatCurrency(minVal, currency)} - ${formatCurrency(maxVal, currency)}`;
+        await addDoc(activityLogRef, {
+            userName: profile.name,
+            action,
+            target,
+            targetType,
+            details,
+            timestamp: new Date().toISOString(),
+            agency_id: profile.agency_id,
+        });
     };
 
     const handleEdit = (buyer: Buyer) => {
@@ -268,1097 +227,836 @@ export default function BuyersPage() {
     };
 
     const handleDetailsClick = (buyer: Buyer) => {
-        if (isMobile) return;
-        setSelectedBuyerForDetails({ ...buyer });
+        setSelectedBuyerForDetails(buyer);
         setIsDetailsOpen(true);
     };
 
+    const handleNotesClick = (buyer: Buyer) => {
+        setSelectedBuyerForDetails(buyer);
+        setIsNotesOpen(true);
+    };
+
+    const handleAssignOpen = (buyer: Buyer) => {
+        setSelectedBuyerForDetails(buyer);
+        setIsAssignOpen(true);
+    };
+
+    const handleSimpleAssignOpen = (buyer: Buyer) => {
+        setSelectedBuyerForDetails(buyer);
+        setIsSimpleAssignOpen(true);
+    };
+
+    const handleUnassignAgent = async (buyer: Buyer) => {
+        if (!profile.agency_id) return;
+        try {
+            const buyerRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', buyer.id);
+            await updateDoc(buyerRef, { assignedTo: null });
+            
+            await logActivity('unassigned agent from lead', buyer.name, 'Buyer');
+            toast({ title: "Agent Unassigned", description: `Lead ${buyer.name} is now back in the pool.` });
+        } catch (error) {
+            toast({ title: "Action Failed", variant: 'destructive' });
+        }
+    };
+
+    const handleManageTagsAction = (buyer: Buyer) => {
+        setSelectedBuyerForDetails(buyer);
+        setIsEditTagsOpen(true);
+    };
+
     const handleSetAppointment = (buyer: Buyer) => {
-        setAppointmentDetails({
-            contactType: 'Buyer',
-            contactName: buyer.name,
-            contactSerialNo: buyer.serial_no,
-            message: `Regarding buyer's interest in ${buyer.area_preference || 'general properties'}.`,
-        });
+        setSelectedBuyerForDetails(buyer);
         setIsAppointmentOpen(true);
+    };
+
+    const handleRecommendProperties = (buyer: Buyer) => {
+        setSelectedBuyerForDetails(buyer);
+        setIsRecommenderOpen(true);
+    };
+
+    const handleSaveBuyer = async (buyerData: Omit<Buyer, 'id'> & { id?: string }) => {
+        if (!profile.agency_id) {
+            toast({ title: 'Error', description: 'Agency identity not found.', variant: 'destructive' });
+            return;
+        }
+        
+        const finalId = buyerData.id || buyerToEdit?.id;
+        
+        try {
+            if (finalId) {
+                const docRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', finalId);
+                await setDoc(docRef, { ...buyerData, agency_id: profile.agency_id }, { merge: true });
+                toast({ title: 'Buyer Updated' });
+            } else {
+                const collectionRef = collection(firestore, 'agencies', profile.agency_id, 'buyers');
+                const { id, ...restOfData } = buyerData;
+                await addDoc(collectionRef, { ...restOfData, agency_id: profile.agency_id, created_by: user?.uid });
+                await logActivity('added a new buyer', buyerData.name || 'Lead', 'Buyer');
+                toast({ title: 'Buyer Added' });
+            }
+        } catch (err) {
+            console.error("Save Buyer Error:", err);
+            const contextualError = new FirestorePermissionError({
+                path: `agencies/${profile.agency_id}/buyers/${finalId || 'new'}`,
+                operation: finalId ? 'update' : 'create',
+                requestResourceData: buyerData,
+            } satisfies SecurityRuleContext);
+            errorEmitter.emit('permission-error', contextualError);
+            toast({ title: 'System Error', description: 'An unexpected error occurred during save.', variant: 'destructive' });
+        }
     };
 
     const handleSaveAppointment = async (appointment: Appointment) => {
         if (!profile.agency_id) return;
-        const { id, ...newAppointmentData } = appointment;
-        const newAppointmentRef = await addDoc(collection(firestore, 'agencies', profile.agency_id, 'appointments'), newAppointmentData);
-        await logActivity('scheduled an appointment for buyer', appointment.contactName || 'N/A', 'Appointment');
+        try {
+            const { id, ...newAppointmentData } = appointment;
+            const collectionRef = collection(firestore, 'agencies', profile.agency_id, 'appointments');
+            await addDoc(collectionRef, newAppointmentData);
+            toast({ title: 'Appointment Set', description: `Appointment with ${appointment.contactName} has been scheduled.` });
+        } catch (error) {
+            toast({ title: "Error", description: "Could not set appointment.", variant: 'destructive' });
+        }
     };
 
     const handleDelete = async (buyer: Buyer) => {
         if (!profile.agency_id) return;
-
         const docRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', buyer.id);
-        await setDoc(docRef, { is_deleted: true }, { merge: true });
-        toast({ title: "Buyer Moved to Trash", description: "You can restore them from the trash page." });
+        await updateDoc(docRef, { is_deleted: true });
+        toast({ title: "Buyer Moved to Trash" });
+    };
+
+    const handleBulkAssign = async (agentDocId: string) => {
+        if (selectedBuyers.length === 0 || !agentDocId || !profile.agency_id) return;
+        
+        const agent = activeAgents.find((a: any) => a.id === agentDocId);
+        if(!agent) return;
+
+        const actualAgentUid = agent.user_id || agent.id;
+        const batch = writeBatch(firestore);
+        const buyerNames: string[] = [];
+        
+        selectedBuyers.forEach(buyerId => {
+            const buyer = allBuyers?.find(b => b.id === buyerId);
+            if(buyer) buyerNames.push(buyer.name);
+            
+            const docRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', buyerId);
+            batch.update(docRef, { assignedTo: actualAgentUid });
+        });
+        
+        const activityLogRef = doc(collection(firestore, 'agencies', profile.agency_id, 'activityLogs'));
+        batch.set(activityLogRef, {
+            userName: profile.name,
+            action: `assigned ${buyerNames.length} leads to ${agent.name}`,
+            target: buyerNames.join(', '),
+            targetType: 'Buyer',
+            timestamp: new Date().toISOString(),
+            agency_id: profile.agency_id,
+            assignedToId: actualAgentUid,
+            assignedToName: agent.name
+        });
+
+        await batch.commit();
+        toast({ title: 'Leads Assigned Successfully' });
+        setSelectedBuyers([]);
+    };
+
+    const handleBulkUnassign = async () => {
+        if (selectedBuyers.length === 0 || !profile.agency_id) return;
+        const batch = writeBatch(firestore);
+        const buyerNames: string[] = [];
+        
+        selectedBuyers.forEach(buyerId => {
+            const buyer = allBuyers?.find(b => b.id === buyerId);
+            if(buyer) buyerNames.push(buyer.name);
+            const docRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', buyerId);
+            batch.update(docRef, { assignedTo: null });
+        });
+
+        const activityLogRef = doc(collection(firestore, 'agencies', profile.agency_id, 'activityLogs'));
+        batch.set(activityLogRef, {
+            userName: profile.name,
+            action: `unassigned ${buyerNames.length} leads from all agents`,
+            target: buyerNames.join(', '),
+            targetType: 'Buyer',
+            timestamp: new Date().toISOString(),
+            agency_id: profile.agency_id,
+        });
+
+        await batch.commit();
+        toast({ title: 'Leads Unassigned Successfully' });
+        setSelectedBuyers([]);
     };
 
     const handleBulkDelete = async () => {
         if (selectedBuyers.length === 0 || !profile.agency_id) return;
         const batch = writeBatch(firestore);
         selectedBuyers.forEach(buyerId => {
-            const buyerRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', buyerId);
-            batch.update(buyerRef, { is_deleted: true });
+            const docRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', buyerId);
+            batch.update(docRef, { is_deleted: true });
         });
         await batch.commit();
-        toast({
-            title: `${selectedBuyers.length} Buyers Moved to Trash`,
-            description: 'You can restore them from the trash page.',
-        });
+        toast({ title: 'Buyers Moved to Trash' });
         setSelectedBuyers([]);
     };
 
-    const handleFilterChange = (key: keyof Filters, value: string | BuyerStatus | PropertyType | PriceUnit | SizeUnit) => {
-        setFilters((prev) => ({ ...prev, [key]: value }));
+    const handleToggleCustomTag = (tagName: string) => {
+        setActiveCustomTags(prev => 
+            prev.includes(tagName) ? prev.filter(t => t !== tagName) : [...prev, tagName]
+        );
     };
 
-    const clearFilters = () => {
-        setFilters({ status: 'All', area: '', minBudget: '', maxBudget: '', budgetUnit: 'All', propertyType: 'All', minSize: '', maxSize: '', sizeUnit: 'All', serialNoPrefix: 'All', serialNo: '' });
-        setActiveStatusFilter('All');
-        setIsFilterPopoverOpen(false);
-    };
-    
-    const handleAssignAgent = async (buyer: Buyer, agentId: string | null) => {
-        if (!profile.agency_id) return;
-    
-        const newAssignedTo = agentId === undefined ? null : agentId;
-    
-        const docRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', buyer.id);
-        await setDoc(docRef, { assignedTo: newAssignedTo }, { merge: true });
-        
-        const agentName = assignableAgents.find(a => a.id === newAssignedTo)?.name;
-    
-        toast({
-            title: newAssignedTo ? 'Buyer Assigned' : 'Buyer Unassigned',
-            description: newAssignedTo
-            ? `Buyer ${buyer.name} assigned to ${agentName}.`
-            : `Buyer ${buyer.name} has been unassigned.`
-        });
-    };
-
-    const handleStatusChange = async (buyer: Buyer, newStatus: BuyerStatus) => {
-        if (newStatus === 'Follow Up') {
-            setBuyerForFollowUp(buyer);
-            setIsFollowUpOpen(true);
-        } else {
-            if (!profile.agency_id) return;
-
-            const docRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', buyer.id);
-            await setDoc(docRef, { status: newStatus }, { merge: true });
-            
-            await logActivity('updated the status', buyer.name, 'Buyer', { from: buyer.status, to: newStatus });
-
-            if (buyer.status === 'Follow Up' && followUps && profile.agency_id) {
-                const followUpToDelete = followUps.find(fu => fu.buyerId === buyer.id);
-                if (followUpToDelete) await deleteDoc(doc(firestore, 'agencies', profile.agency_id, 'followUps', followUpToDelete.id));
-            }
-        }
-    };
-
-    const handleSaveFollowUp = async (buyerId: string, notes: string, nextReminderDate: string, nextReminderTime: string, existingFollowUp?: FollowUp | null) => {
-        if (!profile.agency_id || !allBuyers) return;
-        const buyer = allBuyers.find(b => b.id === buyerId);
-        if (!buyer) return;
-
-        const newFollowUpData: Partial<FollowUp> = {
-            buyerId: buyer.id,
-            buyerName: buyer.name,
-            buyerPhone: buyer.phone,
-            propertyInterest: buyer.area_preference || 'General',
-            nextReminderDate: nextReminderDate,
-            nextReminderTime: nextReminderTime,
-            status: 'Scheduled',
-            notes: notes,
-            agency_id: profile.agency_id
-        };
-
-        const followUpsCollection = collection(firestore, 'agencies', profile.agency_id, 'followUps');
-        const buyerDocRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', buyerId);
-
-        let action = 'scheduled a follow-up';
-        if (existingFollowUp) {
-            newFollowUpData.lastContactDate = existingFollowUp.nextReminderDate;
-            newFollowUpData.lastContactTime = existingFollowUp.nextReminderTime;
-            await setDoc(doc(followUpsCollection, existingFollowUp.id), newFollowUpData, { merge: true });
-            action = 'rescheduled a follow-up';
-        } else {
-            newFollowUpData.lastContactDate = new Date().toISOString().split('T')[0];
-            newFollowUpData.lastContactTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            await addDoc(followUpsCollection, newFollowUpData);
-        }
-        
-        await logActivity(action, buyer.name, 'FollowUp');
-        await setDoc(buyerDocRef, { status: 'Follow Up', last_follow_up_note: notes }, { merge: true });
-
-        toast({ title: "Follow-up Scheduled", description: `A follow-up has been created for ${buyer.name}.` });
-        setIsFollowUpOpen(false);
-        setBuyerForFollowUp(null);
-    };
-
-    const handleSaveBuyer = async (buyerData: Omit<Buyer, 'id'> & { id?: string }) => {
-        if (buyerToEdit) {
-            if (!profile.agency_id || !buyerData.id) return;
-            const docRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', buyerData.id);
-            await setDoc(docRef, buyerData, { merge: true });
-            toast({ title: 'Buyer Updated' });
-        } else {
-            if (!profile.agency_id) return;
-            const collectionRef = collection(firestore, 'agencies', profile.agency_id, 'buyers');
-            const { id, ...restOfData } = buyerData;
-            const newDocRef = await addDoc(collectionRef, { ...restOfData, agency_id: profile.agency_id, created_by: user?.uid });
-            await logActivity('added a new buyer', buyerData.name, 'Buyer');
-            toast({ title: 'Buyer Added' });
-        }
-        setBuyerToEdit(null);
-    };
-    
-    const handleWhatsAppChat = (e: React.MouseEvent, buyer: Buyer) => {
-        e.stopPropagation();
+    const handleWhatsAppChat = (e: any, buyer: Buyer) => {
+        if (e && e.stopPropagation) e.stopPropagation();
         const phoneNumber = formatPhoneNumberForWhatsApp(buyer.phone, buyer.country_code);
         window.open(`https://wa.me/${phoneNumber}`, '_blank');
     };
 
-    const filteredBuyers = useMemo(() => {
-        if (!buyersToDisplay) return [];
-        
-        let buyers = buyersToDisplay.filter(b => !b.is_deleted);
+    const formatBuyerBudgetInline = (buyer: Buyer) => {
+        if (!buyer.budget_min_amount || !buyer.budget_min_unit) return 'N/A';
+        const minVal = formatUnit(buyer.budget_min_amount, buyer.budget_min_unit);
+        if (!buyer.budget_max_amount || !buyer.budget_max_unit || (buyer.budget_min_amount === buyer.budget_max_amount && buyer.budget_min_unit === buyer.budget_max_unit)) {
+            return formatCurrency(minVal, currency);
+        }
+        const maxVal = formatUnit(buyer.budget_max_amount, buyer.budget_max_unit);
+        return `${formatCurrency(minVal, currency)} - ${formatCurrency(maxVal, currency)}`;
+    }
 
-        // Filter by active tab (For Sale/For Rent)
-        buyers = buyers.filter(b => (b.listing_type || 'For Sale') === activeTab);
-    
-        if (activeStatusFilter !== 'All') {
-            buyers = buyers.filter(b => b.status === activeStatusFilter);
+    const getTagColor = (tagName: string) => {
+        const tagObj = agencyTags?.find(t => t.name === tagName);
+        if (tagObj) return tagObj.color;
+        return (statusVariant as any)[tagName] || 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700';
+    };
+
+    const filteredBuyers = useMemo(() => {
+        if (!allBuyers) return [];
+        let buyers = allBuyers.filter(b => !b.is_deleted);
+        
+        if (activeListingType !== 'All') {
+            buyers = buyers.filter(b => (b.listing_type || 'For Sale') === activeListingType);
         }
-    
+        if (activeStatus !== 'All') {
+            buyers = buyers.filter(b => b.status === activeStatus || b.tags?.includes(activeStatus));
+        }
+        if (activeCustomTags.length > 0) {
+            buyers = buyers.filter(b => activeCustomTags.every(tag => b.tags?.includes(tag)));
+        }
+
+        if (activeAgentFilter !== 'All') {
+            buyers = buyers.filter(b => b.assignedTo === activeAgentFilter);
+        }
+
         if (searchQuery) {
-            const lowercasedQuery = searchQuery.toLowerCase();
-            const numericQuery = searchQuery.replace(/\D/g, '');
-            buyers = buyers.filter(buyer =>
-                buyer.name.toLowerCase().includes(lowercasedQuery) ||
-                (buyer.area_preference && buyer.area_preference.toLowerCase().includes(lowercasedQuery)) ||
-                buyer.serial_no.toLowerCase().includes(lowercasedQuery) ||
-                (buyer.phone && buyer.phone.replace(/\D/g, '').includes(numericQuery))
-            );
+            const lq = searchQuery.toLowerCase();
+            buyers = buyers.filter(b => b.name.toLowerCase().includes(lq) || b.serial_no.toLowerCase().includes(lq) || b.phone.includes(lq));
         }
-    
-        if (filters.area) {
-            buyers = buyers.filter(b => b.area_preference && b.area_preference.toLowerCase().includes(filters.area.toLowerCase()));
-        }
-    
+
+        if (filters.area.length > 0) buyers = buyers.filter(b => filters.area.some(a => b.area_preference?.includes(a)));
+        if (filters.propertyType !== 'All') buyers = buyers.filter(b => b.property_type_preference === filters.propertyType);
+        if (filters.minSize) buyers = buyers.filter(b => (b.size_min_value || 0) >= Number(filters.minSize));
+        if (filters.maxSize) buyers = buyers.filter(b => (b.size_max_value || 0) <= Number(filters.maxSize));
+        if (filters.sizeUnit !== 'All') buyers = buyers.filter(b => b.size_min_unit === filters.sizeUnit);
+        
         if (filters.minBudget) {
-            buyers = buyers.filter(b => b.budget_min_amount && b.budget_min_amount >= Number(filters.minBudget) && (filters.budgetUnit === 'All' || b.budget_min_unit === filters.budgetUnit));
+            buyers = buyers.filter(b => {
+                const val = formatUnit(b.budget_min_amount || 0, b.budget_min_unit || 'Lacs');
+                const filterVal = formatUnit(Number(filters.minBudget), filters.budgetUnit as PriceUnit || 'Lacs');
+                return val >= filterVal;
+            });
         }
-    
         if (filters.maxBudget) {
-            buyers = buyers.filter(b => b.budget_max_amount && b.budget_max_amount <= Number(filters.maxBudget) && (filters.budgetUnit === 'All' || b.budget_max_unit === filters.budgetUnit));
+            buyers = buyers.filter(b => {
+                const val = formatUnit(b.budget_max_amount || 0, b.budget_max_unit || 'Lacs');
+                const filterVal = formatUnit(Number(filters.maxBudget), filters.budgetUnit as PriceUnit || 'Lacs');
+                return val <= filterVal;
+            });
         }
-    
-        if (filters.propertyType !== 'All') {
-            buyers = buyers.filter(p => p.property_type_preference === filters.propertyType);
-        }
-    
-        if (filters.minSize) {
-            buyers = buyers.filter(p => p.size_min_value && p.size_min_value >= Number(filters.minSize) && (filters.sizeUnit === 'All' || p.size_min_unit === filters.sizeUnit));
-        }
-    
-        if (filters.maxSize) {
-            buyers = buyers.filter(p => p.size_max_value && p.size_max_value <= Number(filters.maxSize) && (filters.sizeUnit === 'All' || p.size_max_unit === filters.sizeUnit));
-        }
-    
         if (filters.serialNo && filters.serialNoPrefix !== 'All') {
             const fullSerialNo = `${filters.serialNoPrefix}-${filters.serialNo}`;
-            buyers = buyers.filter(p => p.serial_no === fullSerialNo);
+            buyers = buyers.filter(b => b.serial_no === fullSerialNo);
         }
-    
+
         return buyers.sort((a, b) => {
+            const dateA = a.last_remark_at ? new Date(a.last_remark_at).getTime() : 0;
+            const dateB = b.last_remark_at ? new Date(b.last_remark_at).getTime() : 0;
+            
+            if (dateA !== dateB) {
+                return dateB - dateA; // Recent remarks first
+            }
+
             const aNum = parseInt(a.serial_no.split('-')[1] || '0', 10);
             const bNum = parseInt(b.serial_no.split('-')[1] || '0', 10);
             return sortOrder === 'asc' ? aNum - bNum : bNum - aNum;
         });
-    }, [buyersToDisplay, activeTab, activeStatusFilter, searchQuery, filters, sortOrder]);
+    }, [allBuyers, activeListingType, activeStatus, activeCustomTags, activeAgentFilter, searchQuery, sortOrder, filters]);
 
+    const anySelectedIsAssigned = useMemo(() => {
+        return selectedBuyers.some(id => {
+            const buyer = allBuyers?.find(b => b.id === id);
+            return !!buyer?.assignedTo;
+        });
+    }, [selectedBuyers, allBuyers]);
 
     const totalPages = Math.ceil(filteredBuyers.length / ITEMS_PER_PAGE);
-
     const paginatedBuyers = useMemo(() => {
         const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
         return filteredBuyers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
     }, [filteredBuyers, currentPage]);
 
-    useEffect(() => {
-        setCurrentPage(1);
-        setSelectedBuyers([]);
-    }, [searchQuery, filters, activeTab, activeStatusFilter, activeAgencyTab]);
-
-
-    const handleTabChange = (value: string) => {
-        const url = `${pathname}?type=${value}`;
-        router.push(url);
-        setActiveStatusFilter('All'); // Reset status filter on tab change
-    };
-
-    const handleAddBuyerClick = () => {
-        if (user && !user.emailVerified) {
-            toast({
-                title: 'Email Verification Required',
-                description: 'Please verify your email address to add new buyers.',
-                variant: 'destructive',
-            });
-            return;
-        }
-        if (isLimitReached) {
-            toast({
-                title: "Buyer Limit Reached",
-                description: `You have reached your limit of ${limit} buyers. Please upgrade your plan to add more.`,
-                variant: "destructive",
-            });
-            return;
-        }
-        setIsAddBuyerOpen(true);
-    };
-    
-    const sortBuyers = (buyersToSort: Buyer[]) => {
-        return [...buyersToSort].filter(b => !b.is_deleted).sort((a, b) => {
-            const aParts = a.serial_no.split('-');
-            const bParts = b.serial_no.split('-');
-            const aPrefix = aParts[0];
-            const bPrefix = bParts[0];
-            const aNum = parseInt(aParts[1], 10);
-            const bNum = parseInt(bParts[1], 10);
-            
-            if (aPrefix < bPrefix) return -1;
-            if (aPrefix > bPrefix) return 1;
-            return aNum - bNum;
-        });
-    };
-
-    const escapeCsvField = (field: any): string => {
-        if (field === null || field === undefined) {
-            return '""';
-        }
-        const stringField = String(field);
-        if (/[",\n]/.test(stringField)) {
-            return `"${stringField.replace(/"/g, '""')}"`;
-        }
-        return `"${stringField}"`;
-    };
-
-    const handleExport = (type: 'For Sale' | 'For Rent') => {
-        if (!allBuyers || !user?.uid) return;
-
-        let sourceBuyers = allBuyers;
-        if (profile.role === 'Agent') {
-            sourceBuyers = allBuyers.filter(b => b.created_by === user.uid);
-        }
-
-        const buyersToExport = sortBuyers(
-            sourceBuyers.filter(b => {
-                const listingType = b.listing_type || 'For Sale';
-                return !b.is_deleted && listingType === type;
-            })
-        );
-
-        if (buyersToExport.length === 0) {
-            toast({ title: 'No Data', description: `There are no buyers for ${type.toLowerCase()} to export.`, variant: 'destructive' });
-            return;
-        }
-        
-        const headers = ['Sr No', 'Date', 'Number', 'Name', 'Email', 'City', 'Area', 'Property Type', 'Size', 'Budget', 'Status', 'Investor', 'Notes'];
-        
-        const csvContent = [
-            headers.join(','),
-            ...buyersToExport.map(b => {
-                const budgetMin = b.budget_min_amount ? `${b.budget_min_amount} ${b.budget_min_unit}` : '';
-                const budgetMax = b.budget_max_amount ? ` - ${b.budget_max_amount} ${b.budget_max_unit}` : '';
-                const budget = budgetMin ? budgetMin + (budgetMax || '') : 'N/A';
-
-                const sizeMin = b.size_min_value ? `${b.size_min_value} ${b.size_min_unit}` : '';
-                const sizeMax = b.size_max_value ? ` - ${b.size_max_value} ${b.size_max_unit}` : '';
-                const size = sizeMin ? sizeMin + (sizeMax || '') : 'N/A';
-
-                const date = new Date(b.created_at);
-                const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-                const phoneNumber = b.phone.replace(b.country_code || '+92', '').replace(/\D/g, '');
-
-
-                const row = [
-                escapeCsvField(b.serial_no),
-                escapeCsvField(formattedDate),
-                escapeCsvField(phoneNumber),
-                escapeCsvField(b.name),
-                escapeCsvField(b.email || ''),
-                escapeCsvField(b.city || ''),
-                escapeCsvField(b.area_preference || ''),
-                escapeCsvField(b.property_type_preference || ''),
-                escapeCsvField(size),
-                escapeCsvField(budget),
-                escapeCsvField(b.status),
-                escapeCsvField(b.is_investor ? 'Yes' : 'No'),
-                escapeCsvField(b.notes || '')
-                ];
-                return row.join(',');
-            })
-        ].join('\n');
-    
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        link.setAttribute('href', url);
-        link.setAttribute('download', `buyers-${type.toLowerCase().replace(' ', '-')}-${new Date().toISOString()}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        setIsExportDialogOpen(false);
-    };
-
-    const handleImportClick = (type: 'For Sale' | 'For Rent') => {
-        setImportType(type);
-        importInputRef.current?.click();
-        setIsImportDialogOpen(false);
-    };
-
-    const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file || !profile.agency_id || !importType || !user?.uid) return;
-    
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            const text = e.target?.result;
-            if (typeof text !== 'string') return;
-
-            // Robust CSV parsing
-            const parseCsvRow = (row: string): string[] => {
-                const result: string[] = [];
-                let currentField = '';
-                let inQuotes = false;
-                for (let i = 0; i < row.length; i++) {
-                    const char = row[i];
-                    if (char === '"') {
-                        if (i + 1 < row.length && row[i+1] === '"') {
-                            // It's an escaped quote
-                            currentField += '"';
-                            i++; // Skip the next quote
-                        } else {
-                        inQuotes = !inQuotes;
-                        }
-                    } else if (char === ',' && !inQuotes) {
-                        result.push(currentField.trim());
-                        currentField = '';
-                    } else {
-                        currentField += char;
-                    }
-                }
-                result.push(currentField.trim());
-                return result;
-            };
-            
-            const rows = text.split('\n').map(row => row.trim()).filter(row => row);
-            if (rows.length <= 1) {
-            toast({ title: 'Empty File', description: 'The CSV file is empty or invalid.', variant: 'destructive' });
-            return;
-            }
-
-            const listingTypeToImport: ListingType = importType;
-            
-            let myBuyers = allBuyers || [];
-            if (profile.role === 'Agent') {
-                myBuyers = myBuyers.filter(b => b.created_by === user.uid);
-            }
-            
-            const totalSaleBuyersForImport = myBuyers.filter(b => !b.is_deleted && (!b.listing_type || b.listing_type === 'For Sale')).length;
-            const totalRentBuyersForImport = myBuyers.filter(b => !b.is_deleted && b.listing_type === 'For Rent').length;
-            
-            let newBuyersCount = 0;
-            let skippedCount = 0;
-            let batch = writeBatch(firestore);
-            const BATCH_SIZE = 499; // Firestore batch limit is 500
-
-            for (let i = 1; i < rows.length; i++) {
-            const row = rows[i];
-            if (!row) continue;
-            
-            if (newBuyersCount > 0 && newBuyersCount % BATCH_SIZE === 0) {
-                await batch.commit();
-                batch = writeBatch(firestore);
-            }
-            
-            const values = parseCsvRow(row);
-            
-            const [
-                _serial, _date, number, name, email, city, area, property_type,
-                size, budget, status, investor, notes
-            ] = values;
-
-            if (!number || number.trim() === '') {
-                skippedCount++;
-                continue;
-            }
-            newBuyersCount++;
-            
-            const parseRange = (rangeStr: string) => {
-                if (!rangeStr || rangeStr.toLowerCase() === 'n/a') {
-                    return { minVal: null, minUnit: null, maxVal: null, maxUnit: null };
-                }
-                const parts = rangeStr.split('-').map(s => s.trim());
-                const [minValStr, minUnitStr] = parts[0]?.split(' ').filter(Boolean) || [];
-                const [maxValStr, maxUnitStr] = parts.length > 1 ? (parts[1]?.split(' ').filter(Boolean) || []) : [];
-            
-                return {
-                    minVal: parseFloat(minValStr) || null,
-                    minUnit: (minUnitStr as SizeUnit | PriceUnit) || null,
-                    maxVal: parseFloat(maxValStr) || null,
-                    maxUnit: (maxUnitStr as SizeUnit | PriceUnit) || (minUnitStr as SizeUnit | PriceUnit) || null,
-                };
-            };
-            
-            const budgetData = parseRange(budget || '');
-            const sizeData = parseRange(size || '');
-
-            const currentTotal = listingTypeToImport === 'For Sale' ? totalSaleBuyersForImport : totalRentBuyersForImport;
-
-            const newBuyer: Omit<Buyer, 'id'> = {
-                serial_no: `${listingTypeToImport === 'For Rent' ? 'RB' : 'B'}-${currentTotal + newBuyersCount}`,
-                name: name || 'N/A',
-                phone: formatPhoneNumber(number || '', '+92'),
-                country_code: '+92',
-                email: email || '',
-                status: (status as BuyerStatus) || 'New',
-                area_preference: area || '',
-                city: city || '',
-                property_type_preference: (property_type as PropertyType) || "" as PropertyType,
-                budget_min_amount: budgetData.minVal,
-                budget_min_unit: budgetData.minUnit as PriceUnit || null,
-                budget_max_amount: budgetData.maxVal,
-                budget_max_unit: budgetData.maxUnit as PriceUnit || null,
-                size_min_value: sizeData.minVal,
-                size_min_unit: sizeData.minUnit as SizeUnit || null,
-                size_max_value: sizeData.maxVal,
-                size_max_unit: sizeData.maxUnit as SizeUnit || null,
-                is_investor: (investor || '').toLowerCase() === 'yes',
-                listing_type: listingTypeToImport,
-                notes: notes || '',
-                created_at: new Date().toISOString(),
-                created_by: user.uid,
-                agency_id: profile.agency_id,
-            };
-            batch.set(doc(collection(firestore, 'agencies', profile.agency_id, 'buyers')), newBuyer);
-            }
-            
-            try {
-            await batch.commit(); // Commit the last batch
-            toast({ 
-                title: 'Import Complete', 
-                description: `${newBuyersCount} new buyers have been added. ${skippedCount > 0 ? `${skippedCount} rows were skipped due to missing phone numbers.` : ''}` 
-            });
-            } catch (error) {
-            console.error(error);
-            toast({ title: 'Import Failed', description: 'An error occurred during import.', variant: 'destructive' });
-            }
-        };
-        reader.readAsText(file);
-        if (importInputRef.current) importInputRef.current.value = '';
-        setImportType(null);
-    };
-
-
-    const handleSelectAll = (checked: boolean) => {
-        if (checked) {
-            setSelectedBuyers(paginatedBuyers.map(b => b.id));
-        } else {
-            setSelectedBuyers([]);
-        }
-    };
-    
-    const handleRecommendProperties = (buyer: Buyer) => {
-        setBuyerForRecommendation(buyer);
-        setIsRecommenderOpen(true);
-    };
-
     const renderTable = (buyers: Buyer[]) => {
-        if (isAgencyLoading) {
-            return <p className="p-4 text-center">Loading buyers...</p>;
-        }
-        if (buyers.length === 0) {
-            return <div className="text-center py-10 text-muted-foreground">No buyers found for the current filters.</div>;
-        }
-        
+        if (isAgencyLoading) return <p className="p-4 text-center">Loading buyers...</p>;
+        if (buyers.length === 0) return <div className="text-center py-10 text-muted-foreground">No buyers found.</div>;
         return (
             <Table>
                 <TableHeader>
                     <TableRow>
                         <TableHead className="w-10">
-                            <Checkbox
-                                checked={paginatedBuyers.length > 0 && selectedBuyers.length === paginatedBuyers.length}
-                                onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
-                            />
+                            <Checkbox checked={paginatedBuyers.length > 0 && selectedBuyers.length === paginatedBuyers.length} onCheckedChange={(c) => setSelectedBuyers(c ? paginatedBuyers.map(b => b.id) : [])} />
                         </TableHead>
-                        <TableHead>
-                            <Button variant="ghost" onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}>
-                                Name
-                                <ArrowUpDown className="ml-2 h-4 w-4" />
-                            </Button>
-                        </TableHead>
-                        <TableHead>Area &amp; Type</TableHead>
-                        <TableHead>Budget &amp; Size</TableHead>
-                        <TableHead>Status</TableHead>
+                        <TableHead><Button variant="ghost" onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}>Name <ArrowUpDown className="ml-2 h-4 w-4" /></Button></TableHead>
+                        <TableHead>Requirement</TableHead>
+                        <TableHead>Budget (Max)</TableHead>
+                        <TableHead>Handled By</TableHead>
+                        <TableHead>Status / Tags</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {buyers.map(buyer => (
-                        <TableRow key={buyer.id}>
-                            <TableCell onClick={(e) => e.stopPropagation()}>
-                                <Checkbox
-                                    checked={selectedBuyers.includes(buyer.id)}
-                                    onCheckedChange={(checked) => {
-                                        setSelectedBuyers(prev =>
-                                            checked ? [...prev, buyer.id] : prev.filter(id => id !== buyer.id)
-                                        );
-                                    }}
-                                />
-                            </TableCell>
-                            <TableCell onClick={() => handleDetailsClick(buyer)} className="cursor-pointer">
-                                <div className="font-bold font-headline text-base flex items-center gap-2">
-                                    {buyer.name}
-                                </div>
-                                <div className="text-xs text-muted-foreground flex items-center gap-2 mt-1">
-                                    <Badge
-                                        variant="default"
-                                        className={cn(
-                                        'font-mono',
-                                        buyer.serial_no.startsWith('RB')
-                                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 hover:bg-emerald-100/80'
-                                            : 'bg-primary/20 text-primary hover:bg-primary/30'
+                    {buyers.map(buyer => {
+                        const areas = buyer.area_preference?.split(',').map(a => a.trim()).filter(Boolean) || [];
+                        const displayedAreas = areas.length > 2 
+                            ? areas.slice(0, 2).join(', ') + '...' 
+                            : areas.join(', ') || 'N/A';
+                        
+                        // Show pulse if there are unread notes
+                        const hasUnreadNotes = buyer.timeline_notes?.some(n => !n.readBy?.includes(profile.user_id));
+                            
+                        return (
+                            <TableRow key={buyer.id} className="cursor-pointer hover:bg-accent/50" onClick={() => handleDetailsClick(buyer)}>
+                                <TableCell onClick={e => e.stopPropagation()}><Checkbox checked={selectedBuyers.includes(buyer.id)} onCheckedChange={(c) => setSelectedBuyers(p => c ? [...p, buyer.id] : p.filter(id => id !== buyer.id))} /></TableCell>
+                                <TableCell>
+                                    <div className="flex items-center gap-2">
+                                        <div className="font-bold text-base font-headline">{buyer.name}</div>
+                                        {hasUnreadNotes && (
+                                            <span className="relative flex h-2 w-2">
+                                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                                              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                                            </span>
                                         )}
-                                    >
-                                        {buyer.serial_no}
-                                    </Badge>
-                                    <span>{buyer.phone}</span>
-                                </div>
-                            </TableCell>
-                            <TableCell onClick={() => handleDetailsClick(buyer)} className="cursor-pointer">
-                                <div className="flex flex-col text-sm">
-                                    <span>{buyer.area_preference}</span>
-                                    <span className="text-muted-foreground">{buyer.property_type_preference}</span>
-                                </div>
-                            </TableCell>
-                            <TableCell onClick={() => handleDetailsClick(buyer)} className="cursor-pointer">
-                                <div className="flex flex-col text-sm">
-                                    <span>{formatBudget(buyer.budget_min_amount, buyer.budget_min_unit, buyer.budget_max_amount, buyer.budget_max_unit)}</span>
-                                    <span className="text-muted-foreground">{formatSize(buyer.size_min_value, buyer.size_min_unit, buyer.size_max_value, buyer.size_max_unit)}</span>
-                                </div>
-                            </TableCell>
-                            <TableCell onClick={() => handleDetailsClick(buyer)} className="cursor-pointer">
-                                <div className="flex items-center gap-2">
-                                    <Badge variant={statusVariant[buyer.status as keyof typeof statusVariant]} className={buyer.status === 'Interested' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : buyer.status === 'New' ? 'bg-green-600 hover:bg-green-700 text-white' : buyer.status === 'Not Interested' ? 'bg-red-600 hover:bg-red-700 text-white' : buyer.status === 'Deal Closed' ? 'bg-slate-800 hover:bg-slate-900 text-white' : ''}>{buyer.status}</Badge>
-                                    {buyer.is_investor && (<Badge className="bg-blue-600 hover:bg-blue-700 text-white">Investor</Badge>)}
-                                </div>
-                            </TableCell>
-                            <TableCell className="text-right">
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button aria-haspopup="true" size="icon" variant="ghost" className="rounded-full" onClick={(e) => e.stopPropagation()}>
-                                            <MoreHorizontal className="h-4 w-4" />
-                                            <span className="sr-only">Toggle menu</span>
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="glass-card">
-                                        <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleDetailsClick(buyer); }}><Eye />View Details</DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleRecommendProperties(buyer); }}><Sparkles />Recommend Properties</DropdownMenuItem>
-                                        {(profile.role !== 'Agent') && (<DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleEdit(buyer); }}><Edit />Edit Details</DropdownMenuItem>)}
-                                        <DropdownMenuItem onSelect={(e) => handleWhatsAppChat(e, buyer)}><MessageSquare /> Chat on WhatsApp</DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleSetAppointment(buyer); }}><CalendarPlus />Set Appointment</DropdownMenuItem>
-                                         {profile.role !== 'Agent' && (<DropdownMenuSub>
-                                            <DropdownMenuSubTrigger><UserPlus />Assign to</DropdownMenuSubTrigger>
-                                            <DropdownMenuPortal>
-                                                <DropdownMenuSubContent>
-                                                    {buyer.assignedTo && <DropdownMenuItem onSelect={() => handleAssignAgent(buyer, null)}>Unassign</DropdownMenuItem>}
-                                                    <DropdownMenuSeparator />
-                                                    {assignableAgents.map((agent) => (
-                                                        <DropdownMenuItem key={agent.id} onSelect={() => handleAssignAgent(buyer, agent.id)} disabled={buyer.assignedTo === agent.id}>
-                                                        {agent.name} ({agent.role})
+                                    </div>
+                                    <div className="flex gap-1 mt-1">
+                                        <Badge variant="outline" className={cn("text-[10px] border-primary/20", (buyer.serial_no || '').startsWith('RB') ? "bg-emerald-100 text-emerald-700" : "bg-primary/10 text-primary")}>{buyer.serial_no}</Badge>
+                                        <span className="text-[10px] text-muted-foreground">{buyer.phone}</span>
+                                    </div>
+                                </TableCell>
+                                <TableCell>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <div className="text-sm font-medium cursor-pointer hover:text-primary transition-colors" onClick={e => e.stopPropagation()}>{displayedAreas}</div>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-80 p-4 rounded-xl shadow-2xl border-none z-[100]" onClick={e => e.stopPropagation()}>
+                                            <div className="space-y-2">
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-primary/60 flex items-center gap-2">
+                                                    <MapPin className="h-3 w-3" /> Area Preference
+                                                </p>
+                                                <p className="text-sm font-bold leading-relaxed text-foreground">{buyer.area_preference || 'N/A'}</p>
+                                            </div>
+                                        </PopoverContent>
+                                    </Popover>
+                                    <div className="text-xs text-muted-foreground">{buyer.property_type_preference}</div>
+                                </TableCell>
+                                <TableCell>
+                                    <div className="text-sm font-bold text-primary">
+                                        {buyer.budget_max_amount ? formatCurrency(formatUnit(buyer.budget_max_amount, buyer.budget_max_unit || 'Lacs'), currency) : formatBuyerBudgetInline(buyer)}
+                                    </div>
+                                </TableCell>
+                                <TableCell>
+                                    {buyer.assignedTo ? (
+                                        <div className="flex flex-col">
+                                            <span className="text-xs font-bold text-primary">{teamMembers?.find(m => (m.user_id || m.id) === buyer.assignedTo)?.name || 'Unknown Agent'}</span>
+                                            <span className="text-[10px] text-muted-foreground uppercase font-black tracking-tighter">Active Lead</span>
+                                        </div>
+                                    ) : (
+                                        <Badge variant="outline" className="text-[9px] uppercase font-black border-dashed opacity-40 px-2 py-0">Unassigned</Badge>
+                                    )}
+                                </TableCell>
+                                <TableCell>
+                                    <div className="flex flex-wrap gap-1 items-center">
+                                        <Badge className={cn("text-[10px] font-bold", getTagColor(buyer.status))}>{buyer.status}</Badge>
+                                        {buyer.tags?.filter(t => t !== buyer.status).map(tagName => (
+                                            <Badge key={tagName} className={cn("text-[10px] font-bold", getTagColor(tagName))}>{tagName}</Badge>
+                                        ))}
+                                    </div>
+                                </TableCell>
+                                <TableCell className="text-right" onClick={e => e.stopPropagation()}>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild><Button size="icon" variant="ghost"><MoreHorizontal /></Button></DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="bg-background w-52">
+                                            <DropdownMenuItem onSelect={() => handleDetailsClick(buyer) as any}><Eye className="mr-2 h-4 w-4" /> View Details</DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={() => handleNotesClick(buyer) as any}><MessageSquareText className="mr-2 h-4 w-4" /> Remarks Update</DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={() => handleRecommendProperties(buyer) as any}><Sparkles className="mr-2 h-4 w-4" /> Recommended Properties</DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={() => handleManageTagsAction(buyer) as any}><TagIcon className="mr-2 h-4 w-4" /> Edit Tags</DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={(e: any) => handleWhatsAppChat(e, buyer) as any}><MessageSquare className="mr-2 h-4 w-4" /> WhatsApp Chat</DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={() => handleSetAppointment(buyer) as any}><CalendarPlus className="mr-2 h-4 w-4" /> Set Appointment</DropdownMenuItem>
+                                            
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem onSelect={() => handleEdit(buyer) as any}><Edit className="mr-2 h-4 w-4" /> Edit Details</DropdownMenuItem>
+                                            
+                                            {profile.role === 'Admin' && (
+                                                <>
+                                                    <DropdownMenuItem onSelect={() => handleSimpleAssignOpen(buyer)} className="font-bold text-primary">
+                                                        <UserPlus className="mr-2 h-4 w-4" /> Direct Assign Agent
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onSelect={() => handleAssignOpen(buyer)}>
+                                                        <Sparkles className="mr-2 h-4 w-4" /> Smart Assign (Inventory)
+                                                    </DropdownMenuItem>
+                                                    {buyer.assignedTo && (
+                                                        <DropdownMenuItem onSelect={() => handleUnassignAgent(buyer)} className="text-destructive font-bold">
+                                                            <UserMinus className="mr-2 h-4 w-4" /> Unassign Agent
                                                         </DropdownMenuItem>
-                                                    ))}
-                                                </DropdownMenuSubContent>
-                                            </DropdownMenuPortal>
-                                        </DropdownMenuSub>)}
-                                        <DropdownMenuSub>
-                                            <DropdownMenuSubTrigger><Bookmark />Change Status</DropdownMenuSubTrigger>
-                                            <DropdownMenuPortal>
-                                                <DropdownMenuSubContent>
-                                                    {buyerStatuses.map((status) => (
-                                                        <DropdownMenuItem key={status} onSelect={(e) => { e.stopPropagation(); handleStatusChange(buyer, status); }} disabled={buyer.status === status}>
-                                                            {status}
-                                                        </DropdownMenuItem>
-                                                    ))}
-                                                </DropdownMenuSubContent>
-                                            </DropdownMenuPortal>
-                                        </DropdownMenuSub>
-                                        {(profile.role !== 'Agent') && (<DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleDelete(buyer); }} className="text-destructive focus:text-destructive-foreground focus:bg-destructive"><Trash2 />Delete</DropdownMenuItem>)}
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </TableCell>
-                        </TableRow>
-                    ))}
+                                                    )}
+                                                    <DropdownMenuItem onSelect={() => handleDelete(buyer) as any} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete Buyer</DropdownMenuItem>
+                                                </>
+                                            )}
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </TableCell>
+                            </TableRow>
+                        );
+                    })}
                 </TableBody>
             </Table>
         );
     };
 
-    const renderCards = (buyers: Buyer[]) => {
-        if (isAgencyLoading) return <p className="p-4 text-center">Loading buyers...</p>;
-        if (buyers.length === 0) return <div className="text-center py-10 text-muted-foreground">No buyers found for the current filters.</div>;
-        return (
-            <div className="space-y-4">
-                {buyers.map(buyer => {
-                    return (
-                        <Card key={buyer.id}>
-                        <CardHeader>
-                            <CardTitle className="flex justify-between items-start">
-                                <div className="flex items-start gap-2">
-                                    <Checkbox
-                                        checked={selectedBuyers.includes(buyer.id)}
-                                        onCheckedChange={(checked) => {
-                                            setSelectedBuyers(prev =>
-                                                checked ? [...prev, buyer.id] : prev.filter(id => id !== buyer.id)
-                                            );
-                                        }}
-                                        className="mt-1"
-                                    />
-                                    <div className="font-bold font-headline text-lg flex items-center gap-2">
-                                        {buyer.name}
-                                    </div>
-                                </div>
-                                <div className="flex flex-col items-end gap-2">
-                                    <Badge variant={statusVariant[buyer.status as keyof typeof statusVariant]} className={`capitalize ${buyer.status === 'Interested' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : buyer.status === 'New' ? 'bg-green-600 hover:bg-green-700 text-white' : buyer.status === 'Not Interested' ? 'bg-red-600 hover:bg-red-700 text-white' : buyer.status === 'Deal Closed' ? 'bg-slate-800 hover:bg-slate-900 text-white' : ''}`}>{buyer.status}</Badge>
-                                    {buyer.is_investor && (<Badge className="bg-blue-600 hover:bg-blue-700 text-white">Investor</Badge>)}
-                                </div>
-                            </CardTitle>
-                            <div className="text-xs text-muted-foreground flex items-center gap-2 -mt-2 px-6">
-                                <Badge
-                                    variant="default"
-                                    className={cn(
-                                    'font-mono',
-                                    buyer.serial_no.startsWith('RB')
-                                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 hover:bg-emerald-100/80'
-                                        : 'bg-primary/20 text-primary hover:bg-primary/30'
+    const renderCards = (buyers: Buyer[]) => (
+        <div className="space-y-4">
+            {buyers.map(buyer => {
+                const hasUnreadNotes = buyer.timeline_notes?.some(n => !n.readBy?.includes(profile.user_id));
+
+                return (
+                <Card key={buyer.id} className="overflow-hidden border-l-4 border-l-primary/40 bg-background">
+                    <CardHeader className="p-4 pb-2 flex flex-row items-start justify-between space-y-0">
+                        <div className="flex gap-3">
+                            <Checkbox 
+                                checked={selectedBuyers.includes(buyer.id)} 
+                                onClick={e => e.stopPropagation()} 
+                                onCheckedChange={(c) => setSelectedBuyers(p => c ? [...p, buyer.id] : p.filter(id => id !== buyer.id))} 
+                            />
+                            <div onClick={() => handleDetailsClick(buyer)} className="cursor-pointer">
+                                <div className="flex items-center gap-2">
+                                    <CardTitle className="text-base font-bold font-headline">{buyer.name}</CardTitle>
+                                    {hasUnreadNotes && (
+                                        <span className="relative flex h-2 w-2">
+                                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                                          <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                                        </span>
                                     )}
-                                >
-                                    {buyer.serial_no}
-                                </Badge>
+                                </div>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <Badge variant="outline" className="text-[10px] bg-background font-mono">{buyer.serial_no}</Badge>
+                                    <span className="text-[10px] text-muted-foreground">{buyer.phone}</span>
+                                </div>
                             </div>
-                        </CardHeader>
-                        <CardContent className="grid grid-cols-2 gap-4 text-sm">
-                            <div className="flex items-center gap-2"><Home className="h-4 w-4 text-muted-foreground" /><div><p className="text-muted-foreground">Area</p><p className="font-medium">{buyer.area_preference}</p></div></div>
-                            <div className="flex items-center gap-2"><Ruler className="h-4 w-4 text-muted-foreground" /><div><p className="text-muted-foreground">Size</p><p className="font-medium">{formatSize(buyer.size_min_value, buyer.size_min_unit, buyer.size_max_value, buyer.size_max_unit)}</p></div></div>
-                            <div className="flex items-center gap-2"><Wallet className="h-4 w-4 text-muted-foreground" /><div><p className="text-muted-foreground">Budget</p><p className="font-medium">{formatBudget(buyer.budget_min_amount, buyer.budget_min_unit, buyer.budget_max_amount, buyer.budget_max_unit)}</p></div></div>
-                            <div className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground" /><div><p className="text-muted-foreground">Phone</p><p className="font-medium">{buyer.phone}</p></div></div>
-                        </CardContent>
-                        <CardFooter className="flex justify-end">
-                            <Sheet>
-                                <SheetTrigger asChild>
-                                    <Button aria-haspopup="true" size="icon" variant="ghost" className="rounded-full -mr-4 -mb-4">
-                                        <MoreHorizontal className="h-4 w-4" />
-                                        <span className="sr-only">Toggle menu</span>
-                                    </Button>
-                                </SheetTrigger>
-                                <SheetContent side="bottom" className="w-full">
-                                    <SheetHeader className="text-left mb-4">
-                                        <SheetTitle>Actions for {buyer.serial_no}</SheetTitle>
-                                    </SheetHeader>
-                                    <div className="flex flex-col gap-2">
-                                        <Button variant="outline" className="justify-start" onClick={(e) => { e.stopPropagation(); setSelectedBuyerForDetails(buyer); setIsDetailsOpen(true); }}><Eye />View Details</Button>
-                                        <Button variant="outline" className="justify-start" onClick={(e) => { e.stopPropagation(); handleRecommendProperties(buyer); }}><Sparkles />Recommend Properties</Button>
-                                        {(profile.role !== 'Agent') && (<Button variant="outline" className="justify-start" onClick={(e) => { e.stopPropagation(); handleEdit(buyer); }}><Edit />Edit Details</Button>)}
-                                        <Button variant="outline" className="justify-start" onClick={(e) => handleWhatsAppChat(e, buyer)}><MessageSquare /> Chat on WhatsApp</Button>
-                                        <Button variant="outline" className="justify-start" onClick={(e) => { e.stopPropagation(); handleSetAppointment(buyer); }}><CalendarPlus />Set Appointment</Button>
-                                         {profile.role !== 'Agent' && (<DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="outline" className="justify-start w-full"><UserPlus />Assign Agent</Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent side="top">
-                                                {buyer.assignedTo && <DropdownMenuItem onSelect={() => handleAssignAgent(buyer, null)}>Unassign</DropdownMenuItem>}
-                                                <DropdownMenuSeparator />
-                                                {assignableAgents.map((agent) => (
-                                                    <DropdownMenuItem key={agent.id} onSelect={() => handleAssignAgent(buyer, agent.id)} disabled={buyer.assignedTo === agent.id}>
-                                                    {agent.name} ({agent.role})
-                                                    </DropdownMenuItem>
-                                                ))}
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>)}
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="outline" className="justify-start"><Bookmark />Change Status</Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent side="top">
-                                                {buyerStatuses.map((status) => (
-                                                    <DropdownMenuItem key={status} onSelect={(e) => { e.stopPropagation(); handleStatusChange(buyer, status); }} disabled={buyer.status === status}>
-                                                        {status}
-                                                    </DropdownMenuItem>
-                                                ))}
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-
-                                        {(profile.role !== 'Agent') && (
-                                        <>
-                                            <Separator />
-                                            <Button variant="destructive" className="justify-start" onClick={(e) => { e.stopPropagation(); handleDelete(buyer); }}><Trash2 />Delete</Button>
-                                        </>
-                                        )}
+                        </div>
+                        <Badge className={cn("text-[9px] font-bold px-2", getTagColor(buyer.status))}>
+                            {buyer.status}
+                        </Badge>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0 cursor-pointer" onClick={() => handleDetailsClick(buyer)}>
+                        <div className="grid grid-cols-2 gap-y-2 gap-x-4 mt-2">
+                            <div className="flex items-center gap-1.5 text-xs">
+                                <TagIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                                <span className="font-medium">{buyer.property_type_preference}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-xs">
+                                <Ruler className="h-3.5 w-3.5 text-muted-foreground" />
+                                <span className="font-medium">{formatSize(buyer.size_min_value, buyer.size_min_unit, buyer.size_max_value, buyer.size_max_unit)}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-xs col-span-2 mt-1">
+                                <Wallet className="h-3.5 w-3.5 text-muted-foreground" />
+                                <span className="font-bold text-primary">Budget: {formatBuyerBudgetInline(buyer)}</span>
+                            </div>
+                        </div>
+                        
+                        <div className="mt-4 pt-3 border-t border-dashed flex items-center justify-between">
+                             <div className="flex items-center gap-2">
+                                <UserIcon className="h-3.5 w-3.5 text-primary/60" />
+                                <span className="text-[10px] font-black uppercase tracking-widest text-foreground">
+                                    {buyer.assignedTo ? (teamMembers?.find(m => (m.user_id || m.id) === buyer.assignedTo)?.name || 'Assigned') : 'Agency Pool'}
+                                </span>
+                            </div>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground italic cursor-pointer hover:text-primary transition-colors" onClick={e => e.stopPropagation()}>
+                                        <MapPin className="h-3 w-3" />
+                                        <span className="truncate max-w-[100px]">{buyer.area_preference || 'No area'}</span>
                                     </div>
-                                </SheetContent>
-                            </Sheet>
-                        </CardFooter>
-                    </Card>
-                    )
-                })}
-            </div>
-        );
-    };
-
-    const renderPagination = () => (
-      <div className="flex items-center justify-end space-x-2 py-4">
-          <span className="text-sm text-muted-foreground">
-              Page {currentPage} of {totalPages}
-          </span>
-          <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-          >
-              <ChevronLeft className="h-4 w-4" />
-              Previous
-          </Button>
-          <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-              disabled={currentPage === totalPages}
-          >
-              Next
-              <ChevronRight className="h-4 w-4" />
-          </Button>
-      </div>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-80 p-4 rounded-xl shadow-2xl border-none z-[110]" onClick={e => e.stopPropagation()}>
+                                    <div className="space-y-2">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-primary/60 flex items-center gap-2">
+                                            <MapPin className="h-3 w-3" /> Area Preference
+                                        </p>
+                                        <p className="text-sm font-bold leading-relaxed text-foreground">{buyer.area_preference || 'N/A'}</p>
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-1 mt-3">
+                             {buyer.tags?.filter(t => t !== buyer.status).map(tagName => (
+                                <Badge key={tagName} className={cn("text-[8px] px-1.5 py-0 font-bold", getTagColor(tagName))}>{tagName}</Badge>
+                            ))}
+                        </div>
+                    </CardContent>
+                    <CardFooter className="p-2 bg-muted/20 border-t justify-between items-center">
+                        <Button variant="ghost" size="sm" className="h-8 gap-2 text-[10px] font-bold" onClick={() => handleNotesClick(buyer)}>
+                            <MessageSquareText className="h-3.5 w-3.5" />
+                            Remarks
+                        </Button>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 rounded-full p-0">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="bg-background w-52">
+                                <DropdownMenuItem onSelect={() => handleDetailsClick(buyer) as any}><Eye className="mr-2 h-4 w-4" /> View Details</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => handleRecommendProperties(buyer) as any}><Sparkles className="mr-2 h-4 w-4" /> Recommended Properties</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => handleManageTagsAction(buyer) as any}><TagIcon className="mr-2 h-4 w-4" /> Edit Tags</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={(e: any) => handleWhatsAppChat(e as any, buyer) as any}><MessageSquare className="mr-2 h-4 w-4" /> WhatsApp Chat</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => handleSetAppointment(buyer) as any}><CalendarPlus className="mr-2 h-4 w-4" /> Set Appointment</DropdownMenuItem>
+                                
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onSelect={() => handleEdit(buyer) as any}><Edit className="mr-2 h-4 w-4" /> Edit Details</DropdownMenuItem>
+                                
+                                {profile.role === 'Admin' && (
+                                    <>
+                                        <DropdownMenuItem onSelect={() => handleSimpleAssignOpen(buyer)} className="font-bold text-primary">
+                                            <UserPlus className="mr-2 h-4 w-4" /> Direct Assign Agent
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => handleAssignOpen(buyer)}>
+                                            <Sparkles className="mr-2 h-4 w-4" /> Smart Assign (Inventory)
+                                        </DropdownMenuItem>
+                                        {buyer.assignedTo && (
+                                            <DropdownMenuItem onSelect={() => handleUnassignAgent(buyer)} className="text-destructive font-bold">
+                                                <UserMinus className="mr-2 h-4 w-4" /> Unassign Agent
+                                            </DropdownMenuItem>
+                                        )}
+                                        <DropdownMenuItem onSelect={() => handleDelete(buyer) as any} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete Buyer</DropdownMenuItem>
+                                    </>
+                                )}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </CardFooter>
+                </Card>
+                );
+            })}
+        </div>
     );
 
-    const renderContent = (buyers: Buyer[]) => {
-        const content = isMobile ? renderCards(buyers) : (
-            <Card>
-                <CardContent className="p-0">
-                    {renderTable(buyers)}
-                </CardContent>
-            </Card>
-        );
-        return (
-            <div>
-                {content}
-                {totalPages > 1 && renderPagination()}
-            </div>
-        )
-    };
-    
     return (
-        <TooltipProvider>
-            <div className="space-y-6">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <div className='hidden md:block'>
-                        <h1 className="text-3xl font-bold tracking-tight font-headline">Buyers</h1>
-                        <p className="text-muted-foreground">
-                            {profile.role === 'Agent' ? 'View your assigned buyer leads.' : 'Manage your buyer leads for sale and rent.'}
-                        </p>
-                    </div>
-                    <div className="flex w-full md:w-auto items-center gap-2 flex-wrap">
-                        {selectedBuyers.length > 0 && (
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button variant="destructive" className="rounded-full">
-                                        <Trash2 className="mr-2 h-4 w-4" />
-                                        Delete ({selectedBuyers.length})
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            This will move {selectedBuyers.length} buyers to the trash. You can restore them later.
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                        <AlertDialogAction onClick={handleBulkDelete}>Confirm</AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        )}
-                        {profile.role !== 'Agent' && (
-                        <>
-                        <Popover open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
-                            <PopoverTrigger asChild>
-                                <Button variant="outline" className="rounded-full">
-                                    <Filter className="mr-2 h-4 w-4" />Filters
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-80">
-                                <div className="grid gap-4">
-                                    <div className="space-y-2">
-                                        <h4 className="font-medium leading-none">Advanced Filters</h4>
-                                        <p className="text-sm text-muted-foreground">Refine your buyer search.</p>
-                                    </div>
-                                    <div className="grid gap-2">
-                                        <div className="grid grid-cols-3 items-center gap-4">
-                                            <Label>Serial No</Label>
-                                            <div className="col-span-2 grid grid-cols-2 gap-2">
-                                                <Select value={filters.serialNoPrefix} onValueChange={(value: 'All' | 'B' | 'RB') => handleFilterChange('serialNoPrefix', value)}>
-                                                    <SelectTrigger className="h-8">
-                                                        <SelectValue placeholder="Prefix" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="All">All</SelectItem>
-                                                        <SelectItem value="B">B</SelectItem>
-                                                        <SelectItem value="RB">RB</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                                <Input id="serialNo" placeholder="e.g. 1" type="number" value={filters.serialNo} onChange={e => handleFilterChange('serialNo', e.target.value)} className="h-8" />
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="grid grid-cols-3 items-center gap-4">
-                                            <Label htmlFor="area">Area</Label>
-                                            <Input id="area" value={filters.area} onChange={e => handleFilterChange('area', e.target.value)} className="col-span-2 h-8" />
-                                        </div>
-                                        <div className="grid grid-cols-3 items-center gap-4">
-                                            <Label htmlFor="propertyType">Type</Label>
-                                            <Select value={filters.propertyType} onValueChange={(value: PropertyType | 'All') => handleFilterChange('propertyType', value)}>
-                                                <SelectTrigger className="col-span-2 h-8">
-                                                    <SelectValue placeholder="Property Type" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="All">All</SelectItem>
-                                                    <SelectItem value="House">House</SelectItem>
-                                                    <SelectItem value="Plot">Plot</SelectItem>
-                                                    <SelectItem value="Flat">Flat</SelectItem>
-                                                    <SelectItem value="Shop">Shop</SelectItem>
-                                                    <SelectItem value="Commercial">Commercial</SelectItem>
-                                                    <SelectItem value="Agricultural">Agricultural</SelectItem>
-                                                    <SelectItem value="Other">Other</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                        <div className="grid grid-cols-3 items-center gap-4">
-                                            <Label>Budget</Label>
-                                            <div className="col-span-2 grid grid-cols-2 gap-2">
-                                                <Input id="minBudget" placeholder="Min" type="number" value={filters.minBudget} onChange={e => handleFilterChange('minBudget', e.target.value)} className="h-8" />
-                                                <Input id="maxBudget" placeholder="Max" type="number" value={filters.maxBudget} onChange={e => handleFilterChange('maxBudget', e.target.value)} className="h-8" />
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-3 items-center gap-4">
-                                            <Label></Label>
-                                            <div className="col-span-2">
-                                                <Select value={filters.budgetUnit} onValueChange={(value: PriceUnit | 'All') => handleFilterChange('budgetUnit', value)}>
-                                                    <SelectTrigger className="h-8">
-                                                        <SelectValue placeholder="Unit" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="All">All Units</SelectItem>
-                                                        <SelectItem value="Thousand">Thousand</SelectItem>
-                                                        <SelectItem value="Lacs">Lacs</SelectItem>
-                                                        <SelectItem value="Crore">Crore</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-3 items-center gap-4">
-                                            <Label>Size</Label>
-                                            <div className="col-span-2 grid grid-cols-2 gap-2">
-                                                <Input id="minSize" placeholder="Min" type="number" value={filters.minSize} onChange={e => handleFilterChange('minSize', e.target.value)} className="h-8" />
-                                                <Input id="maxSize" placeholder="Max" type="number" value={filters.maxSize} onChange={e => handleFilterChange('maxSize', e.target.value)} className="h-8" />
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-3 items-center gap-4">
-                                            <Label></Label>
-                                            <div className="col-span-2">
-                                                <Select value={filters.sizeUnit} onValueChange={(value: SizeUnit | 'All') => handleFilterChange('sizeUnit', value)}>
-                                                    <SelectTrigger className="h-8">
-                                                        <SelectValue placeholder="Unit" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="All">All Units</SelectItem>
-                                                        <SelectItem value="Marla">Marla</SelectItem>
-                                                        <SelectItem value="SqFt">SqFt</SelectItem>
-                                                        <SelectItem value="Kanal">Kanal</SelectItem>
-                                                        <SelectItem value="Acre">Acre</SelectItem>
-                                                        <SelectItem value="Maraba">Maraba</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="flex justify-end gap-2">
-                                        <Button variant="ghost" onClick={clearFilters}>Clear</Button>
-                                        <Button onClick={() => setIsFilterPopoverOpen(false)}>Apply</Button>
-                                    </div>
-                                </div>
-                            </PopoverContent>
-                        </Popover>
-                        <Button variant="outline" className="rounded-full" onClick={() => setIsImportDialogOpen(true)}><Upload className="mr-2 h-4 w-4" />Import</Button>
-                        <input type="file" ref={importInputRef} className="hidden" accept=".csv" onChange={handleImport} />
-                        <Button variant="outline" className="rounded-full" onClick={() => setIsExportDialogOpen(true)}><Download className="mr-2 h-4 w-4" />Export</Button>
-                        </>
-                        )}
-                    </div>
+        <div className="space-y-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div className="hidden md:block">
+                    <h1 className="text-3xl font-bold font-headline tracking-tight">Buyers</h1>
+                    <p className="text-muted-foreground">Manage and track your agency leads.</p>
                 </div>
-                
-                {profile.role === 'Admin' && (
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm font-medium text-muted-foreground">Buyer Leads Usage</span>
-                            <span className="text-sm font-bold">{currentCount} / {limit === Infinity ? 'Unlimited' : limit}</span>
-                        </div>
-                        <Progress value={progress} />
-                    </CardContent>
-                </Card>
-                )}
-                
-                {isAgent && profile.agencies && profile.agencies.length > 1 && (
-                    <Tabs value={activeAgencyTab} onValueChange={setActiveAgencyTab}>
-                        <TabsList>
-                            {profile.agencies.map(agency => (
-                                <TabsTrigger key={agency.agency_id} value={agency.agency_id}>
-                                    {agency.agency_name}
-                                </TabsTrigger>
-                            ))}
-                        </TabsList>
-                    </Tabs>
-                )}
-
-
-                <div className="flex items-center justify-between gap-4">
-                    <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-                        <TabsList className='grid w-full grid-cols-2'>
-                            <TabsTrigger value="For Sale">Sale Buyers</TabsTrigger>
-                            <TabsTrigger value="For Rent">Rent Buyers</TabsTrigger>
-                        </TabsList>
-                    </Tabs>
-                    {isMobile && (
-                         <div className="flex items-center gap-2">
+                <div className="flex w-full md:w-auto items-center gap-2 flex-wrap justify-end ml-auto">
+                    {selectedBuyers.length > 0 && profile.role === 'Admin' && (
+                        <div className="flex items-center gap-2">
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                        <Button variant="outline" className="ml-auto">
-                                            {activeStatusFilter}
-                                            <ChevronDown className="ml-2 h-4 w-4" />
-                                        </Button>
+                                <Button variant="outline" className="rounded-full px-3 md:px-4">
+                                    <UserPlus className="h-4 w-4" />
+                                    <span className="hidden md:inline ml-2">Assign</span>
+                                </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent>
-                                        <DropdownMenuItem onSelect={() => setActiveStatusFilter('All')}>All</DropdownMenuItem>
-                                        {buyerStatuses.map(status => (
-                                            <DropdownMenuItem key={status} onSelect={() => setActiveStatusFilter(status)}>
-                                                {status}
-                                            </DropdownMenuItem>
-                                        ))}
+                                <DropdownMenuContent className="bg-background">
+                                {activeAgents.map((member: any) => (
+                                    <DropdownMenuItem key={member.id} onSelect={() => handleBulkAssign(member.id) as any}>
+                                    {member.name}
+                                    </DropdownMenuItem>
+                                ))}
                                 </DropdownMenuContent>
                             </DropdownMenu>
-                            <div className="flex items-center space-x-2">
-                                <Checkbox
-                                        id="select-all-mobile"
-                                        checked={paginatedBuyers.length > 0 && selectedBuyers.length === paginatedBuyers.length}
-                                        onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
-                                />
-                                <label
-                                        htmlFor="select-all-mobile"
-                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                >
-                                        Select All
-                                </label>
+                            {anySelectedIsAssigned && (
+                                <Button variant="outline" className="rounded-full text-destructive border-destructive/20 hover:bg-destructive/5 px-3 md:px-4" onClick={handleBulkUnassign}>
+                                    <UserMinus className="h-4 w-4" />
+                                    <span className="hidden md:inline ml-2">Unassign ({selectedBuyers.length})</span>
+                                </Button>
+                            )}
+                            <Button variant="destructive" className="rounded-full px-3 md:px-4" onClick={handleBulkDelete}>
+                                <Trash2 className="h-4 w-4" />
+                                <span className="hidden md:inline ml-2">Delete ({selectedBuyers.length})</span>
+                            </Button>
+                        </div>
+                    )}
+                    <AlertDialog open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="outline" className="rounded-full px-3 md:px-4">
+                                <Filter className="h-4 w-4" />
+                                <span className="hidden md:inline ml-2">Filters</span>
+                                {filters.area.length > 0 && <span className="ml-1 text-xs">({filters.area.length})</span>}
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="max-w-md bg-background">
+                            <AlertDialogHeader><AlertDialogTitle>Refine Buyer Search</AlertDialogTitle></AlertDialogHeader>
+                            <div className="grid gap-4 py-4">
+                                <div className="grid grid-cols-3 items-center gap-4">
+                                    <Label>Serial No</Label>
+                                    <div className="col-span-2 grid grid-cols-2 gap-2">
+                                        <Select value={filters.serialNoPrefix} onValueChange={(v: any) => handleFilterChange('serialNoPrefix', v)}>
+                                            <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                                            <SelectContent><SelectItem value="All">All</SelectItem><SelectItem value="B">B</SelectItem><SelectItem value="RB">RB</SelectItem></SelectContent>
+                                        </Select>
+                                        <Input placeholder="e.g. 1" type="number" value={filters.serialNo} onChange={e => handleFilterChange('serialNo', e.target.value)} className="h-8" />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-3 items-center gap-4">
+                                    <Label htmlFor="propertyType">Type</Label>
+                                    <Select value={filters.propertyType} onValueChange={(value: any) => handleFilterChange('propertyType', value)}>
+                                        <SelectTrigger className="col-span-2 h-8">
+                                            <SelectValue placeholder="Property Type" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {propertyTypesForFilter.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="grid grid-cols-3 items-center gap-4">
+                                    <Label>Budget</Label>
+                                    <div className="col-span-2 grid grid-cols-2 gap-2">
+                                        <Input placeholder="Min" type="number" value={filters.minBudget} onChange={e => handleFilterChange('minBudget', e.target.value)} className="h-8" />
+                                        <Input placeholder="Max" type="number" value={filters.maxBudget} onChange={e => handleFilterChange('maxBudget', e.target.value)} className="h-8" />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-3 items-center gap-4">
+                                    <Label></Label>
+                                    <div className="col-span-2">
+                                        <Select value={filters.budgetUnit} onValueChange={(value: any) => handleFilterChange('budgetUnit', value)}>
+                                            <SelectTrigger className="h-8">
+                                                <SelectValue placeholder="Unit" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="All">All Units</SelectItem>
+                                                <SelectItem value="Thousand">Thousand</SelectItem>
+                                                <SelectItem value="Lacs">Lacs</SelectItem>
+                                                <SelectItem value="Crore">Crore</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
                             </div>
-                         </div>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <Button variant="ghost" onClick={clearFilters}>Clear All</Button>
+                                <AlertDialogAction onClick={() => setIsFilterPopoverOpen(false)}>Apply</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                    {profile.role === 'Admin' && (
+                        <Button className="rounded-full glowing-btn px-3 md:px-6" onClick={() => { setBuyerToEdit(null); setIsAddBuyerOpen(true); }}>
+                            <PlusCircle className="h-4 w-4" />
+                            <span className="hidden md:inline ml-2">Add Buyer</span>
+                        </Button>
                     )}
                 </div>
-                <Tabs value={activeTab} onValueChange={handleTabChange}>
-                    <TabsContent value="For Sale" className="mt-4">
-                        {renderContent(paginatedBuyers)}
-                    </TabsContent>
-                    <TabsContent value="For Rent" className="mt-4">
-                        {renderContent(paginatedBuyers)}
-                    </TabsContent>
-                </Tabs>
             </div>
-            <AddBuyerDialog
-                isOpen={isAddBuyerOpen}
-                setIsOpen={setIsAddBuyerOpen}
-                totalSaleBuyers={totalSaleBuyers}
-                totalRentBuyers={totalRentBuyers}
-                buyerToEdit={buyerToEdit}
-                onSave={handleSaveBuyer}
-                limitReached={isLimitReached}
-            />
-            {buyerForFollowUp && (<AddFollowUpDialog isOpen={isFollowUpOpen} setIsOpen={setIsFollowUpOpen} buyer={buyerForFollowUp} existingFollowUp={buyerFollowUp} onSave={handleSaveFollowUp} />)}
-            {appointmentDetails && (<SetAppointmentDialog isOpen={isAppointmentOpen} setIsOpen={setIsAppointmentOpen} onSave={handleSaveAppointment} appointmentDetails={appointmentDetails} />)}
-            {selectedBuyerForDetails && (<BuyerDetailsDialog buyer={selectedBuyerForDetails} isOpen={isDetailsOpen} setIsOpen={setIsDetailsOpen} />)}
-            {buyerForRecommendation && allProperties && (
-                <PropertyRecommenderDialog
-                    isOpen={isRecommenderOpen}
-                    setIsOpen={setIsRecommenderOpen}
-                    buyer={buyerForRecommendation}
-                    properties={allProperties}
-                />
-            )}
-            <AlertDialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                    <AlertDialogTitle>Choose Export Type</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        Select which type of buyers you would like to export to a CSV file.
-                    </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => handleExport('For Sale')}>Export Sale Buyers</AlertDialogAction>
-                    <AlertDialogAction onClick={() => handleExport('For Rent')}>Export Rent Buyers</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-            <AlertDialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                    <AlertDialogTitle>Choose Import Type</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        Select the type of buyers you are importing from a CSV file.
-                    </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => handleImportClick('For Sale')}>Import Sale Buyers</AlertDialogAction>
-                    <AlertDialogAction onClick={() => handleImportClick('For Rent')}>Import Rent Buyers</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-             {profile.role !== 'Agent' && (
-                <div className={cn("fixed bottom-24 right-4 md:bottom-8 md:right-8 z-50 transition-opacity", isMoreMenuOpen && "opacity-0 pointer-events-none")}>
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                 <Button onClick={handleAddBuyerClick} className="rounded-full w-14 h-14 shadow-lg glowing-btn" size="icon">
-                                    <PlusCircle className="h-6 w-6" />
-                                    <span className="sr-only">Add Buyer</span>
+
+            <Card className="border-none shadow-none bg-transparent">
+                <div className="flex flex-col gap-4">
+                    <div className="flex items-center gap-2">
+                        <ScrollArea className="flex-1 whitespace-nowrap pb-4">
+                            <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2 pr-4 border-r border-border/50">
+                                    <Badge 
+                                        variant={activeListingType === 'All' ? 'default' : 'outline'} 
+                                        className={cn("cursor-pointer px-4 py-1.5 rounded-full flex items-center gap-1", activeListingType === 'All' ? "bg-primary" : "hover:bg-accent")} 
+                                        onClick={() => {
+                                            setActiveListingType('All');
+                                            setIsTypesExpanded(!isTypesExpanded);
+                                        }}
+                                    >
+                                        All Types ({buyerCounts['All'] || 0}) {isTypesExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                                    </Badge>
+                                    <AnimatePresence>
+                                        {isTypesExpanded && (
+                                            <motion.div 
+                                                initial={{ opacity: 0, x: -10 }} 
+                                                animate={{ opacity: 1, x: 0 }} 
+                                                exit={{ opacity: 0, x: -10 }}
+                                                transition={{ duration: 0.15 }}
+                                                className="flex items-center gap-2"
+                                            >
+                                                <Badge variant={activeListingType === 'For Sale' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800", activeListingType === 'For Sale' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Sale')}>For Sale ({buyerCounts['For Sale'] || 0})</Badge>
+                                                <Badge variant={activeListingType === 'For Rent' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800", activeListingType === 'For Rent' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Rent')}>For Rent ({buyerCounts['For Rent'] || 0})</Badge>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+                                <div className="flex items-center gap-2 pr-4 border-r border-border/50">
+                                    <Badge 
+                                        variant={activeStatus === 'All' ? 'default' : 'outline'} 
+                                        className={cn("cursor-pointer px-4 py-1.5 rounded-full flex items-center gap-1", activeStatus === 'All' ? "bg-primary" : "hover:bg-accent")} 
+                                        onClick={() => {
+                                            setActiveStatus('All');
+                                            setIsStatusExpanded(!isStatusExpanded);
+                                        }}
+                                    >
+                                        All Status {isStatusExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                                    </Badge>
+                                    <AnimatePresence>
+                                        {isStatusExpanded && (
+                                            <motion.div 
+                                                initial={{ opacity: 0, x: -10 }} 
+                                                animate={{ opacity: 1, x: 0 }} 
+                                                exit={{ opacity: 0, x: -10 }}
+                                                transition={{ duration: 0.15 }}
+                                                className="flex items-center gap-2"
+                                            >
+                                                {buyerStatuses.map(status => (
+                                                    <Badge 
+                                                        key={status} 
+                                                        variant={activeStatus === status ? 'default' : 'outline'} 
+                                                        className={cn(
+                                                            "cursor-pointer px-4 py-1.5 rounded-full transition-all", 
+                                                            (statusVariant as any)[status],
+                                                            activeStatus === status && "ring-2 ring-primary ring-offset-2"
+                                                        )} 
+                                                        onClick={() => setActiveStatus(status)}
+                                                    >
+                                                        {status} ({buyerCounts[status] || 0})
+                                                    </Badge>
+                                                ))}
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Badge 
+                                        variant={activeCustomTags.length === 0 ? 'default' : 'outline'} 
+                                        className={cn("cursor-pointer px-4 py-1.5 rounded-full flex items-center gap-1", activeCustomTags.length === 0 ? "bg-primary" : "hover:bg-accent")} 
+                                        onClick={() => {
+                                            setActiveCustomTags([]);
+                                            setIsTagsExpanded(!isTagsExpanded);
+                                        }}
+                                    >
+                                        All Tags {isTagsExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                                    </Badge>
+                                    <AnimatePresence>
+                                        {isTagsExpanded && (
+                                            <motion.div 
+                                                initial={{ opacity: 0, x: -10 }} 
+                                                animate={{ opacity: 1, x: 0 }} 
+                                                exit={{ opacity: 0, x: -10 }}
+                                                transition={{ duration: 0.15 }}
+                                                className="flex items-center gap-2"
+                                            >
+                                                {agencyTags?.map(tag => (
+                                                    <Badge key={tag.id} variant={activeCustomTags.includes(tag.name) ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full transition-all", tag.color, activeCustomTags.includes(tag.name) && "ring-2 ring-primary ring-offset-2")} onClick={() => handleToggleCustomTag(tag.name)}>{tag.name} ({buyerCounts[tag.name] || 0})</Badge>
+                                                ))}
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+                            </div>
+                            <ScrollBar orientation="horizontal" />
+                        </ScrollArea>
+                        <div className="pb-4">
+                            <Button variant="ghost" size="sm" className="rounded-full h-8 px-4 text-xs font-bold gap-2 text-primary hover:bg-primary/10 shadow-sm border border-primary/20" onClick={() => setIsManageTagsOpen(true)}>
+                                <PlusCircle className="h-4 w-4" />
+                                <span className="hidden md:inline">Manage </span>Tags
+                            </Button>
+                        </div>
+                    </div>
+
+                    {/* --- Agent Selection Filter --- */}
+                    {profile.role === 'Admin' && (
+                        <div className="flex items-center gap-3 pb-2">
+                            <div className="flex items-center gap-2 bg-card/60 backdrop-blur-sm border border-primary/10 rounded-full px-4 py-1.5 shadow-sm">
+                                <Users className="h-4 w-4 text-primary" />
+                                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Assigned Agent:</span>
+                                <Select value={activeAgentFilter} onValueChange={setActiveAgentFilter}>
+                                    <SelectTrigger className="h-7 border-none bg-transparent focus:ring-0 text-xs font-bold w-[180px] p-0 shadow-none">
+                                        <SelectValue placeholder="All Agency Inventory" />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl shadow-2xl border-none">
+                                        <SelectItem value="All" className="font-bold">All Agency Leads</SelectItem>
+                                        {activeAgents.map((agent: any) => (
+                                            <SelectItem key={agent.id} value={agent.user_id || agent.id}>
+                                                {agent.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            {activeAgentFilter !== 'All' && (
+                                <Button variant="ghost" size="sm" onClick={() => setActiveAgentFilter('All')} className="h-8 rounded-full text-[10px] font-black uppercase tracking-tighter hover:bg-destructive/10 hover:text-destructive">
+                                    <X className="h-3 w-3 mr-1" /> Clear Filter
                                 </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="left">Add Buyer</TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </Card>
+
+            <div className="mt-4">{isMobile ? renderCards(paginatedBuyers) : <Card className="p-0 overflow-hidden bg-background">{renderTable(paginatedBuyers)}</Card>}</div>
+            
+            {totalPages > 1 && (
+                <div className="flex justify-end items-center gap-2 py-4">
+                    <span className="text-xs text-muted-foreground">Page {currentPage} of {totalPages}</span>
+                    <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}><ChevronLeft className="h-4 w-4" /></Button>
+                    <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}><ChevronRight className="h-4 w-4" /></Button>
                 </div>
             )}
-        </TooltipProvider>
+
+            {isAddBuyerOpen && (
+                <AddBuyerDialog isOpen={isAddBuyerOpen} setIsOpen={setIsAddBuyerOpen} totalSaleBuyers={allBuyers?.filter(b => !b.is_deleted && (b.listing_type || 'For Sale') === 'For Sale').length || 0} totalRentBuyers={allBuyers?.filter(b => !b.is_deleted && b.listing_type === 'For Rent').length || 0} buyerToEdit={buyerToEdit} onSave={handleSaveBuyer} limitReached={false} />
+            )}
+            
+            {isManageTagsOpen && (
+                <ManageTagsDialog isOpen={isManageTagsOpen} setIsOpen={setIsManageTagsOpen} />
+            )}
+            
+            {selectedBuyerForDetails && (
+                <>
+                    {isDetailsOpen && <BuyerDetailsDialog buyer={selectedBuyerForDetails} isOpen={isDetailsOpen} setIsOpen={setIsDetailsOpen} />}
+                    {isNotesOpen && <BuyerNotesDialog buyer={selectedBuyerForDetails} isOpen={isNotesOpen} setIsOpen={setIsNotesOpen} />}
+                    {isEditTagsOpen && <EditBuyerTagsDialog buyer={selectedBuyerForDetails} isOpen={isEditTagsOpen} setIsOpen={setIsEditTagsOpen} />}
+                    {isAssignOpen && <AssignBuyerToAgentDialog buyer={selectedBuyerForDetails} isOpen={isAssignOpen} setIsOpen={setIsAssignOpen} />}
+                    {isSimpleAssignOpen && <SimpleAssignAgentDialog buyer={selectedBuyerForDetails} isOpen={isSimpleAssignOpen} setIsOpen={setIsSimpleAssignOpen} teamMembers={teamMembers || []} />}
+                    {isAppointmentOpen && (
+                        <SetAppointmentDialog 
+                            isOpen={isAppointmentOpen}
+                            setIsOpen={setIsAppointmentOpen}
+                            onSave={handleSaveAppointment}
+                            appointmentDetails={{
+                                contactType: 'Buyer',
+                                contactName: selectedBuyerForDetails.name,
+                                contactSerialNo: selectedBuyerForDetails.serial_no,
+                                message: `Appointment with buyer ${selectedBuyerForDetails.name} for property viewing.`
+                            }}
+                        />
+                    )}
+                    {isRecommenderOpen && (
+                        <PropertyRecommenderDialog 
+                            buyer={selectedBuyerForDetails}
+                            properties={properties || []}
+                            isOpen={isRecommenderOpen}
+                            setIsOpen={setIsRecommenderOpen}
+                        />
+                    )}
+                </>
+            )}
+        </div>
     );
 }
 
-    
-
-    
-
+export default function BuyersPage() {
+    return (
+        <Suspense fallback={<div className="flex h-screen w-full items-center justify-center">Loading buyers...</div>}>
+            <BuyersPageContent />
+        </Suspense>
+    );
+}

@@ -22,6 +22,7 @@ File any bugs at https://github.com/firebase/firebase-tools/issues
 ## Previous README.md contents:
 
 
+
 # Firebase Studio
 
 This is a NextJS starter in Firebase Studio.

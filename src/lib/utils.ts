@@ -1,4 +1,3 @@
-
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
@@ -8,34 +7,38 @@ export function cn(...inputs: ClassValue[]) {
 
 /**
  * Formats a phone number based on the selected country code.
+ * - Detects if the number already has an international prefix starting with '+'.
  * - Removes leading '0' if the country code is '+92'.
- * - Removes any existing country code from the number to avoid duplication.
- * - Removes all non-digit characters.
- * - Prepends the selected country code.
- * @param phone The raw phone number string.
- * @param countryCode The selected country code (e.g., '+92').
- * @returns The formatted phone number string.
+ * - Prepends the selected country code correctly if not already present.
  */
 export function formatPhoneNumber(phone: string, countryCode: string = '+92'): string {
   if (!phone) return '';
   
-  // Remove all non-digit characters from the phone number
-  let cleaned = phone.replace(/\D/g, '');
+  // Clean leading/trailing spaces
+  let cleaned = phone.trim();
+  
+  // If it already starts with '+', it's already a full international number. 
+  // We return as is to support any country without interference.
+  if (cleaned.startsWith('+')) {
+    // Just remove spaces and dashes
+    return cleaned.replace(/[\s-]/g, '');
+  }
+
+  // Remove any non-digit characters for processing
+  let digits = cleaned.replace(/\D/g, '');
   const codeWithoutPlus = countryCode.replace('+', '');
 
-  // If the selected country code is for Pakistan, remove leading zero if present
-  if (countryCode === '+92' && cleaned.startsWith('0')) {
-    cleaned = cleaned.substring(1);
+  // If the number already starts with the digits of the selected country code, 
+  // we just prepend the '+' and return.
+  if (digits.startsWith(codeWithoutPlus)) {
+    return `+${digits}`;
   }
 
-  // Remove any country code prefix from the cleaned number to avoid duplication
-  if (cleaned.startsWith(codeWithoutPlus)) {
-      cleaned = cleaned.substring(codeWithoutPlus.length);
+  // For Pakistan (+92), if number starts with local '0', remove it before prepending code.
+  if (countryCode === '+92' && digits.startsWith('0')) {
+    digits = digits.substring(1);
   }
 
-  // Combine the country code and the cleaned number
-  return `${countryCode}${cleaned}`;
+  // Combine the country code and the cleaned digits
+  return `${countryCode}${digits}`;
 }
-
-
-    

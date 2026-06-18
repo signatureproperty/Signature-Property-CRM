@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Badge } from '@/components/ui/badge';
@@ -15,10 +14,9 @@ import {
   Check,
   X,
 } from 'lucide-react';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Activity } from '@/lib/types';
 import { useFirestore } from '@/firebase/provider';
-import { useUser } from '@/firebase/auth/use-user';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, where, orderBy, getDocs, writeBatch } from 'firebase/firestore';
 import { useProfile } from '@/context/profile-context';
@@ -53,6 +51,11 @@ export default function ActivitiesPage() {
   const firestore = useFirestore();
   const { profile } = useProfile();
   const { toast } = useToast();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const activitiesQuery = useMemoFirebase(() => {
     if (!profile.agency_id) return null;
@@ -157,7 +160,7 @@ export default function ActivitiesPage() {
                       )}
                       
                        <time dateTime={activity.timestamp} className="block flex-none text-xs text-muted-foreground mt-2">
-                        {format(new Date(activity.timestamp), "PPpp")}
+                        {mounted ? format(new Date(activity.timestamp), "PPpp") : '...'}
                       </time>
                     </div>
                      <div className="absolute right-0 top-0 text-muted-foreground">

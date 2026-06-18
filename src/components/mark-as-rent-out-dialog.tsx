@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
@@ -26,34 +25,31 @@ import { Property, User, PriceUnit, Buyer } from '@/lib/types';
 import { formatCurrency, formatUnit } from '@/lib/formatters';
 import { useProfile } from '@/context/profile-context';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, addDoc, doc, writeBatch } from 'firebase/firestore';
+import { collection, doc, writeBatch } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { useMemoFirebase } from '@/firebase/hooks';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Separator } from './ui/separator';
 import { ScrollArea } from './ui/scroll-area';
 import { Calculator, Check, ChevronsUpDown } from 'lucide-react';
-import { useCurrency } from '@/context/currency-context';
+import { useCurrency, Currency } from '@/context/currency-context';
 import { Card, CardContent } from './ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command';
 import { cn } from '@/lib/utils';
-
-const priceUnits: PriceUnit[] = ['Thousand', 'Lacs', 'Crore'];
 
 const formSchema = z.object({
   rent_out_date: z.string().refine(date => new Date(date).toString() !== 'Invalid Date', { message: 'Please select a valid date' }),
   rented_by_agent_id: z.string().min(1, "You must select the agent."),
   buyerId: z.string().optional(),
   final_rent_amount: z.coerce.number().positive("Final rent amount is required."),
-  final_rent_unit: z.enum(priceUnits).default('Thousand'),
+  final_rent_unit: z.enum(['Thousand', 'Lacs', 'Crore']).default('Thousand'),
   rent_commission_from_tenant: z.coerce.number().min(0).optional(),
-  rent_commission_from_tenant_unit: z.enum(priceUnits).default('Thousand'),
+  rent_commission_from_tenant_unit: z.enum(['Thousand', 'Lacs', 'Crore']).default('Thousand'),
   rent_commission_from_owner: z.coerce.number().min(0).optional(),
-  rent_commission_from_owner_unit: z.enum(priceUnits).default('Thousand'),
+  rent_commission_from_owner_unit: z.enum(['Thousand', 'Lacs', 'Crore']).default('Thousand'),
   rent_agent_share: z.coerce.number().min(0).optional(),
-  rent_agent_share_unit: z.enum(priceUnits).default('Thousand'),
-  // Tenant Details
+  rent_agent_share_unit: z.enum(['Thousand', 'Lacs', 'Crore']).default('Thousand'),
   tenant_name: z.string().min(1, 'Tenant name is required.'),
   tenant_phone: z.string().min(1, 'Tenant phone number is required.'),
   tenant_cnic: z.string().optional(),
@@ -102,8 +98,8 @@ export function MarkAsRentOutDialog({
   const watchFields = useWatch({ control: form.control });
 
   const totalCommission = useMemo(() => {
-      const tenantCommission = formatUnit(watchFields.rent_commission_from_tenant || 0, watchFields.rent_commission_from_tenant_unit || 'Thousand');
-      const ownerCommission = formatUnit(watchFields.rent_commission_from_owner || 0, watchFields.rent_commission_from_owner_unit || 'Thousand');
+      const tenantCommission = formatUnit(watchFields.rent_commission_from_tenant || 0, (watchFields.rent_commission_from_tenant_unit as PriceUnit) || 'Thousand');
+      const ownerCommission = formatUnit(watchFields.rent_commission_from_owner || 0, (watchFields.rent_commission_from_owner_unit as PriceUnit) || 'Thousand');
       return tenantCommission + ownerCommission;
   }, [watchFields.rent_commission_from_tenant, watchFields.rent_commission_from_tenant_unit, watchFields.rent_commission_from_owner, watchFields.rent_commission_from_owner_unit]);
 
@@ -115,13 +111,13 @@ export function MarkAsRentOutDialog({
             rented_by_agent_id: property.rented_by_agent_id || '',
             buyerId: property.buyerId || '',
             final_rent_amount: property.final_rent_amount || property.demand_amount,
-            final_rent_unit: property.final_rent_unit || property.demand_unit as PriceUnit,
+            final_rent_unit: (property.final_rent_unit || property.demand_unit) as PriceUnit,
             rent_commission_from_tenant: property.rent_commission_from_tenant || 0,
-            rent_commission_from_tenant_unit: property.rent_commission_from_tenant_unit || 'Thousand',
+            rent_commission_from_tenant_unit: (property.rent_commission_from_tenant_unit as PriceUnit) || 'Thousand',
             rent_commission_from_owner: property.rent_commission_from_owner || 0,
-            rent_commission_from_owner_unit: property.rent_commission_from_owner_unit || 'Thousand',
+            rent_commission_from_owner_unit: (property.rent_commission_from_owner_unit as PriceUnit) || 'Thousand',
             rent_agent_share: property.rent_agent_share || 0,
-            rent_agent_share_unit: property.rent_agent_share_unit || 'Thousand',
+            rent_agent_share_unit: (property.rent_agent_share_unit as PriceUnit) || 'Thousand',
             tenant_name: property.tenant_name || '',
             tenant_phone: property.tenant_phone || '',
             tenant_cnic: property.tenant_cnic || '',
@@ -142,15 +138,14 @@ export function MarkAsRentOutDialog({
         buyerName: buyer?.name || null,
         buyerSerialNo: buyer?.serial_no || null,
         final_rent_amount: values.final_rent_amount,
-        final_rent_unit: values.final_rent_unit,
+        final_rent_unit: values.final_rent_unit as PriceUnit,
         rent_commission_from_tenant: values.rent_commission_from_tenant,
-        rent_commission_from_tenant_unit: values.rent_commission_from_tenant_unit,
+        rent_commission_from_tenant_unit: values.rent_commission_from_tenant_unit as PriceUnit,
         rent_commission_from_owner: values.rent_commission_from_owner,
-        rent_commission_from_owner_unit: values.rent_commission_from_owner_unit,
+        rent_commission_from_owner_unit: values.rent_commission_from_owner_unit as PriceUnit,
         rent_total_commission: totalCommission,
         rent_agent_share: values.rent_agent_share,
-        rent_agent_share_unit: values.rent_agent_share_unit,
-        // Tenant Details
+        rent_agent_share_unit: values.rent_agent_share_unit as PriceUnit,
         tenant_name: values.tenant_name,
         tenant_phone: values.tenant_phone,
         tenant_cnic: values.tenant_cnic,
@@ -158,18 +153,14 @@ export function MarkAsRentOutDialog({
     };
     
     const batch = writeBatch(firestore);
-    
-    // 1. Update Property
     const propertyRef = doc(firestore, 'agencies', property.agency_id, 'properties', property.id);
     batch.set(propertyRef, updatedProperty, { merge: true });
 
-    // 2. Update Buyer status if a buyer was selected
     if (buyer) {
       const buyerRef = doc(firestore, 'agencies', buyer.agency_id, 'buyers', buyer.id);
       batch.update(buyerRef, { status: 'Deal Closed' });
     }
 
-    // 3. Create activity log
     if (profile.agency_id) {
         const activityLogRef = doc(collection(firestore, 'agencies', profile.agency_id, 'activityLogs'));
         const newActivity = {
@@ -179,6 +170,7 @@ export function MarkAsRentOutDialog({
             targetType: 'Property',
             timestamp: new Date().toISOString(),
             agency_id: profile.agency_id,
+            details: null,
         };
         batch.set(activityLogRef, newActivity);
     }
@@ -322,7 +314,9 @@ export function MarkAsRentOutDialog({
                                     <Select onValueChange={field.onChange} value={field.value}>
                                         <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                                         <SelectContent>
-                                            {priceUnits.map(unit => <SelectItem key={unit} value={unit}>{unit}</SelectItem>)}
+                                            <SelectItem value="Thousand">Thousand</SelectItem>
+                                            <SelectItem value="Lacs">Lacs</SelectItem>
+                                            <SelectItem value="Crore">Crore</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </FormItem>
@@ -398,7 +392,9 @@ export function MarkAsRentOutDialog({
                                 <Select onValueChange={field.onChange} value={field.value}>
                                     <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                                     <SelectContent>
-                                        {priceUnits.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                                        <SelectItem value="Thousand">Thousand</SelectItem>
+                                        <SelectItem value="Lacs">Lacs</SelectItem>
+                                        <SelectItem value="Crore">Crore</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </FormItem>
@@ -417,7 +413,9 @@ export function MarkAsRentOutDialog({
                                 <Select onValueChange={field.onChange} value={field.value}>
                                     <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                                     <SelectContent>
-                                        {priceUnits.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                                        <SelectItem value="Thousand">Thousand</SelectItem>
+                                        <SelectItem value="Lacs">Lacs</SelectItem>
+                                        <SelectItem value="Crore">Crore</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </FormItem>
@@ -438,7 +436,9 @@ export function MarkAsRentOutDialog({
                             <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                                 <SelectContent>
-                                    {priceUnits.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                                    <SelectItem value="Thousand">Thousand</SelectItem>
+                                    <SelectItem value="Lacs">Lacs</SelectItem>
+                                    <SelectItem value="Crore">Crore</SelectItem>
                                 </SelectContent>
                             </Select>
                         </FormItem>
@@ -452,7 +452,7 @@ export function MarkAsRentOutDialog({
                         <div className="flex items-center gap-2">
                             <Calculator className="text-muted-foreground" />
                             <p className="text-sm text-muted-foreground">Total Commission:</p>
-                            <p className="font-bold text-lg">{formatCurrency(totalCommission, currency)}</p>
+                            <p className="font-bold text-lg">{formatCurrency(totalCommission, currency as Currency)}</p>
                         </div>
                     </CardContent>
                </Card>

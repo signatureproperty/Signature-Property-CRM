@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -11,13 +10,11 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import { Copy, Check, Info, Upload, Banknote, CreditCard, ArrowLeft, Loader2 } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { Input } from './ui/input';
-import Image from 'next/image';
 import { useProfile } from '@/context/profile-context';
 import { useFirestore } from '@/firebase/provider';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -25,7 +22,7 @@ import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'fire
 
 export type Plan = {
     name: string;
-    price: { monthly: number; yearly: number; } | { custom: true; };
+    price: { monthly: number; yearly: number; custom?: boolean } | { custom: true; monthly?: number; yearly?: number };
     description: string;
     features: string[];
     cta: string;
@@ -53,12 +50,12 @@ export function PaymentDialog({ isOpen, setIsOpen, plan, billingCycle }: Payment
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
-
-  if (plan.price.custom) {
+  const priceData = plan.price as any;
+  if (priceData.custom) {
       return null;
   }
   
-  const price = billingCycle === 'yearly' ? plan.price.yearly : plan.price.monthly;
+  const price = billingCycle === 'yearly' ? (priceData.yearly || 0) : (priceData.monthly || 0);
 
   const handleCopy = (textToCopy: string) => {
     navigator.clipboard.writeText(textToCopy);
@@ -91,14 +88,12 @@ export function PaymentDialog({ isOpen, setIsOpen, plan, billingCycle }: Payment
     setIsSubmitting(true);
     
     try {
-        // 1. Upload receipt to Firebase Storage
         const storage = getStorage();
-        const filePath = `upgrade_receipts/${profile.agency_id}/${new Date().toISOString()}_${receiptFile.name}`;
+        const filePath = `upgrade_receipts/${profile.agency_id}/${new Date().getTime()}_${receiptFile.name}`;
         const receiptStorageRef = storageRef(storage, filePath);
         const uploadResult = await uploadBytes(receiptStorageRef, receiptFile);
         const receiptUrl = await getDownloadURL(uploadResult.ref);
 
-        // 2. Create a document in the `upgradeRequests` collection
         const requestsCollectionRef = collection(firestore, 'upgradeRequests');
         await addDoc(requestsCollectionRef, {
             agencyId: profile.agency_id,
@@ -159,11 +154,12 @@ export function PaymentDialog({ isOpen, setIsOpen, plan, billingCycle }: Payment
   );
 
   const renderDetailsScreen = () => {
-    const details = {
+    const detailsMap: any = {
         jazzcash: { title: "JazzCash Payment", accountName: "Usman Sagheer", accountNumber: "03001234567" },
         bank: { title: "Bank Transfer", accountName: "Usman Sagheer", accountNumber: "01234567890123", bankName: "Meezan Bank" },
         card: { title: "Credit/Debit Card", message: "Online card payments are coming soon. Please choose another method." }
-    }[selectedMethod!];
+    };
+    const details = detailsMap[selectedMethod!];
 
     return (
         <>
@@ -200,7 +196,7 @@ export function PaymentDialog({ isOpen, setIsOpen, plan, billingCycle }: Payment
                                     <span className="text-muted-foreground">Account Number:</span>
                                     <div className="flex items-center gap-2">
                                         <span className="font-mono">{details.accountNumber}</span>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleCopy(details.accountNumber)}>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleCopy(details.accountNumber || '')}>
                                             {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
                                         </Button>
                                     </div>

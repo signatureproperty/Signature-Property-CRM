@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -10,10 +9,10 @@ import type { Property, RecordingPaymentStatus, InboxMessage } from '@/lib/types
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, doc, updateDoc, query, where, addDoc } from 'firebase/firestore';
+import { collection, doc, updateDoc, query, where, addDoc, arrayRemove } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/hooks';
 import { useProfile } from '@/context/profile-context';
-import { useSearch } from '../layout';
+import { useSearch } from '@/context/layout-context';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { CannotRecordDialog } from '@/components/cannot-record-dialog';
@@ -37,7 +36,7 @@ export default function RecordingPage() {
   const firestore = useFirestore();
   const isMobile = useIsMobile();
   const { profile } = useProfile();
-  const { searchQuery, setSearchQuery } = useSearch();
+  const { searchQuery } = useSearch();
   const [propertyForReason, setPropertyForReason] = useState<Property | null>(null);
   const [propertyForDetails, setPropertyForDetails] = useState<Property | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -47,7 +46,7 @@ export default function RecordingPage() {
     profile.agency_id && profile.user_id
         ? query(
             collection(firestore, 'agencies', profile.agency_id, 'properties'), 
-            where('assignedTo', '==', profile.user_id),
+            where('assignedTo', 'array-contains', profile.user_id),
             where('is_recorded', '==', false)
           ) 
         : null, 
@@ -99,9 +98,10 @@ export default function RecordingPage() {
       if (!profile.agency_id) return;
       try {
           const propRef = doc(firestore, 'agencies', profile.agency_id, 'properties', property.id);
+          // For recorders, we remove them from the array
           await updateDoc(propRef, {
               recording_notes: reason,
-              assignedTo: null // Un-assign the property
+              assignedTo: arrayRemove(profile.user_id)
           });
 
           // Create an inbox message for the admin
@@ -174,14 +174,14 @@ export default function RecordingPage() {
                                     <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent>
-                                    <DropdownMenuItem onSelect={() => handleRowClick(prop)}>
-                                        <Eye className="mr-2" /> View Details
+                                    <DropdownMenuItem onSelect={() => handleRowClick(prop) as any}>
+                                        <Eye className="mr-2 h-4 w-4" /> View Details
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem onSelect={() => handleMarkAsRecorded(prop)}>
-                                        <Check className="mr-2" /> Mark as Recorded
+                                    <DropdownMenuItem onSelect={() => handleMarkAsRecorded(prop) as any}>
+                                        <Check className="mr-2 h-4 w-4" /> Mark as Recorded
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem onSelect={() => handleCannotRecord(prop)} className="text-destructive focus:bg-destructive/10">
-                                        <XCircle className="mr-2" /> Cannot Record
+                                    <DropdownMenuItem onSelect={() => handleCannotRecord(prop) as any} className="text-destructive focus:bg-destructive/10">
+                                        <XCircle className="mr-2 h-4 w-4" /> Cannot Record
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
@@ -221,11 +221,11 @@ export default function RecordingPage() {
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                                    <DropdownMenuItem onSelect={() => handleMarkAsRecorded(prop)}>
+                                    <DropdownMenuItem onSelect={() => handleMarkAsRecorded(prop) as any}>
                                         <Check className="mr-2 h-4 w-4" />
                                         Mark as Recorded
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem onSelect={() => handleCannotRecord(prop)} className="text-destructive focus:bg-destructive/10">
+                                    <DropdownMenuItem onSelect={() => handleCannotRecord(prop) as any} className="text-destructive focus:bg-destructive/10">
                                         <XCircle className="mr-2 h-4 w-4" />
                                         Cannot Record
                                     </DropdownMenuItem>

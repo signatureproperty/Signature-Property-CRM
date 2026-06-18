@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -14,14 +13,12 @@ import { Button } from '@/components/ui/button';
 import { Buyer, Property, RecommendedProperty } from '@/lib/types';
 import { ScrollArea } from './ui/scroll-area';
 import { Badge } from './ui/badge';
-import { Separator } from './ui/separator';
 import { Share2, Sparkles, RefreshCw, Video, Eye } from 'lucide-react';
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { formatCurrency, formatUnit, formatPhoneNumberForWhatsApp } from '@/lib/formatters';
-import { useCurrency } from '@/context/currency-context';
+import { useCurrency, Currency } from '@/context/currency-context';
 import { Progress } from './ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import * as ProgressPrimitive from "@radix-ui/react-progress"
 import { cn } from '@/lib/utils';
 import { Checkbox } from './ui/checkbox';
 import { Label } from './ui/label';
@@ -41,15 +38,12 @@ interface PropertyRecommenderDialogProps {
   setIsOpen: (open: boolean) => void;
 }
 
-// Function to calculate the match score and reasons
 const calculateMatchScore = (buyer: Buyer, property: Property): RecommendedProperty | null => {
-    // Basic checks: property must be available
     if (property.status !== 'Available') {
         return null;
     }
     
-    // Listing type check: 'For Sale' buyers see sale properties, 'For Rent' see rent.
-    const buyerListingType = buyer.listing_type || 'For Sale'; // Default to 'For Sale' if not specified
+    const buyerListingType = buyer.listing_type || 'For Sale';
     const propertyListingType = property.is_for_rent ? 'For Rent' : 'For Sale';
     if (buyerListingType !== propertyListingType) {
         return null;
@@ -58,16 +52,14 @@ const calculateMatchScore = (buyer: Buyer, property: Property): RecommendedPrope
     let score = 0;
     let reasons: string[] = [];
 
-    // 1. Property Type Match (Strict)
     if (buyer.property_type_preference) {
         if (buyer.property_type_preference.toLowerCase() !== property.property_type.toLowerCase()) {
-            return null; // Strict: if type doesn't match, don't recommend at all.
+            return null;
         }
         score += 30;
         reasons.push('Property type match.');
     }
 
-    // 2. Area Match (Flexible)
     if (buyer.area_preference) {
         const buyerAreas = buyer.area_preference.toLowerCase().split(',').map(a => a.trim()).filter(Boolean);
         const propertyArea = property.area.toLowerCase();
@@ -77,7 +69,6 @@ const calculateMatchScore = (buyer: Buyer, property: Property): RecommendedPrope
         }
     }
 
-    // 3. Budget Match (Flexible)
     const buyerMinBudget = formatUnit(buyer.budget_min_amount || 0, buyer.budget_min_unit || 'Thousand');
     const buyerMaxBudget = formatUnit(buyer.budget_max_amount || 0, buyer.budget_max_unit || 'Lacs');
     const propertyDemand = formatUnit(property.demand_amount, property.demand_unit);
@@ -87,12 +78,11 @@ const calculateMatchScore = (buyer: Buyer, property: Property): RecommendedPrope
             score += 25;
             reasons.push('Falls within budget.');
         } else if (propertyDemand >= buyerMinBudget * 0.9 && propertyDemand <= buyerMaxBudget * 1.1) {
-            score += 15; // Partial score for being close
+            score += 15;
             reasons.push('Close to budget.');
         }
     }
 
-    // 4. Size Match (Flexible)
     const buyerMinSize = buyer.size_min_value || 0;
     const buyerMaxSize = buyer.size_max_value || 0;
     const propertySize = property.size_value;
@@ -102,16 +92,15 @@ const calculateMatchScore = (buyer: Buyer, property: Property): RecommendedPrope
             score += 20;
             reasons.push('Size preference matched.');
         } else if (propertySize >= buyerMinSize * 0.9 && propertySize <= buyerMaxSize * 1.1) {
-            score += 10; // Partial score for close size
+            score += 10;
             reasons.push('Close to size preference.');
         }
     }
 
-    // Normalize score
-    const maxScore = 30 + 25 + 25 + 20; // Sum of max scores for each criteria
+    const maxScore = 30 + 25 + 25 + 20;
     const finalScore = Math.min(100, Math.round((score / maxScore) * 100));
 
-    if (finalScore < 10) return null; // Lower threshold to show more options
+    if (finalScore < 10) return null;
 
     return { ...property, matchScore: finalScore, matchReasons: reasons };
 };
@@ -121,20 +110,26 @@ const RecommendedPropertyCard = ({ property, buyer, onShareConfirmed, onViewDeta
     const { toast } = useToast();
     const { profile } = useProfile();
     const firestore = useFirestore();
-    const [selectedLinks, setSelectedLinks] = useState<Record<VideoLinkPlatform, boolean>>({});
+    const [selectedLinks, setSelectedLinks] = useState<Record<VideoLinkPlatform, boolean>>({
+        tiktok: false, youtube: false, instagram: false, facebook: false, other: false
+    });
     const [shareStatus, setShareStatus] = useState<ShareStatus>('idle');
 
     const availableLinks = useMemo(() => {
         if (!property.is_recorded || !property.video_links) return [];
-        return (Object.keys(property.video_links) as VideoLinkPlatform[]).filter(key => !!property.video_links![key]);
+        return (Object.keys(property.video_links) as VideoLinkPlatform[]).filter(key => !!property.video_links![key as VideoLinkPlatform]);
     }, [property]);
 
     useEffect(() => {
-        // Pre-select all available links when component mounts or property changes
-        const initialSelected: Record<VideoLinkPlatform, boolean> = {};
-        availableLinks.forEach(link => initialSelected[link] = true);
+        const initialSelected: Record<VideoLinkPlatform, boolean> = {
+            tiktok: !!property.video_links?.tiktok,
+            youtube: !!property.video_links?.youtube,
+            instagram: !!property.video_links?.instagram,
+            facebook: !!property.video_links?.facebook,
+            other: !!property.video_links?.other
+        };
         setSelectedLinks(initialSelected);
-    }, [availableLinks]);
+    }, [property]);
 
     const handleLinkSelectionChange = (platform: VideoLinkPlatform) => {
         setSelectedLinks(prev => ({ ...prev, [platform]: !prev[platform] }));
@@ -179,7 +174,7 @@ ${utilities || 'N/A'}${videoLinksSection || ''}`;
         } else {
             const demand = `${property.demand_amount} ${property.demand_unit}`;
             const rentInBaseUnit = formatUnit(property.potential_rent_amount || 0, property.potential_rent_unit || 'Thousand');
-            const potentialRent = property.potential_rent_amount ? `Rs. ${formatCurrency(rentInBaseUnit, currency)}` : 'N/A';
+            const potentialRent = property.potential_rent_amount ? `Rs. ${formatCurrency(rentInBaseUnit, currency as Currency)}` : 'N/A';
             const utilities = [
                 property.meters?.gas && '- Gas',
                 property.meters?.electricity && '- Electricity',
@@ -255,7 +250,7 @@ ${utilities || 'N/A'}
                     <h4 className="font-bold">{property.auto_title}</h4>
                     <p className="text-sm text-muted-foreground">{property.address}</p>
                 </div>
-                <Badge variant="secondary">{formatCurrency(formatUnit(property.demand_amount, property.demand_unit), currency)}</Badge>
+                <Badge variant="secondary">{formatCurrency(formatUnit(property.demand_amount, property.demand_unit), currency as Currency)}</Badge>
             </div>
             <div className="flex items-center gap-4 mt-4">
                 <div className="w-24 text-center">
@@ -346,7 +341,6 @@ export function PropertyRecommenderDialog({
             .map(prop => calculateMatchScore(buyer, prop))
             .filter((p): p is RecommendedProperty => p !== null)
             .sort((a, b) => b.matchScore - a.matchScore);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [buyer, properties, refreshKey]);
 
     const handleViewDetails = (property: Property) => {
@@ -410,16 +404,3 @@ export function PropertyRecommenderDialog({
         </>
     );
 }
-
-// Custom Progress component to allow dynamic indicator color
-const ProgressIndicator = React.forwardRef<
-  React.ElementRef<typeof ProgressPrimitive.Indicator>,
-  React.ComponentPropsWithoutRef<typeof ProgressPrimitive.Indicator> & { indicatorClassName?: string }
->(({ className, indicatorClassName, ...props }, ref) => (
-  <ProgressPrimitive.Indicator
-    ref={ref}
-    className={cn("h-full w-full flex-1 bg-primary transition-all", indicatorClassName, className)}
-    {...props}
-  />
-));
-ProgressIndicator.displayName = 'ProgressIndicator';

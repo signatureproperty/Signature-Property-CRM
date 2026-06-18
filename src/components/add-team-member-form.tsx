@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm, useWatch } from 'react-hook-form';
@@ -25,26 +24,22 @@ import { useToast } from '@/hooks/use-toast';
 import type { User, UserRole } from '@/lib/types';
 import { useEffect, useState } from 'react';
 import { useFirestore, useAuth } from '@/firebase/provider';
-import { doc, setDoc, serverTimestamp, writeBatch, updateDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, writeBatch, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { useProfile } from '@/context/profile-context';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Mail, Shield, User as UserIcon, Lock } from 'lucide-react';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-
-const roles: UserRole[] = ['Admin', 'Agent', 'Video Recorder'];
 
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   email: z.string().email('Invalid email address'),
-  role: z.enum(roles).default('Agent'),
+  role: z.enum(['Agent', 'Admin', 'Video Recorder']).default('Agent'),
   password: z.string().optional(),
 }).refine(data => {
-    // Password is only required if the role is 'Video Recorder' and it's not an edit operation
     return data.role !== 'Video Recorder' || (data.password && data.password.length >= 6);
 }, {
-    message: "Password must be at least 6 characters for Video Recorder role.",
+    message: "Password must be at least 6 characters for Video Recorder.",
     path: ["password"],
 });
-
 
 type AddMemberFormValues = z.infer<typeof formSchema>;
 
@@ -74,81 +69,72 @@ export function AddTeamMemberForm({ setDialogOpen, memberToEdit, onRoleChange }:
   const watchedRole = useWatch({ control: form.control, name: 'role' });
 
   useEffect(() => {
-    onRoleChange(watchedRole);
+    onRoleChange(watchedRole as UserRole);
   }, [watchedRole, onRoleChange]);
 
   useEffect(() => {
     if (memberToEdit) {
       form.reset({
         name: memberToEdit.name,
-        email: memberToEdit.email,
-        role: memberToEdit.role,
+        email: memberToEdit.email || '',
+        role: (memberToEdit.role === 'Super Admin' ? 'Admin' : memberToEdit.role) as any,
       });
-    } else {
-        form.reset({ name: '', email: '', role: 'Agent', password: '' });
     }
   }, [memberToEdit, form]);
 
   const handleSaveMember = async (values: AddMemberFormValues) => {
-    if (!profile.agency_id) {
-        toast({ title: "Error", description: "Agency information not found.", variant: "destructive" });
+    if (!profile.agency_id) return;
+    
+    // Strict Validation before DB write
+    if (!values.name.trim() || !values.email.trim()) {
+        toast({ title: 'Validation Error', description: 'Name and Email are required.', variant: 'destructive' });
         return;
     }
-    
+
     setIsLoading(true);
 
     try {
         if (memberToEdit) {
-            // Logic to update an existing member's role and name.
             const memberRef = doc(firestore, 'agencies', profile.agency_id, 'teamMembers', memberToEdit.id);
             await updateDoc(memberRef, { role: values.role, name: values.name });
-            toast({ title: 'Member Updated', description: `Details for ${values.name} have been updated.` });
+            toast({ title: 'Role Updated', description: `Details for ${values.name} updated.` });
         } else {
-             // Check if user with this email already exists in the team
-            const teamMembersCollectionRef = collection(firestore, 'agencies', profile.agency_id, 'teamMembers');
-            const q = query(teamMembersCollectionRef, where("email", "==", values.email));
+            const teamMembersRef = collection(firestore, 'agencies', profile.agency_id, 'teamMembers');
+            const q = query(teamMembersRef, where("email", "==", values.email));
             const querySnapshot = await getDocs(q);
 
             if (!querySnapshot.empty) {
-                toast({
-                    title: 'Member Already Exists',
-                    description: `${values.email} is already a part of this agency.`,
-                    variant: 'destructive',
-                });
+                toast({ title: 'Member Already Exists', description: 'This email is already part of your team.', variant: 'destructive' });
                 setIsLoading(false);
                 return;
             }
 
             if (values.role === 'Video Recorder') {
-                // Direct creation
-                 if (!values.password) {
-                     toast({ title: 'Password required for Video Recorder', variant: 'destructive' });
-                     setIsLoading(false);
-                     return;
-                 }
+                if (!values.password) return;
                 
-                // We cannot use admin SDK on client, so this is a workaround. It's not ideal.
-                // A better approach would be a Cloud Function, but we are limited.
-                const tempAuth = auth; // This will sign out the admin temporarily.
+                const tempAuth = auth;
                 const userCredential = await createUserWithEmailAndPassword(tempAuth, values.email, values.password);
                 const newUser = userCredential.user;
 
                 const batch = writeBatch(firestore);
-                const userDocRef = doc(firestore, 'users', newUser.uid);
-                batch.set(userDocRef, {
+                
+                // Fallbacks during creation
+                const userName = values.name || 'Unnamed Recorder';
+                const userEmail = values.email;
+
+                batch.set(doc(firestore, 'users', newUser.uid), {
                     id: newUser.uid,
-                    name: values.name,
-                    email: values.email,
+                    name: userName,
+                    email: userEmail,
                     role: 'Video Recorder',
                     agency_id: profile.agency_id,
                     createdAt: serverTimestamp()
                 });
-                const teamMemberDocRef = doc(firestore, 'agencies', profile.agency_id, 'teamMembers', newUser.uid);
-                batch.set(teamMemberDocRef, {
+                batch.set(doc(firestore, 'agencies', profile.agency_id, 'teamMembers', newUser.uid), {
                     id: newUser.uid,
                     user_id: newUser.uid,
-                    name: values.name,
-                    email: values.email,
+                    name: userName,
+                    email: userEmail,
                     role: 'Video Recorder',
                     status: 'Active',
                     agency_id: profile.agency_id,
@@ -157,18 +143,15 @@ export function AddTeamMemberForm({ setDialogOpen, memberToEdit, onRoleChange }:
                 });
                 await batch.commit();
                 
-                // IMPORTANT: We need to sign the admin back in.
-                // This is a limitation of client-side user creation.
-                // The user needs to be aware of this.
-                await auth.signOut(); // Sign out the newly created user
-                toast({ title: "Action Required", description: "Video Recorder created. Please log in again." });
-                window.location.href = '/login'; // Force re-login
+                await auth.signOut();
+                toast({ title: "Recorder Account Created", description: "Please log in again as Admin to continue." });
+                window.location.href = '/login';
                 return;
 
             } else {
-                // Invitation flow for Agent/Admin
                 const batch = writeBatch(firestore);
-                const newMemberRef = doc(teamMembersCollectionRef);
+                const newMemberRef = doc(teamMembersRef);
+                
                 batch.set(newMemberRef, {
                     id: newMemberRef.id,
                     name: values.name,
@@ -179,9 +162,9 @@ export function AddTeamMemberForm({ setDialogOpen, memberToEdit, onRoleChange }:
                     agency_name: profile.agencyName,
                     invitedAt: serverTimestamp()
                 });
+
                 const invitationId = `${values.email}_${profile.agency_id}`;
-                const invitationRef = doc(firestore, 'invitations', invitationId);
-                batch.set(invitationRef, {
+                batch.set(doc(firestore, 'invitations', invitationId), {
                     toEmail: values.email,
                     fromAgencyId: profile.agency_id,
                     fromAgencyName: profile.agencyName,
@@ -190,43 +173,31 @@ export function AddTeamMemberForm({ setDialogOpen, memberToEdit, onRoleChange }:
                     invitedAt: serverTimestamp(),
                     memberDocId: newMemberRef.id
                 });
+                
                 await batch.commit();
-
-                toast({ 
-                    title: 'Invitation Sent!', 
-                    description: `An invitation has been sent to ${values.email}. They will appear as 'Active' once they sign up.` 
-                });
+                toast({ title: 'Invitation Sent!', description: `An invitation has been sent to ${values.email}.` });
             }
         }
         setDialogOpen(false);
     } catch (error: any) {
-        console.error("Error saving member:", error);
-        let errorMessage = 'Could not save the team member. Please try again.';
-        if (error.code === 'auth/email-already-in-use') {
-            errorMessage = 'This email is already registered. Please use another email.';
-        }
-        toast({
-            title: 'An Error Occurred',
-            description: errorMessage,
-            variant: 'destructive',
-        });
+        console.error("Error saving team member:", error);
+        toast({ title: 'Error Occurred', description: error.message || 'Could not save member.', variant: 'destructive' });
     } finally {
         setIsLoading(false);
     }
   };
 
-
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSaveMember)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(handleSaveMember)} className="space-y-4 pt-4">
          <FormField
           control={form.control}
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Member's Name</FormLabel>
+              <FormLabel className="flex items-center gap-2"><UserIcon className="h-3.5 w-3.5" /> Full Name</FormLabel>
               <FormControl>
-                <Input {...field} placeholder="e.g. Ahmed Khan" />
+                <Input {...field} placeholder="e.g. Ali Raza" />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -237,9 +208,9 @@ export function AddTeamMemberForm({ setDialogOpen, memberToEdit, onRoleChange }:
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Member's Email</FormLabel>
+              <FormLabel className="flex items-center gap-2"><Mail className="h-3.5 w-3.5" /> Email Address</FormLabel>
               <FormControl>
-                <Input type="email" {...field} placeholder="member@example.com" disabled={!!memberToEdit} />
+                <Input type="email" {...field} placeholder="agent@example.com" disabled={!!memberToEdit} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -250,7 +221,7 @@ export function AddTeamMemberForm({ setDialogOpen, memberToEdit, onRoleChange }:
           name="role"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Role</FormLabel>
+              <FormLabel className="flex items-center gap-2"><Shield className="h-3.5 w-3.5" /> Assign Role</FormLabel>
               <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
                   <SelectTrigger>
@@ -258,9 +229,9 @@ export function AddTeamMemberForm({ setDialogOpen, memberToEdit, onRoleChange }:
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {roles.map(role => (
-                    <SelectItem key={role} value={role}>{role}</SelectItem>
-                  ))}
+                  <SelectItem value="Agent">Agent (Recommended)</SelectItem>
+                  <SelectItem value="Video Recorder">Video Recorder</SelectItem>
+                  <SelectItem value="Admin">Co-Admin</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -273,7 +244,7 @@ export function AddTeamMemberForm({ setDialogOpen, memberToEdit, onRoleChange }:
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Set Password</FormLabel>
+                  <FormLabel className="flex items-center gap-2"><Lock className="h-3.5 w-3.5" /> Set Account Password</FormLabel>
                   <FormControl>
                     <Input type="password" {...field} placeholder="Min. 6 characters" />
                   </FormControl>
@@ -282,13 +253,11 @@ export function AddTeamMemberForm({ setDialogOpen, memberToEdit, onRoleChange }:
               )}
             />
         )}
-        <div className="flex justify-end gap-2 pt-4">
-          <Button type="button" variant="ghost" onClick={() => setDialogOpen(false)}>
-            Cancel
-          </Button>
-          <Button type="submit" className="glowing-btn" disabled={isLoading}>
-            {isLoading && <Loader2 className="animate-spin" />}
-            {memberToEdit ? 'Save Changes' : (watchedRole === 'Video Recorder' ? 'Create Account' : 'Invite Member')}
+        <div className="flex justify-end gap-2 pt-6 border-t mt-4">
+          <Button type="button" variant="ghost" onClick={() => setDialogOpen(false)}>Cancel</Button>
+          <Button type="submit" className="glowing-btn px-6" disabled={isLoading}>
+            {isLoading && <Loader2 className="animate-spin mr-2" />}
+            {memberToEdit ? 'Save Changes' : (watchedRole === 'Video Recorder' ? 'Create Account' : 'Send Invitation')}
           </Button>
         </div>
       </form>
