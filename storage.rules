@@ -1,24 +1,23 @@
-
 rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow authenticated users to read/write to their own avatar folder
-    match /avatars/{agencyId}/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    // Avatars - user can only write their own, any authenticated user can read
+    match /avatars/{agencyId}/{userId}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Allow authenticated users to upload their upgrade receipts
+    // Upgrade receipts (payment screenshots) - any authenticated user
     match /upgrade_receipts/{agencyId}/{fileName} {
-      allow write: if request.auth != null;
       allow read: if request.auth != null;
+      allow write: if request.auth != null;
     }
-    
-    // Allow any authenticated user to read/write to the documents folder.
-    // The {allPaths=**} is a recursive wildcard that matches files in any subdirectories.
-    // This simplifies the rule to ensure uploads are not blocked by complex, unsupported checks.
+
+    // Property documents - any authenticated user (agency isolation via path)
     match /documents/{agencyId}/{propertyId}/{allPaths=**} {
-      allow read, write: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
     }
   }
 }

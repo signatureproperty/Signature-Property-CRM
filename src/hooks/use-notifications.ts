@@ -239,9 +239,11 @@ export const useNotifications = () => {
         const invRef = doc(firestore, 'invitations', invitationId);
         batch.delete(invRef);
         
-        // Log activity for agency
+        await batch.commit();
+
+        // Log activity AFTER batch commit so security rules can verify agency membership
         const activityLogRef = doc(collection(firestore, 'agencies', agencyId, 'activityLogs'));
-        batch.set(activityLogRef, {
+        await setDoc(activityLogRef, {
             userName: profile.name,
             userAvatar: profile.avatar || '',
             action: `${profile.name} accepted the invitation to join ${invitationData.fromAgencyName}.`,
@@ -251,8 +253,7 @@ export const useNotifications = () => {
             timestamp: new Date().toISOString(),
             agency_id: agencyId
         });
-        
-        await batch.commit();
+
         deleteNotification(invitationId);
         window.location.reload(); 
     };
@@ -271,19 +272,6 @@ export const useNotifications = () => {
             batch.delete(memberRef);
         }
         
-        // Log activity for agency
-        const activityLogRef = doc(collection(firestore, 'agencies', agencyId, 'activityLogs'));
-        batch.set(activityLogRef, {
-            userName: profile.name,
-            userAvatar: profile.avatar || '',
-            action: `${profile.name} rejected the invitation.`,
-            target: invitationData.fromAgencyName,
-            targetType: 'Invitation',
-            details: null,
-            timestamp: new Date().toISOString(),
-            agency_id: agencyId
-        });
-
         await batch.commit();
         deleteNotification(invitationId);
     };

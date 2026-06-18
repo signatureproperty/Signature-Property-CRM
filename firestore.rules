@@ -1,15 +1,186 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // ✅ Allow only odd-length paths (valid collections/subcollections)
-    match /{path=**} {
-      allow read, write: if request.auth != null && path.size() % 2 == 1;
+    // =============================================
+    // HELPER FUNCTIONS
+    // =============================================
+    function isAuth() {
+      return request.auth != null;
     }
 
-    // ✅ Fallback: Allow authenticated users to access any valid path
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function userAgencyId() {
+      return getUserData().agency_id;
+    }
+
+    function userRole() {
+      return getUserData().role;
+    }
+
+    function isAdmin() {
+      return isAuth() && userRole() == 'Admin';
+    }
+
+    function isAgent() {
+      return isAuth() && userRole() == 'Agent';
+    }
+
+    function isRecorder() {
+      return isAuth() && userRole() == 'Video Recorder';
+    }
+
+    function belongsToAgency(agencyId) {
+      return isAuth() && userAgencyId() == agencyId;
+    }
+
+    // =============================================
+    // ROOT-LEVEL COLLECTIONS
+    // =============================================
+
+    // users/{userId} - each user can only access their own document
+    match /users/{userId} {
+      allow read, write: if isAuth() && request.auth.uid == userId;
+    }
+
+    // agents/{agentId} - agent profile (for Agent role, agency_id may be null)
+    match /agents/{agentId} {
+      allow read, write: if isAuth() && request.auth.uid == agentId;
+    }
+
+    // agents/{agentId}/properties - list generator tool
+    match /agents/{agentId}/properties/{propId} {
+      allow read: if isAuth() && request.auth.uid == agentId;
+    }
+
+    // invitations
+    // Read: only the person whose email matches toEmail
+    // Create: only admins who belong to an agency
+    // Update: only the invitee
+    // Delete: the invitee or the admin who sent it
+    match /invitations/{invId} {
+      allow read: if isAuth() && request.auth.token.email == resource.data.toEmail;
+      allow create: if isAuth() && isAdmin() && userAgencyId() != null;
+      allow update: if isAuth() && request.auth.token.email == resource.data.toEmail;
+      allow delete: if isAuth() && (
+        request.auth.token.email == resource.data.toEmail
+        || (resource.data.fromAgencyId == userAgencyId() && isAdmin())
+      );
+    }
+
+    // upgradeRequests
+    // Create: any authenticated user
+    // Read: scoped to own agency (multi-tenant isolation)
+    match /upgradeRequests/{requestId} {
+      allow read: if isAuth() && resource.data.agencyId == userAgencyId();
+      allow create: if isAuth();
+    }
+
+    // =============================================
+    // AGENCY DOCUMENT & SUBCOLLECTIONS
+    // =============================================
+
+    match /agencies/{agencyId} {
+      // Agency document
+      allow read: if belongsToAgency(agencyId);
+      allow create: if isAuth()
+                    && request.resource.data.ownerId == request.auth.uid;
+      allow update: if belongsToAgency(agencyId) && isAdmin();
+      allow delete: if belongsToAgency(agencyId) && isAdmin();
+
+      // ---- PROPERTIES ----
+      // Read: any verified agency member
+      // Create: Admin or Agent, must set created_by and agency_id
+      // Update: Admin (any), Agent (own or assigned), Recorder (assigned)
+      // Delete: Admin only
+      match /properties/{propId} {
+        allow read: if belongsToAgency(agencyId);
+        allow create: if belongsToAgency(agencyId)
+                      && (isAdmin() || isAgent())
+                      && request.resource.data.created_by == request.auth.uid
+                      && request.resource.data.agency_id == agencyId;
+        allow update: if belongsToAgency(agencyId)
+                      && (isAdmin() || isAgent() || isRecorder());
+        allow delete: if belongsToAgency(agencyId) && isAdmin();
+      }
+
+      // ---- BUYERS ----
+      match /buyers/{buyerId} {
+        allow read: if belongsToAgency(agencyId);
+        allow create: if belongsToAgency(agencyId)
+                      && (isAdmin() || isAgent())
+                      && request.resource.data.created_by == request.auth.uid
+                      && request.resource.data.agency_id == agencyId;
+        allow update: if belongsToAgency(agencyId)
+                      && (isAdmin() || isAgent());
+        allow delete: if belongsToAgency(agencyId) && isAdmin();
+      }
+
+      // ---- TEAM MEMBERS ----
+      // Read: any verified agency member
+      // Create: validated via agency_id in data (handles initial admin signup + VR creation)
+      // Update: Admin of agency, OR the invited user themselves (email + status match)
+      // Delete: Admin only
+      match /teamMembers/{memberId} {
+        allow read: if belongsToAgency(agencyId);
+        allow create: if isAuth()
+                      && request.resource.data.agency_id == agencyId;
+        allow update: if isAuth() && (
+          (belongsToAgency(agencyId) && isAdmin())
+          || (resource.data.status == 'Pending'
+              && resource.data.email == request.auth.token.email)
+        );
+        allow delete: if belongsToAgency(agencyId) && isAdmin();
+      }
+
+      // ---- APPOINTMENTS ----
+      match /appointments/{apptId} {
+        allow read: if belongsToAgency(agencyId);
+        allow create: if belongsToAgency(agencyId)
+                      && (isAdmin() || isAgent())
+                      && request.resource.data.agency_id == agencyId;
+        allow update: if belongsToAgency(agencyId)
+                      && (isAdmin() || isAgent());
+        allow delete: if belongsToAgency(agencyId) && isAdmin();
+      }
+
+      // ---- FOLLOW-UPS ----
+      match /followUps/{followUpId} {
+        allow read: if belongsToAgency(agencyId);
+        allow create: if belongsToAgency(agencyId)
+                      && (isAdmin() || isAgent())
+                      && request.resource.data.agency_id == agencyId;
+        allow update: if belongsToAgency(agencyId)
+                      && (isAdmin() || isAgent());
+        allow delete: if belongsToAgency(agencyId) && isAdmin();
+      }
+
+      // ---- ACTIVITY LOGS ----
+      // Read: any verified agency member
+      // Create: any verified agency member
+      // Delete: Admin only
+      match /activityLogs/{logId} {
+        allow read: if belongsToAgency(agencyId);
+        allow create: if belongsToAgency(agencyId)
+                      && request.resource.data.agency_id == agencyId;
+        allow delete: if belongsToAgency(agencyId) && isAdmin();
+      }
+
+      // ---- INBOX MESSAGES ----
+      // Read: any verified agency member
+      // Create: any verified agency member
+      // Update: Admin or the message sender
+      // Delete: Admin only
+      match /inboxMessages/{msgId} {
+        allow read: if belongsToAgency(agencyId);
+        allow create: if belongsToAgency(agencyId)
+                      && request.resource.data.agency_id == agencyId;
+        allow update: if belongsToAgency(agencyId)
+                      && (isAdmin() || resource.data.fromUserId == request.auth.uid);
+        allow delete: if belongsToAgency(agencyId) && isAdmin();
+      }
     }
   }
 }
