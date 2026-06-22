@@ -13,32 +13,59 @@ export function cn(...inputs: ClassValue[]) {
  */
 export function formatPhoneNumber(phone: string, countryCode: string = '+92'): string {
   if (!phone) return '';
-  
-  // Clean leading/trailing spaces
+
   let cleaned = phone.trim();
-  
-  // If it already starts with '+', it's already a full international number. 
-  // We return as is to support any country without interference.
+
+  // Handle Excel ="..." format
+  if (cleaned.startsWith('=')) {
+    const match = cleaned.match(/="(.+?)"/);
+    if (match) cleaned = match[1];
+  }
+
+  // Handle Excel scientific notation (e.g., 4.47878E+11)
+  if (/^\d*\.?\d+E[+-]\d+$/i.test(cleaned)) {
+    const parsed = parseFloat(cleaned);
+    if (!isNaN(parsed) && parsed > 0) {
+      cleaned = parsed.toString();
+    }
+  }
+
+  // If it already starts with '+', clean spaces/dashes and return
   if (cleaned.startsWith('+')) {
-    // Just remove spaces and dashes
     return cleaned.replace(/[\s-]/g, '');
   }
 
-  // Remove any non-digit characters for processing
+  // Remove all non-digit characters (spaces, dashes, brackets, dots)
   let digits = cleaned.replace(/\D/g, '');
+  if (!digits) return '';
+
   const codeWithoutPlus = countryCode.replace('+', '');
 
-  // If the number already starts with the digits of the selected country code, 
-  // we just prepend the '+' and return.
+  // If already starts with country code digits
   if (digits.startsWith(codeWithoutPlus)) {
     return `+${digits}`;
   }
 
-  // For Pakistan (+92), if number starts with local '0', remove it before prepending code.
+  // Auto-detect country code if not matching default (+92)
+  const autoDetectCode = (d: string): string | null => {
+    if (d.startsWith('1') && d.length === 11) return '+1';
+    if (d.startsWith('44') && d.length >= 11 && d.length <= 13) return '+44';
+    if (d.startsWith('971') && d.length >= 11 && d.length <= 13) return '+971';
+    if (d.startsWith('966') && d.length >= 11 && d.length <= 13) return '+966';
+    if (d.startsWith('973') && d.length === 10) return '+973';
+    return null;
+  };
+
+  const detectedCode = autoDetectCode(digits);
+
+  // For Pakistan (+92), handle leading '0'
   if (countryCode === '+92' && digits.startsWith('0')) {
     digits = digits.substring(1);
   }
 
-  // Combine the country code and the cleaned digits
+  if (detectedCode) {
+    return `+${digits}`;
+  }
+
   return `${countryCode}${digits}`;
 }

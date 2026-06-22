@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -71,7 +71,15 @@ export function ManageTagsDialog({ isOpen, setIsOpen }: ManageTagsDialogProps) {
     profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'tags') : null,
     [profile.agency_id, firestore]
   );
-  const { data: tags, isLoading } = useCollection<Tag>(tagsQuery);
+  const { data: allTags, isLoading } = useCollection<Tag>(tagsQuery);
+
+  const tags = useMemo(() => {
+    if (!allTags) return [];
+    if (profile.role === 'Agent') {
+      return allTags.filter(t => t.createdBy === profile.user_id);
+    }
+    return allTags;
+  }, [allTags, profile.role, profile.user_id]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -96,12 +104,16 @@ export function ManageTagsDialog({ isOpen, setIsOpen }: ManageTagsDialogProps) {
             toast({ title: "Tag Updated" });
             setEditingTag(null);
         } else {
-            await addDoc(collection(firestore, 'agencies', profile.agency_id, 'tags'), {
+            const tagData: any = {
                 name: values.name,
                 color: selectedColor,
                 agency_id: profile.agency_id,
                 createdAt: new Date().toISOString(),
-            });
+            };
+            if (profile.role === 'Agent') {
+                tagData.createdBy = profile.user_id;
+            }
+            await addDoc(collection(firestore, 'agencies', profile.agency_id, 'tags'), tagData);
             toast({ title: "Tag Created" });
         }
         form.reset();
@@ -139,10 +151,10 @@ export function ManageTagsDialog({ isOpen, setIsOpen }: ManageTagsDialogProps) {
         <div className="p-6 pb-0">
             <DialogHeader>
               <DialogTitle className="font-headline flex items-center gap-2 text-2xl font-black">
-                <TagIcon className="h-6 w-6 text-primary" /> Manage Agency Tags
+                <TagIcon className="h-6 w-6 text-primary" /> {profile.role === 'Agent' ? 'My Tags' : 'Manage Agency Tags'}
               </DialogTitle>
               <DialogDescription className="font-medium text-muted-foreground flex items-center gap-1.5">
-                <Users2 className="h-4 w-4" /> These tags are shared with your entire team.
+                <Users2 className="h-4 w-4" /> {profile.role === 'Agent' ? 'These tags are visible to you and the agency.' : 'Agency tags are shared with the entire team.'}
               </DialogDescription>
             </DialogHeader>
 
@@ -155,7 +167,7 @@ export function ManageTagsDialog({ isOpen, setIsOpen }: ManageTagsDialogProps) {
                                 name="name"
                                 render={({ field }) => (
                                     <FormItem className="flex-1">
-                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60">{editingTag ? 'Update Tag Name' : 'Create New Agency Tag'}</FormLabel>
+                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60">{editingTag ? 'Update Tag Name' : profile.role === 'Agent' ? 'Create New Tag' : 'Create New Agency Tag'}</FormLabel>
                                         <FormControl>
                                             <Input placeholder="e.g. Hot Lead, Urgent, Follow Up" {...field} className="h-11 rounded-xl bg-background border-border/60" />
                                         </FormControl>
@@ -201,7 +213,7 @@ export function ManageTagsDialog({ isOpen, setIsOpen }: ManageTagsDialogProps) {
         <div className="flex-1 overflow-y-auto px-6 py-6">
             <div className="space-y-4">
                 <h4 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center justify-between">
-                    Current Agency Inventory
+                    {profile.role === 'Agent' ? 'My Tags' : 'Agency Tags'}
                     <span className="text-[10px] bg-muted px-2 py-0.5 rounded-full lowercase font-bold">{tags?.length || 0} active tags</span>
                 </h4>
                 <div className="rounded-2xl border border-dashed p-6 bg-muted/5 min-h-[200px]">
@@ -251,7 +263,7 @@ export function ManageTagsDialog({ isOpen, setIsOpen }: ManageTagsDialogProps) {
                     ) : (
                         <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
                             <TagIcon className="h-12 w-12 mb-3 opacity-10" />
-                            <p className="text-sm font-bold opacity-60">No custom tags found for this agency.</p>
+                            <p className="text-sm font-bold opacity-60">{profile.role === 'Agent' ? 'You have not created any tags yet.' : 'No custom tags found for this agency.'}</p>
                         </div>
                     )}
                 </div>

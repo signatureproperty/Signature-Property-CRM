@@ -22,6 +22,7 @@ export interface ProfileData {
   daysLeftInTrial?: number;
   planName?: PlanName;
   planStartDate?: string;
+  agencies?: { agency_id: string; agency_name: string }[];
 }
 
 interface ProfileContextType {

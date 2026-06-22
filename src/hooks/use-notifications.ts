@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useFirestore } from '@/firebase/provider';
-import { collection, query, where, doc, updateDoc, writeBatch, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, writeBatch, setDoc, orderBy, limit } from 'firebase/firestore';
 import { useUser } from '@/firebase/auth/use-user';
 import { useProfile } from '@/context/profile-context';
 import { useMemoFirebase } from '@/firebase/hooks';

@@ -62,11 +62,10 @@ export function AssignPropertyToAgentDialog({ property, isOpen, setIsOpen }: Ass
         // Area Match (partial match in comma separated preferences)
         const areaMatch = buyer.area_preference?.toLowerCase().includes(property.area.toLowerCase());
         
-        // Budget Match
+        // Budget Match: buyers whose max budget is 20-25% less OR same as property price
         const propDemand = formatUnit(property.demand_amount, property.demand_unit);
-        const buyerMin = formatUnit(buyer.budget_min_amount || 0, buyer.budget_min_unit || 'Thousand');
-        const buyerMax = formatUnit(buyer.budget_max_amount || 0, buyer.budget_max_unit || 'Lacs');
-        const budgetMatch = propDemand >= (buyerMin * 0.9) && propDemand <= (buyerMax * 1.1);
+        const buyerMax = formatUnit(buyer.budget_max_amount || buyer.budget_min_amount || 0, buyer.budget_max_unit || buyer.budget_min_unit || 'Lacs');
+        const budgetMatch = buyerMax > 0 && buyerMax >= propDemand * 0.75 && buyerMax <= propDemand;
 
         return listingMatch && typeMatch && (areaMatch || budgetMatch);
     }).sort((a, b) => {

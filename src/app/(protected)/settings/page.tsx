@@ -30,11 +30,11 @@ import { useTheme } from 'next-themes';
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Download, Upload, Server, Eye, EyeOff, AlertTriangle, Loader2, Link as LinkIcon, ChevronsUpDown, Check, Building, FileSpreadsheet, FileUp, FileDown, Users, Sun, Moon } from 'lucide-react';
+import { Download, Upload, Server, Eye, EyeOff, AlertTriangle, Loader2, Link as LinkIcon, ChevronsUpDown, Check, Building, FileSpreadsheet, FileUp, FileDown, Users, Sun, Moon, Sparkles } from 'lucide-react';
 import { ResetAccountDialog } from '@/components/reset-account-dialog';
 import { useFirestore, useAuth } from '@/firebase/provider';
 import { useUser } from '@/firebase/auth/use-user';
-import { useGetCollection } from '@/firebase/firestore/use-get-collection';
+import { useGetCollection, WithId } from '@/firebase/firestore/use-get-collection';
 import { collection, getDocs, writeBatch, doc, updateDoc } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/hooks';
 import { EmailAuthProvider, reauthenticateWithCredential, deleteUser, updatePassword, GoogleAuthProvider, reauthenticateWithPopup } from 'firebase/auth';
@@ -48,9 +48,11 @@ import { AvatarCropDialog } from '@/components/avatar-crop-dialog';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
-import type { Buyer, Property } from '@/lib/types';
+import type { Buyer, Property, ListingType } from '@/lib/types';
+
+import { ImportPreviewDialog } from '@/components/import-preview-dialog';
 import { Badge } from '@/components/ui/badge';
-import { uploadToR2 } from '@/lib/r2-client';
+
 
 const passwordFormSchema = z.object({
     currentPassword: z.string().min(1, 'Current password is required.'),
@@ -93,8 +95,26 @@ export default function SettingsPage() {
   const [tempAvatarPreview, setTempAvatarPreview] = useState<string | null>(null);
 
   const [isImporting, setIsImporting] = useState(false);
+  const [isPropImportDialogOpen, setIsPropImportDialogOpen] = useState(false);
+  const [isPropExportDialogOpen, setIsPropExportDialogOpen] = useState(false);
+  const [isBuyersImportDialogOpen, setIsBuyersImportDialogOpen] = useState(false);
+  const [isBuyersExportDialogOpen, setIsBuyersExportDialogOpen] = useState(false);
+  const [propImportListingType, setPropImportListingType] = useState<'For Sale' | 'For Rent'>('For Sale');
+  const [buyersImportListingType, setBuyersImportListingType] = useState<'For Sale' | 'For Rent'>('For Sale');
   const importBuyersInputRef = useRef<HTMLInputElement>(null);
   const importPropertiesInputRef = useRef<HTMLInputElement>(null);
+
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewType, setPreviewType] = useState<'Buyers' | 'Properties'>('Properties');
+  const [previewRows, setPreviewRows] = useState<Record<string, string>[]>([]);
+  const [previewTotalRows, setPreviewTotalRows] = useState(0);
+  const [previewColMapping, setPreviewColMapping] = useState<Record<string, string>>({});
+  const [previewFileText, setPreviewFileText] = useState('');
+  const [previewFileName, setPreviewFileName] = useState('');
+  const [importProgress, setImportProgress] = useState<{ current: number; total: number } | null>(null);
+  const [importStatus, setImportStatus] = useState<'idle' | 'importing' | 'complete' | 'error'>('idle');
+  const [importResult, setImportResult] = useState<{ success: number; failed: number; errors: string[] } | undefined>();
+  const [isAiEnhancing, setIsAiEnhancing] = useState(false);
 
   const [appointmentNotifications, setAppointmentNotifications] = useState(true);
 
@@ -163,6 +183,7 @@ export default function SettingsPage() {
         const fileName = `${user.uid}_${Date.now()}.webp`;
         const filePath = `avatars/${fileName}`;
         
+        const { uploadToR2 } = await import('@/lib/r2-client');
         const downloadURL = await uploadToR2(blob, filePath);
 
         const batch = writeBatch(firestore);
@@ -458,14 +479,26 @@ export default function SettingsPage() {
     setLocalProfile(prev => ({...prev, [id]: value}));
   }
 
-  const handleExportCSV = (type: 'Buyers' | 'Properties') => {
-    const rawData = type === 'Buyers' ? agencyBuyers : agencyProperties;
+  const handleExportCSV = (type: 'Buyers' | 'Properties', listingFilter?: 'For Sale' | 'For Rent') => {
+    let rawData = type === 'Buyers' ? agencyBuyers : agencyProperties;
     if (!rawData || rawData.length === 0) {
         toast({ title: `No ${type} to export.` });
         return;
     }
 
-    const data = [...rawData]
+    if (listingFilter) {
+      if (type === 'Properties') {
+        rawData = (rawData as WithId<Property>[]).filter((p: any) =>
+          listingFilter === 'For Rent' ? p.is_for_rent : !p.is_for_rent
+        );
+      } else {
+        rawData = (rawData as WithId<Buyer>[]).filter((b: any) =>
+          (b.listing_type || 'For Sale') === listingFilter
+        );
+      }
+    }
+
+    const data = [...(rawData || [])]
         .filter(item => !item.is_deleted)
         .sort((a, b) => {
             const numA = parseInt(a.serial_no.split('-')[1] || '0', 10);
@@ -521,102 +554,480 @@ export default function SettingsPage() {
     toast({ title: `${type} Exported Successfully` });
   }
 
-  const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>, type: 'Buyers' | 'Properties') => {
-    const file = e.target.files?.[0];
-    if (!file || !profile.agency_id || profile.agency_id === 'master_control') return;
+  const smartCleanValue = (val: string | undefined): string => {
+    if (!val || val.trim() === '') return '';
+    let cleaned = val.trim();
+    if (cleaned.startsWith('=')) {
+      const match = cleaned.match(/="(.+?)"/);
+      if (match) return match[1].trim();
+    }
+    if (/^\d*\.?\d+E[+-]\d+$/i.test(cleaned)) {
+      const parsed = parseFloat(cleaned);
+      if (!isNaN(parsed) && parsed > 0) return parsed.toString();
+    }
+    return cleaned;
+  };
 
-    setIsImporting(true);
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-        const text = event.target?.result as string;
-        const lines = text.split('\n');
-        
-        const batch = writeBatch(firestore);
-        const collectionRef = collection(firestore, 'agencies', profile.agency_id, type.toLowerCase());
-        
-        let importCount = 0;
+  const unitAliases: Record<string, string[]> = {
+    'Marla': ['marla', 'm', 'mrla', 'mrl', 'mar', 'marl'],
+    'Kanal': ['kanal', 'k', 'knl', 'kan', 'knal'],
+    'SqFt': ['sqft', 'sft', 'sq ft', 'sq.ft', 'sq ft.', 'square foot', 'square feet', 'sqf', 'ft2', 'feet'],
+    'Acre': ['acre', 'ac', 'acres', 'acr'],
+    'Maraba': ['maraba', 'mrb', 'mraba'],
+    'Lacs': ['lac', 'lakh', 'lacs', 'lakhs', 'lack'],
+    'Crore': ['crore', 'cr', 'cror', 'cro'],
+    'Thousand': ['thousand', 'k', 'thou', 'thousands', 'ks'],
+  };
 
-        for (let i = 1; i < lines.length; i++) {
-            if (!lines[i].trim()) continue;
-            const rowValues = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/); 
-            
-            const values = rowValues.map(v => {
-                let val = v?.trim() || '';
-                if (val.startsWith('=') && val.includes('"')) {
-                    val = val.split('"')[1] || val;
-                }
-                return val.replace(/"/g, '').trim();
-            });
-            
+  const normalizeUnit = (raw: string): string => {
+    const clean = raw.replace(/[.\s]/g, '').toLowerCase().trim();
+    for (const [standard, aliases] of Object.entries(unitAliases)) {
+      if (aliases.includes(clean)) return standard;
+    }
+    return raw;
+  };
+
+  const smartParseCombined = (raw: string): { value: number; unit: string } | null => {
+    const cleaned = raw.trim();
+    if (!cleaned) return null;
+    const match = cleaned.match(/^([\d,.]+)\s*(Marla|M|SqFt|Sft|sq\.ft|sq ft|Kanal|K|Acre|Maraba|Lacs|Lakh|Crore|Thousand|Square|Sq|\.?\w+)?$/i);
+    if (!match) return null;
+    const numStr = match[1].replace(/,/g, '');
+    const num = parseFloat(numStr);
+    if (isNaN(num)) return null;
+    const rawUnit = (match[2] || '').trim();
+    if (!rawUnit) return { value: num, unit: '' };
+    return { value: num, unit: normalizeUnit(rawUnit) };
+  };
+
+  interface RangeResult {
+    min: { value: number; unit: string } | null;
+    max: { value: number; unit: string } | null;
+  }
+
+  const smartParseRange = (raw: string): RangeResult => {
+    const cleaned = raw.trim();
+    if (!cleaned) return { min: null, max: null };
+
+    // Match: "X Unit - Y Unit" or "X Unit to Y Unit" or "X se Y Unit" etc.
+    const rangeWithUnits = cleaned.match(/^([\d,.]+)\s*(\S+)?\s*(?:-|–|—|\/|to|se)\s*([\d,.]+)\s*(\S+)?$/i);
+    if (rangeWithUnits) {
+      const minNum = parseFloat(rangeWithUnits[1].replace(/,/g, ''));
+      const rawMinUnit = (rangeWithUnits[2] || '').trim();
+      const maxNum = parseFloat(rangeWithUnits[3].replace(/,/g, ''));
+      const rawMaxUnit = (rangeWithUnits[4] || '').trim();
+      const minUnit = rawMinUnit ? normalizeUnit(rawMinUnit) : (rawMaxUnit ? normalizeUnit(rawMaxUnit) : 'Marla');
+      const maxUnit = rawMaxUnit ? normalizeUnit(rawMaxUnit) : (rawMinUnit ? normalizeUnit(rawMinUnit) : 'Marla');
+      return {
+        min: !isNaN(minNum) ? { value: minNum, unit: minUnit } : null,
+        max: !isNaN(maxNum) ? { value: maxNum, unit: maxUnit } : null,
+      };
+    }
+
+    // Match: "X Y Unit" or "X Unit" (single value → store as max)
+    const single = cleaned.match(/^([\d,.]+)\s*(\S+)?$/);
+    if (single) {
+      const val = parseFloat(single[1].replace(/,/g, ''));
+      const rawUnit = (single[2] || '').trim();
+      const unit = rawUnit ? normalizeUnit(rawUnit) : 'Marla';
+      if (!isNaN(val)) {
+        return { min: null, max: { value: val, unit } };
+      }
+    }
+
+    return { min: null, max: null };
+  };
+
+  const buildColumnMap = (headers: string[], type: 'Buyers' | 'Properties'): Record<string, number> => {
+    const aliases: Record<string, string[]> = type === 'Buyers'
+      ? {
+          phone: ['phone', 'number', 'mobile', 'contact', 'cell', 'tel', 'telephone', 'phone number'],
+          serial: ['serial', 'sr no', 's.no', 'sr#', 'id', 's no', 'sno', 'serial no'],
+          name: ['name', 'full name', 'buyer name', 'client name', 'lead name'],
+          email: ['email', 'e-mail', 'email address', 'mail'],
+          status: ['status', 'lead status', 'buyer status'],
+          listing: ['listing', 'listing type', 'type', 'for sale/rent'],
+          city: ['city', 'buyer city', 'lead city', 'location city'],
+          area: ['area', 'preferred area', 'area preference', 'areas', 'location'],
+          size: ['size', 'property size', 'buyer size', 'preferred size', 'desired size', 'size dimension'],
+          propType: ['property type', 'type', 'prop type', 'preferred type'],
+          minB: ['min budget', 'minimum budget', 'budget min', 'min', 'budget min max'],
+          maxB: ['max budget', 'maximum budget', 'budget max', 'max', 'budget'],
+          notes: ['notes', 'remarks', 'comments', 'note', 'description'],
+        }
+      : {
+          phone: ['number', 'phone', 'mobile', 'contact', 'owner phone', 'owner number', 'cell', 'tel', 'telephone'],
+          serial: ['sr no', 'serial', 'serial no', 's.no', 'sr#', 'id', 's no', 'sno'],
+          title: ['title', 'auto title', 'property title', 'name'],
+          area: ['area', 'society', 'phase', 'locality'],
+          address: ['address', 'full address', 'location', 'street address'],
+          property_type: ['property type', 'type', 'prop type', 'category'],
+          size: ['size', 'area size', 'lot size', 'plot size', 'land size', 'total size', 'dimension'],
+          unit: ['unit', 'size unit', 'area unit', 'size unit', 'measurement unit'],
+          demand: ['demand', 'price', 'asking price', 'expected price', 'amount', 'cost', 'value', 'total price', 'rate'],
+          demandUnit: ['demand unit', 'unit', 'price unit', 'price in'],
+          status: ['status', 'property status', 'listing status'],
+        };
+
+    const map: Record<string, number> = {};
+    headers.forEach((h, idx) => {
+      const key = h.toLowerCase().trim();
+      for (const [field, fieldAliases] of Object.entries(aliases)) {
+        if (fieldAliases.includes(key)) { map[field] = idx; break; }
+      }
+    });
+    return map;
+  };
+
+  const parseCsvRow = (row: string): string[] => {
+    const result: string[] = [];
+    let currentField = '';
+    let inQuotes = false;
+    for (let i = 0; i < row.length; i++) {
+      const char = row[i];
+      if (char === '"') {
+        if (i + 1 < row.length && row[i + 1] === '"') { currentField += '"'; i++; }
+        else { inQuotes = !inQuotes; }
+      } else if (char === ',' && !inQuotes) {
+        result.push(currentField.trim());
+        currentField = '';
+      } else { currentField += char; }
+    }
+    result.push(currentField.trim());
+    return result;
+  };
+
+  const doImport = async (type: 'Buyers' | 'Properties', text: string, listingType: 'For Sale' | 'For Rent') => {
+    const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const lines = normalized.split('\n').filter(l => l.trim());
+    if (lines.length <= 1) return;
+
+    const headers = parseCsvRow(lines[0]).map(h => smartCleanValue(h));
+    const colMap = buildColumnMap(headers, type);
+
+    let batch = writeBatch(firestore);
+    const collectionRef = collection(firestore, 'agencies', profile.agency_id, type.toLowerCase());
+
+    let rowIndex = 0;
+    let successCount = 0;
+    let phoneOnlyCount = 0;
+    const errors: string[] = [];
+    const total = lines.length - 1;
+
+    setImportProgress({ current: 0, total });
+    setImportStatus('importing');
+
+    for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        rowIndex++;
+        const values = parseCsvRow(lines[i]).map(v => smartCleanValue(v));
+        const get = (field: string): string => {
+          const idx = colMap[field];
+          return idx !== undefined ? values[idx] : '';
+        };
+
+        try {
             if (type === 'Buyers') {
-                const [serial, name, phone, email, status, listing, area, propType, minB, maxB, notes] = values;
-                if (!name || !phone) continue;
-                
+                const phone = get('phone') || '';
+                const name = get('name') || 'Lead (Imported)';
+
+                successCount++;
+
                 const formattedPhone = formatPhoneNumber(phone);
+                if (!formattedPhone) phoneOnlyCount++;
+
+                const toLacs = (v: number, u: string) => u === 'Crore' ? v * 100 : u === 'Thousand' ? v / 100000 : v;
+
+                const rawBudget = get('maxB') || get('minB') || '';
+                const parsedBudget = smartParseRange(rawBudget);
+                const budgetMin = parsedBudget.min ? toLacs(parsedBudget.min.value, parsedBudget.min.unit) : null;
+                const budgetMax = parsedBudget.max ? toLacs(parsedBudget.max.value, parsedBudget.max.unit) : null;
+
+                const areaText = get('area') || '';
+                const sizeText = get('size') || '';
+                const parsedSize = smartParseRange(sizeText);
 
                 const newBuyerRef = doc(collectionRef);
-                batch.set(newBuyerRef, {
-                    serial_no: serial || `B-${(agencyBuyers?.length || 0) + i}`,
+                const buyerData: Record<string, any> = {
+                    serial_no: get('serial') || `B-${successCount}`,
                     name,
                     phone: formattedPhone,
-                    email: email || '',
-                    status: status || 'New',
-                    listing_type: listing || 'For Sale',
-                    area_preference: area || '',
-                    property_type_preference: propType || 'House',
-                    budget_min_amount: Number(minB) || 0,
-                    budget_max_amount: Number(maxB) || 0,
-                    notes: notes || '',
+                    email: get('email') || '',
+                    status: get('status') || 'New',
+                    listing_type: get('listing') || 'For Sale',
+                    city: get('city') || '',
+                    area_preference: areaText,
+                    property_type_preference: get('propType') || 'House',
+                    budget_max_amount: budgetMax ?? 0,
+                    notes: get('notes') || '',
                     agency_id: profile.agency_id,
                     created_by: profile.user_id,
                     created_at: new Date().toISOString(),
-                    tags: [status || 'New'],
+                    tags: [get('status') || 'New'],
                     is_deleted: false
-                });
+                };
+                if (budgetMin != null) buyerData.budget_min_amount = budgetMin;
+                if (parsedSize.min?.value != null) buyerData.size_min_value = parsedSize.min.value;
+                if (parsedSize.min?.unit) buyerData.size_min_unit = parsedSize.min.unit;
+                if (parsedSize.max?.value != null) buyerData.size_max_value = parsedSize.max.value;
+                if (parsedSize.max?.unit) buyerData.size_max_unit = parsedSize.max.unit;
+                batch.set(newBuyerRef, buyerData);
             } else {
-                const [serial, title, phone, area, address, typeVal, size, unit, demand, demandUnit, status] = values;
-                if (!phone || !area) continue;
+                const phone = get('phone');
+                if (!phone) continue;
+                successCount++;
 
                 const formattedPhone = formatPhoneNumber(phone);
+                const area = get('area') || '';
+                const typeVal = get('property_type') || 'House';
+
+                const rawSize = get('size') || '0';
+                const rawUnit = get('unit') || '';
+                let sizeValue = 0;
+                let sizeUnit = 'Marla';
+
+                const parsed = smartParseCombined(rawSize);
+                if (parsed && parsed.unit) {
+                  sizeValue = parsed.value;
+                  sizeUnit = parsed.unit;
+                } else if (rawUnit) {
+                  sizeValue = Number(rawSize) || 0;
+                  sizeUnit = normalizeUnit(rawUnit);
+                } else {
+                  const fallback = smartParseCombined(rawSize + '');
+                  if (fallback && fallback.unit) {
+                    sizeValue = fallback.value;
+                    sizeUnit = fallback.unit;
+                  } else {
+                    sizeValue = Number(rawSize) || 0;
+                  }
+                }
+
+                const rawDemand = get('demand') || '0';
+                const rawDemandUnit = get('demandUnit') || '';
+                let demandAmount = 0;
+                let demandUnit = 'Lacs';
+
+                const parsedDemand = smartParseCombined(rawDemand);
+                if (parsedDemand && parsedDemand.unit) {
+                  demandAmount = parsedDemand.value;
+                  demandUnit = parsedDemand.unit;
+                } else if (rawDemandUnit) {
+                  demandAmount = Number(rawDemand) || 0;
+                  demandUnit = normalizeUnit(rawDemandUnit);
+                } else {
+                  const fallback = smartParseCombined(rawDemand + '');
+                  if (fallback && fallback.unit) {
+                    demandAmount = fallback.value;
+                    demandUnit = fallback.unit;
+                  } else {
+                    demandAmount = Number(rawDemand) || 0;
+                    demandUnit = 'Lacs';
+                  }
+                }
+
+                if (!area) phoneOnlyCount++;
 
                 const newPropRef = doc(collectionRef);
                 batch.set(newPropRef, {
-                    serial_no: serial || `P-${(agencyProperties?.length || 0) + i}`,
-                    auto_title: title || `${size} ${unit} ${typeVal} in ${area}`,
+                    serial_no: get('serial') || `${listingType === 'For Rent' ? 'RP' : 'P'}-${successCount}`,
+                    auto_title: get('title') || `${sizeValue} ${sizeUnit} ${typeVal} ${area ? `in ${area}` : ''}`.trim() || `Lead from Import (${phone})`,
                     owner_number: formattedPhone,
                     area,
-                    address: address || '',
-                    property_type: typeVal || 'House',
-                    size_value: Number(size) || 0,
-                    size_unit: unit || 'Marla',
-                    demand_amount: Number(demand) || 0,
-                    demand_unit: demandUnit || 'Lacs',
-                    status: status || 'New',
+                    address: get('address') || '',
+                    property_type: typeVal,
+                    size_value: sizeValue,
+                    size_unit: sizeUnit,
+                    demand_amount: demandAmount,
+                    demand_unit: demandUnit,
+                    status: get('status') || 'New',
                     agency_id: profile.agency_id,
                     created_by: profile.user_id,
                     created_at: new Date().toISOString(),
-                    is_for_rent: false,
-                    listing_type: 'For Sale',
+                    is_for_rent: listingType === 'For Rent',
+                    listing_type: listingType,
                     is_recorded: false,
-                    tags: [status || 'New'],
+                    tags: [get('status') || 'New'],
                     is_deleted: false
                 });
             }
-            importCount++;
+
+            if (successCount % 499 === 0) {
+              await batch.commit();
+              batch = writeBatch(firestore);
+            }
+        } catch (err: any) {
+            errors.push(`Row ${i}: ${err?.message || 'Failed'}`);
         }
 
-        try {
-            await batch.commit();
-            toast({ title: 'Import Successful', description: `Imported ${importCount} ${type.toLowerCase()}.` });
-        } catch (error) {
-            toast({ title: 'Import Failed', description: 'Could not upload leads.', variant: 'destructive' });
-        } finally {
-            setIsImporting(false);
-            if (e.target) e.target.value = '';
+        setImportProgress({ current: i, total });
+    }
+
+    try {
+        await batch.commit();
+        const note = phoneOnlyCount > 0 ? ` ${phoneOnlyCount} had minimal data.` : '';
+        setImportResult({ success: successCount, failed: errors.length, errors });
+        setImportStatus('complete');
+    } catch (err: any) {
+        setImportResult({ success: successCount, failed: errors.length + 1, errors: [...errors, `Batch commit: ${err?.message || ''}`] });
+        setImportStatus('error');
+    }
+  };
+
+  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>, type: 'Buyers' | 'Properties') => {
+    const file = e.target.files?.[0];
+    if (!file || !profile.agency_id || profile.agency_id === 'master_control') return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        const text = event.target?.result as string;
+        if (!text) { toast({ title: 'Empty File', variant: 'destructive' }); return; }
+
+        const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+        const lines = normalized.split('\n').filter(l => l.trim());
+        if (lines.length <= 1) {
+          toast({ title: 'Empty File', description: 'No data rows found.', variant: 'destructive' });
+          return;
+        }
+
+        const headers = parseCsvRow(lines[0]).map(h => smartCleanValue(h));
+        const colMap = buildColumnMap(headers, type);
+        const fieldLabels: Record<string, string> = {};
+        for (const [field, idx] of Object.entries(colMap)) {
+          fieldLabels[field] = headers[idx] || '—';
+        }
+        const missing = Object.entries(fieldLabels).filter(([, v]) => v === '—').map(([k]) => k);
+
+        const sampleRows: Record<string, string>[] = [];
+        for (let i = 1; i < Math.min(4, lines.length); i++) {
+          const vals = parseCsvRow(lines[i]).map(v => smartCleanValue(v));
+          const row: Record<string, string> = {};
+          headers.forEach((h, idx) => { row[fieldLabels[h] || h] = vals[idx] || ''; });
+          const phoneIdx = colMap['phone'] ?? colMap['owner_number'];
+          if (phoneIdx !== undefined) {
+            row['Phone (normalized)'] = formatPhoneNumber(vals[phoneIdx]);
+          }
+          sampleRows.push(row);
+        }
+
+        setPreviewType(type);
+        setPreviewRows(sampleRows);
+        setPreviewTotalRows(lines.length - 1);
+        setPreviewColMapping(fieldLabels);
+        setPreviewFileText(text);
+        setPreviewFileName(file.name);
+        setImportProgress(null);
+        setImportStatus('idle');
+        setImportResult(undefined);
+        setIsPreviewOpen(true);
+        setIsImporting(false);
+
+        if (missing.length > 0) {
+          toast({ title: 'Unmatched Columns', description: `${missing.join(', ')} not found in CSV. These will be empty.`, variant: 'default' });
         }
     };
     reader.readAsText(file);
   }
+
+  const handleAiEnhance = async () => {
+    if (!previewFileText || isAiEnhancing) return;
+    setIsAiEnhancing(true);
+
+    try {
+      const normalized = previewFileText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      const lines = normalized.split('\n').filter(l => l.trim());
+      const headers = parseCsvRow(lines[0]).map(h => smartCleanValue(h));
+      const colMap = buildColumnMap(headers, previewType === 'Buyers' ? 'Buyers' : 'Properties');
+
+      const cells: { row: number; field: string; value: string }[] = [];
+      const parseableFields = ['size', 'area', 'unit', 'demand', 'maxB', 'minB', 'demandUnit'];
+      const phoneFields = ['phone', 'number'];
+
+      for (let i = 1; i < lines.length; i++) {
+        const vals = parseCsvRow(lines[i]).map(v => smartCleanValue(v));
+        for (const [field, idx] of Object.entries(colMap)) {
+          const val = vals[idx] || '';
+          if (!val) continue;
+          if (phoneFields.includes(field)) {
+            const formatted = formatPhoneNumber(val);
+            if (!formatted) cells.push({ row: i, field, value: val });
+            continue;
+          }
+          if (parseableFields.includes(field)) {
+            const parsed = smartParseCombined(val) || smartParseRange(val);
+            if (!parsed || (typeof parsed === 'object' && 'min' in parsed && !parsed.min && !parsed.max)) {
+              cells.push({ row: i, field, value: val });
+            }
+          }
+        }
+      }
+
+      if (cells.length === 0) {
+        toast({ title: 'AI Enhance', description: 'All cells look clean — no AI fixes needed.' });
+        setIsAiEnhancing(false);
+        return;
+      }
+
+      toast({ title: 'AI Enhancing...', description: `${cells.length} cells queued for AI correction.` });
+
+      const res = await fetch('/api/ai-enhance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cells }),
+      });
+      const result = await res.json();
+
+      if (result.fixes && result.fixes.length > 0) {
+        const fixMap = new Map<string, string>();
+        for (const fix of result.fixes) {
+          fixMap.set(`${fix.row}-${fix.field}`, fix.corrected);
+        }
+
+        const updatedRows = previewRows.map(r => ({ ...r }));
+        for (let i = 0; i < lines.length - 1; i++) {
+          const rowNum = i + 1;
+          for (const [field, idx] of Object.entries(colMap)) {
+            const key = `${rowNum}-${field}`;
+            if (fixMap.has(key)) {
+              const headerLabel = previewColMapping[field] || field;
+              if (updatedRows[i]) updatedRows[i][headerLabel] = fixMap.get(key)!;
+            }
+          }
+        }
+        setPreviewRows(updatedRows);
+        toast({ title: 'AI Enhance Complete', description: `${result.fixes.length} cells corrected.` });
+      } else {
+        toast({ title: 'AI Enhance', description: 'No fixes were suggested by AI.' });
+      }
+    } catch {
+      toast({ title: 'AI Enhance Failed', description: 'Could not enhance data. Import will proceed with original values.', variant: 'destructive' });
+    }
+    setIsAiEnhancing(false);
+  };
+
+  const downloadExampleSheet = (type: 'Buyers' | 'Properties') => {
+    const headers = type === 'Buyers'
+      ? 'Serial,Name,Phone,Email,Status,Listing,City,Area,Property Type,Min Budget,Max Budget,Size,Notes'
+      : 'Serial,Phone,Title,Area,Address,Property Type,Size,Unit,Demand,Demand Unit,Status,City';
+    const sampleRows = type === 'Buyers'
+      ? [
+          '1,John Doe,03001234567,john@email.com,New,For Sale,Lahore,DHA Phase 5,House,50 Lacs,1 Crore,5 Marla,Looking for corner plot',
+          '2,Jane Smith,03007654321,,Interested,For Rent,,Gulberg,Flat,30 Lacs,45 Lacs,3 Marla,Near market',
+          '3,,03111223344,,New,For Sale,,Township,Plot,,15 Lacs,5 Marla,'
+        ]
+      : [
+          '1,03001112233,5 Marla House in DHA,DHA Phase 2,Lahore,House,5,Marla,1.5,Crore,Available,Lahore',
+          '2,03003334455,3 Marla Flat in Gulberg,Gulberg III,Lahore,Flat,3,Marla,45,Lacs,Sold,Lahore',
+        ];
+    const csvContent = [headers, ...sampleRows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${type.toLowerCase()}-import-template.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   if (!mounted) {
     return null;
@@ -828,10 +1239,13 @@ export default function SettingsPage() {
                     <div className="p-5 rounded-2xl bg-muted/20 border border-border/40 space-y-4">
                         <h3 className="font-black text-[10px] uppercase tracking-widest text-primary flex items-center gap-2"><Building className="h-3 w-3" /> Property Inventory</h3>
                         <div className="flex flex-wrap gap-2">
-                            <Button variant="outline" size="sm" className="h-9 rounded-lg font-bold" onClick={() => handleExportCSV('Properties')}>
+                            <Button variant="outline" size="sm" className="h-9 rounded-lg font-bold" onClick={() => downloadExampleSheet('Properties')}>
+                                <FileDown className="mr-2 h-4 w-4" /> Template
+                            </Button>
+                            <Button variant="outline" size="sm" className="h-9 rounded-lg font-bold" onClick={() => setIsPropExportDialogOpen(true)}>
                                 <FileDown className="mr-2 h-4 w-4" /> Export CSV
                             </Button>
-                            <Button variant="outline" size="sm" className="h-9 rounded-lg font-bold" onClick={() => importPropertiesInputRef.current?.click()} disabled={isImporting}>
+                            <Button variant="outline" size="sm" className="h-9 rounded-lg font-bold" onClick={() => setIsPropImportDialogOpen(true)} disabled={isImporting}>
                                 {isImporting ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <FileUp className="mr-2 h-3 w-3" />}
                                 Import CSV
                             </Button>
@@ -841,10 +1255,13 @@ export default function SettingsPage() {
                     <div className="p-5 rounded-2xl bg-muted/20 border border-border/40 space-y-4">
                         <h3 className="font-black text-[10px] uppercase tracking-widest text-indigo-600 flex items-center gap-2"><Users className="h-3 w-3" /> Buyer Leads</h3>
                         <div className="flex flex-wrap gap-2">
-                            <Button variant="outline" size="sm" className="h-9 rounded-lg font-bold" onClick={() => handleExportCSV('Buyers')}>
+                            <Button variant="outline" size="sm" className="h-9 rounded-lg font-bold" onClick={() => downloadExampleSheet('Buyers')}>
+                                <FileDown className="mr-2 h-4 w-4" /> Template
+                            </Button>
+                            <Button variant="outline" size="sm" className="h-9 rounded-lg font-bold" onClick={() => setIsBuyersExportDialogOpen(true)}>
                                 <FileDown className="mr-2 h-4 w-4" /> Export CSV
                             </Button>
-                            <Button variant="outline" size="sm" className="h-9 rounded-lg font-bold" onClick={() => importBuyersInputRef.current?.click()} disabled={isImporting}>
+                            <Button variant="outline" size="sm" className="h-9 rounded-lg font-bold" onClick={() => setIsBuyersImportDialogOpen(true)} disabled={isImporting}>
                                 {isImporting ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <FileUp className="mr-2 h-3 w-3" />}
                                 Import CSV
                             </Button>
@@ -855,6 +1272,85 @@ export default function SettingsPage() {
             </CardContent>
         </Card>
       )}
+
+      {/* For Sale / For Rent dialogs for Buyers */}
+      <AlertDialog open={isBuyersExportDialogOpen} onOpenChange={setIsBuyersExportDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Export Buyers</AlertDialogTitle>
+            <AlertDialogDescription>Which type of buyers do you want to export?</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setIsBuyersExportDialogOpen(false); handleExportCSV('Buyers', 'For Sale'); }}>For Sale</AlertDialogAction>
+            <AlertDialogAction onClick={() => { setIsBuyersExportDialogOpen(false); handleExportCSV('Buyers', 'For Rent'); }}>For Rent</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={isBuyersImportDialogOpen} onOpenChange={setIsBuyersImportDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Buyer Type</AlertDialogTitle>
+            <AlertDialogDescription>Select the type of buyers you are importing.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setBuyersImportListingType('For Sale'); setIsBuyersImportDialogOpen(false); importBuyersInputRef.current?.click(); }}>For Sale</AlertDialogAction>
+            <AlertDialogAction onClick={() => { setBuyersImportListingType('For Rent'); setIsBuyersImportDialogOpen(false); importBuyersInputRef.current?.click(); }}>For Rent</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* For Sale / For Rent dialogs for Properties */}
+      <AlertDialog open={isPropExportDialogOpen} onOpenChange={setIsPropExportDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Export Properties</AlertDialogTitle>
+            <AlertDialogDescription>Which type of properties do you want to export?</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setIsPropExportDialogOpen(false); handleExportCSV('Properties', 'For Sale'); }}>For Sale</AlertDialogAction>
+            <AlertDialogAction onClick={() => { setIsPropExportDialogOpen(false); handleExportCSV('Properties', 'For Rent'); }}>For Rent</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={isPropImportDialogOpen} onOpenChange={setIsPropImportDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Property Type</AlertDialogTitle>
+            <AlertDialogDescription>Select the type of properties you are importing.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setPropImportListingType('For Sale'); setIsPropImportDialogOpen(false); importPropertiesInputRef.current?.click(); }}>For Sale</AlertDialogAction>
+            <AlertDialogAction onClick={() => { setPropImportListingType('For Rent'); setIsPropImportDialogOpen(false); importPropertiesInputRef.current?.click(); }}>For Rent</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Import Preview Dialog */}
+      <ImportPreviewDialog
+        isOpen={isPreviewOpen}
+        onClose={() => { setIsPreviewOpen(false); setImportResult(undefined); }}
+        type={previewType}
+        totalRows={previewTotalRows}
+        colMapping={previewColMapping}
+        sampleRows={previewRows}
+        onConfirm={async () => {
+          setImportStatus('importing');
+          setImportProgress({ current: 0, total: previewTotalRows });
+          await doImport(previewType, previewFileText, previewType === 'Properties' ? propImportListingType : buyersImportListingType);
+          setImportProgress(null);
+        }}
+        importProgress={importProgress}
+        importStatus={importStatus}
+        importResult={importResult}
+        onAiEnhance={handleAiEnhance}
+        isAiEnhancing={isAiEnhancing}
+      />
 
       <Card className="border-none shadow-xl bg-card/60 backdrop-blur-sm overflow-hidden">
         <CardHeader>
@@ -1124,6 +1620,7 @@ export default function SettingsPage() {
         onSave={handleAvatarUpdate}
         isSaving={isUploading}
     />
+
     </>
   );
 }

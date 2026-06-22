@@ -41,13 +41,14 @@ export type Tag = {
   agency_id: string;
   createdAt: string;
   listingType?: ListingType | 'All';
+  createdBy?: string;
 };
 
 
 export type PropertyType = 'House' | 'Flat' | 'Farm House' | 'Penthouse' | 'Plot' | 'Residential Plot' | 'Commercial Plot' | 'Agricultural Land' | 'Industrial Land' | 'Office' | 'Shop' | 'Warehouse' | 'Factory' | 'Building' | 'Commercial Property' | 'Semi Commercial' | 'Residential Property' | 'Old House' | '';
 export type SizeUnit = 'Marla' | 'SqFt' | 'Kanal' | 'Acre' | 'Maraba';
 export type PriceUnit = 'Thousand' | 'Lacs' | 'Crore';
-export type PropertyStatus = 'New' | 'Available' | 'Sold' | 'Rent Out' | 'Sold (External)';
+export type PropertyStatus = 'New' | 'Pending' | 'Available' | 'Sold' | 'Rent Out' | 'Sold (External)';
 export type ListingType = 'For Sale' | 'For Rent';
 export type EditingStatus = 'In Editing' | 'Complete';
 export type RecordingPaymentStatus = 'Unpaid' | 'Paid Online' | 'Pending Cash';

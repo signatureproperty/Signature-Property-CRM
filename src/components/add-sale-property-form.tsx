@@ -71,7 +71,7 @@ const formSchema = z.object({
   documents: z.string().optional(),
   message: z.string().optional(),
   tags: z.string().optional(),
-  status: z.enum(['New', 'Available', 'Sold', 'Rent Out', 'Sold (External)']).default('New'),
+  status: z.enum(['New', 'Pending', 'Available', 'Sold', 'Rent Out', 'Sold (External)']).default('New'),
 });
 
 type AddSalePropertyFormValues = z.infer<typeof formSchema>;
@@ -124,7 +124,8 @@ export function AddSalePropertyForm({
     },
   });
 
-  const { control, setValue } = form;
+  const control = form.control as any;
+  const { setValue } = form;
 
   const watchedFields = useWatch({
     control,
@@ -183,8 +184,8 @@ export function AddSalePropertyForm({
   }
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pb-6">
+    <Form {...form as any}>
+      <form onSubmit={(form as any).handleSubmit(onSubmit)} className="space-y-6 pb-6">
           <div className="space-y-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <FormField

@@ -15,17 +15,13 @@ import {
   MoreHorizontal,
   Trash2,
   Edit,
-  Video,
   CheckCircle,
   Eye,
   Filter,
-  Upload,
-  Download,
   Search,
   MapPin,
   Tag,
   Wallet,
-  VideoOff,
   PlusCircle,
   CalendarPlus,
   Briefcase,
@@ -33,7 +29,6 @@ import {
   Building,
   ArchiveRestore,
   PackagePlus,
-  PackageCheck,
   RotateCcw,
   ChevronDown,
   MessageSquare,
@@ -41,10 +36,14 @@ import {
   ChevronLeft,
   ArrowUpDown,
   Link as LinkIcon,
-  FileArchive,
   UserPlus,
-  Circle,
-  Clock,
+  Sparkles,
+  Ruler,
+  MessageSquareText,
+  UserMinus,
+  User as UserIcon,
+  Users,
+  X,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -59,12 +58,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { AddPropertyDialog } from '@/components/add-property-dialog';
 import { Input } from '@/components/ui/input';
-import type { Property, PropertyType, SizeUnit, PriceUnit, AppointmentContactType, Appointment, ListingType, PlanName, PropertyStatus, User, Activity, RecordingPaymentStatus } from '@/lib/types';
+import type { Property, PropertyType, SizeUnit, PriceUnit, AppointmentContactType, Appointment, ListingType, PlanName, PropertyStatus, User, Activity } from '@/lib/types';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { PropertyDetailsDialog } from '@/components/property-details-dialog';
 import { MarkAsSoldDialog } from '@/components/mark-as-sold-dialog';
 import { MarkAsRentOutDialog } from '@/components/mark-as-rent-out-dialog';
-import { RecordVideoDialog } from '@/components/record-video-dialog';
+
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import {
   Popover,
@@ -82,7 +81,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useIsMobile } from '@/hooks/use-is-mobile';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useSearch, useUI } from '../layout';
+import { useSearch, useUI } from '@/context/layout-context';
 import { SetAppointmentDialog } from '@/components/set-appointment-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useCurrency } from '@/context/currency-context';
@@ -92,17 +91,27 @@ import { useFirestore } from '@/firebase/provider';
 import { collection, addDoc, setDoc, doc, writeBatch, updateDoc } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/hooks';
 import { cn, formatPhoneNumber } from '@/lib/utils';
+import { PhoneValidationBadge } from '@/components/phone-validation-badge';
 import { AddSalePropertyForm } from '@/components/add-sale-property-form';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useUser } from '@/firebase/auth/use-user';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Separator } from '@/components/ui/separator';
+
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
 import { motion } from 'framer-motion';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { SetRecordingPaymentDialog } from '@/components/set-recording-payment-dialog';
+
+import { AnimatePresence } from 'framer-motion';
+import dynamic from 'next/dynamic';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import type { Tag as TagType } from '@/lib/types';
+
+const ManageTagsDialog = dynamic(() => import('@/components/manage-tags-dialog').then(mod => mod.ManageTagsDialog), { ssr: false });
+const EditPropertyTagsDialog = dynamic(() => import('@/components/edit-property-tags-dialog').then(mod => mod.EditPropertyTagsDialog), { ssr: false });
+const AssignPropertyToAgentDialog = dynamic(() => import('@/components/assign-property-to-agent-dialog').then(mod => mod.AssignPropertyToAgentDialog), { ssr: false });
+const SimpleAssignPropertyAgentDialog = dynamic(() => import('@/components/simple-assign-property-agent-dialog').then(mod => mod.SimpleAssignPropertyAgentDialog), { ssr: false });
+const PropertyNotesDialog = dynamic(() => import('@/components/property-notes-dialog').then(mod => mod.PropertyNotesDialog), { ssr: false });
 
 const ITEMS_PER_PAGE = 50;
 const AGENT_LEAD_LIMIT = Infinity; // Limit removed for agents
@@ -111,12 +120,6 @@ const planLimits = {
   Basic: { properties: 500, buyers: 500, team: 3 },
   Standard: { properties: 2500, buyers: 2500, team: 10 },
   Premium: { properties: Infinity, buyers: Infinity, team: Infinity },
-};
-
-const paymentStatusConfig: Record<RecordingPaymentStatus, { icon: React.FC<any>; color: string; label: string }> = {
-  'Unpaid': { icon: Circle, color: 'text-orange-500', label: 'Unpaid Recording' },
-  'Paid Online': { icon: CheckCircle, color: 'text-green-500', label: 'Paid Recording' },
-  'Pending Cash': { icon: Clock, color: 'text-purple-500', label: 'Pending Cash' },
 };
 
 
@@ -139,6 +142,15 @@ interface Filters {
   videoLink: string;
 }
 
+const statusVariant = {
+    'New': 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800',
+    'Pending': 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800',
+    'Available': 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800',
+    'Sold': 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800',
+    'Sold (External)': 'bg-slate-400 text-white border-slate-300 dark:bg-slate-600 dark:border-slate-500',
+    'Rent Out': 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800',
+} as const;
+
 const propertyStatuses = [
   { value: 'All (Sale)', label: 'All (Sale)' },
   { value: 'Pending', label: 'Pending' },
@@ -148,7 +160,6 @@ const propertyStatuses = [
   { value: 'All (Rent)', label: 'All (Rent)' },
   { value: 'Available (Rent)', label: 'Available (Rent)' },
   { value: 'Rent Out', label: 'Rent Out' },
-  { value: 'Recorded', label: 'Recorded' },
 ];
 
 const propertyTypesForFilter: (PropertyType | 'All' | 'Other')[] = [
@@ -170,8 +181,8 @@ export default function PropertiesPage() {
   const firestore = useFirestore();
 
   const statusFilterFromURL = searchParams.get('status');
-  const importInputRef = useRef<HTMLInputElement>(null);
-  const [importType, setImportType] = useState<'For Sale' | 'For Rent' | null>(null);
+
+
 
   const agencyPropertiesQuery = useMemoFirebase(
     () => (profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'properties') : null),
@@ -188,25 +199,33 @@ export default function PropertiesPage() {
     if (isMobile && profile.role === 'Agent' && !activeAgencyTab && profile.agencies && profile.agencies.length > 0) {
       setActiveAgencyTab(profile.agencies[0].agency_id);
     }
-  }, [profile.agencies, activeAgencyTab, isMobile, profile.role]);
+    if (statusFilterFromURL) setActiveStatus(statusFilterFromURL);
+  }, [profile.agencies, activeAgencyTab, isMobile, profile.role, statusFilterFromURL]);
 
 
 
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
-  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
-  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-  const [isTagsDialogOpen, setIsTagsDialogOpen] = useState(false);
+  const [isEditTagsOpen, setIsEditTagsOpen] = useState(false);
+  const [isAssignOpen, setIsAssignOpen] = useState(false);
+  const [isSimpleAssignOpen, setIsSimpleAssignOpen] = useState(false);
+  const [isNotesOpen, setIsNotesOpen] = useState(false);
+
+  const [isManageTagsOpen, setIsManageTagsOpen] = useState(false);
+  const [activeListingType, setActiveListingType] = useState<'All' | 'For Sale' | 'For Rent'>('All');
+  const [activeStatus, setActiveStatus] = useState<string>('All');
+  const [activeCustomTags, setActiveCustomTags] = useState<string[]>([]);
+  const [activeAgentFilter, setActiveAgentFilter] = useState<string>('All');
+  const [isTypesExpanded, setIsTypesExpanded] = useState(false);
+  const [isStatusExpanded, setIsStatusExpanded] = useState(false);
+  const [isTagsExpanded, setIsTagsExpanded] = useState(false);
 
   const [selectedProperties, setSelectedProperties] = useState<string[]>([]);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isSoldOpen, setIsSoldOpen] = useState(false);
   const [isRentOutOpen, setIsRentOutOpen] = useState(false);
-  const [isRecordVideoOpen, setIsRecordVideoOpen] = useState(false);
   const [isAddPropertyOpen, setIsAddPropertyOpen] = useState(false);
   const [isAppointmentOpen, setIsAppointmentOpen] = useState(false);
-  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
-  const [assignmentDetails, setAssignmentDetails] = useState<{ property: Property, agentId: string, agentName: string } | null>(null);
-  const [activePaymentTab, setActivePaymentTab] = useState<string>('all');
+
 
 
   const [appointmentDetails, setAppointmentDetails] = useState<{
@@ -216,6 +235,20 @@ export default function PropertiesPage() {
     message: string;
   } | null>(null);
   const [propertyToEdit, setPropertyToEdit] = useState<Property | null>(null);
+  const tagsQuery = useMemoFirebase(() =>
+    profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'tags') : null,
+    [profile.agency_id, firestore]
+  );
+  const { data: allAgencyTags } = useCollection<TagType>(tagsQuery);
+
+  const agencyTags = useMemo(() => {
+    if (!allAgencyTags) return [];
+    if (profile.role === 'Agent') {
+      return allAgencyTags.filter(t => t.createdBy === profile.user_id);
+    }
+    return allAgencyTags;
+  }, [allAgencyTags, profile.role, profile.user_id]);
+
   const [filters, setFilters] = useState<Filters>({
     area: '',
     propertyType: 'All',
@@ -255,6 +288,10 @@ export default function PropertiesPage() {
     return teamMembers?.filter(m => m.status === 'Active') || [];
   }, [teamMembers]);
 
+  const activeAgents = useMemo(() => {
+    return activeTeamMembers?.filter(m => m.role === 'Agent' || m.role === 'Admin') || [];
+  }, [activeTeamMembers]);
+
   useEffect(() => {
     if (!isAddPropertyOpen) {
       setPropertyToEdit(null);
@@ -293,19 +330,12 @@ export default function PropertiesPage() {
 
     const member = activeTeamMembers.find(m => m.id === agentId);
     if (!member) {
-      // Unassigning
       await updateDoc(doc(firestore, 'agencies', profile.agency_id, 'properties', property.id), { assignedTo: null });
       toast({ title: 'Property Unassigned' });
       return;
     }
 
-    if (member.role === 'Video Recorder') {
-      setAssignmentDetails({ property, agentId: member.id, agentName: member.name });
-      setIsPaymentDialogOpen(true);
-    } else {
-      // Direct assignment for Agent/Admin
-      await assignToAgent(property, member.id, member.name);
-    }
+    await assignToAgent(property, member.id, member.name);
   };
 
   const assignToAgent = async (property: Property, agentId: string, agentName: string) => {
@@ -326,37 +356,6 @@ export default function PropertiesPage() {
     toast({ title: 'Property Assigned', description: `${property.serial_no} assigned to ${agentName}.` });
   };
 
-  const handleConfirmPaymentAndAssign = async (property: Property, agentId: string, paymentDetails: any) => {
-    if (!profile.agency_id) return;
-    const agent = activeTeamMembers.find(m => m.id === agentId);
-    if (!agent) return;
-
-    const batch = writeBatch(firestore);
-
-    const propRef = doc(firestore, 'agencies', profile.agency_id, 'properties', property.id);
-    batch.update(propRef, {
-      assignedTo: agentId,
-      is_recorded: false,
-      editing_status: 'In Editing',
-      ...paymentDetails
-    });
-
-    const activityLogRef = collection(firestore, 'agencies', profile.agency_id, 'activityLogs');
-    const newActivity: Omit<Activity, 'id'> = {
-      userName: profile.name,
-      action: `assigned property for recording to ${agent.name}`,
-      target: property.auto_title,
-      targetType: 'Property',
-      details: { from: 'Available', to: 'Pending Recording' },
-      timestamp: new Date().toISOString(),
-      agency_id: profile.agency_id,
-    };
-    batch.set(doc(activityLogRef), newActivity);
-
-    await batch.commit();
-    toast({ title: 'Property Assigned for Recording', description: `${property.serial_no} assigned to ${agent.name}.` });
-  };
-
 
   const handleBulkAssign = async (agentId: string) => {
     if (selectedProperties.length === 0 || !agentId || !profile.agency_id) return;
@@ -368,12 +367,7 @@ export default function PropertiesPage() {
     }
 
     const batch = writeBatch(firestore);
-    let updates: Partial<Property> = { assignedTo: agentId };
-
-    if (agent.role === 'Video Recorder') {
-      updates.is_recorded = false;
-      updates.editing_status = 'In Editing';
-    }
+    const updates: Partial<Property> = { assignedTo: agentId };
 
     selectedProperties.forEach(propId => {
       const docRef = doc(firestore, 'agencies', profile.agency_id, 'properties', propId);
@@ -405,24 +399,13 @@ export default function PropertiesPage() {
     setSelectedProperties([]);
   };
 
-  const handleRevertPayment = async (prop: Property) => {
-    if (!profile.agency_id) return;
-    const docRef = doc(firestore, 'agencies', profile.agency_id, 'properties', prop.id);
-    await updateDoc(docRef, {
-      recording_payment_status: 'Unpaid',
-      recording_payment_amount: null,
-      recording_payment_date: null,
-    });
-    toast({ title: 'Payment Reverted', description: `${prop.serial_no} is now marked as Unpaid.` });
-  };
-
   const filteredProperties = useMemo(() => {
     if (!allProperties) return [];
 
     let baseProperties = allProperties.filter(p => !p.is_deleted);
 
     if (profile.role === 'Agent' && user?.uid && activeAgencyTab) {
-      baseProperties = baseProperties.filter(p => p.assignedTo === user.uid && p.agency_id === activeAgencyTab);
+      baseProperties = baseProperties.filter(p => (p.assignedTo === user.uid || p.created_by === user.uid) && p.agency_id === activeAgencyTab);
     }
 
     // 1. Primary Filter: Search Query
@@ -467,64 +450,95 @@ export default function PropertiesPage() {
     }
 
 
-    // 3. Final Filter: URL Status Param & Payment Tab
-    const currentStatusFilter = statusFilterFromURL || 'All (Sale)';
-
-    switch (currentStatusFilter) {
-      case 'All (Sale)':
-        baseProperties = baseProperties.filter(p => !p.is_for_rent);
-        break;
-      case 'Pending':
-        baseProperties = baseProperties.filter(p => p.status === 'Pending');
-        break;
-      case 'Available (Sale)':
-        baseProperties = baseProperties.filter(p => p.status === 'Available' && !p.is_for_rent);
-        break;
-      case 'Sold':
-        baseProperties = baseProperties.filter(p => p.status === 'Sold' && !p.is_for_rent);
-        break;
-      case 'Sold (External)':
-        baseProperties = baseProperties.filter(p => p.status === 'Sold (External)');
-        break;
-      case 'All (Rent)':
-        baseProperties = baseProperties.filter(p => p.is_for_rent);
-        break;
-      case 'Available (Rent)':
-        baseProperties = baseProperties.filter(p => p.status === 'Available' && p.is_for_rent);
-        break;
-      case 'Rent Out':
-        baseProperties = baseProperties.filter(p => p.status === 'Rent Out');
-        break;
-      case 'Recorded':
-        baseProperties = baseProperties.filter(p => p.is_recorded || p.recording_payment_status === 'Paid Online');
-        break;
-      default:
-        baseProperties = baseProperties.filter(p => !p.is_for_rent);
-        break;
+    // 3. Final Filter: URL Status Param (only when no badge filters active)
+    if (activeListingType === 'All' && activeStatus === 'All') {
+      const currentStatusFilter = statusFilterFromURL || 'All (Sale)';
+      switch (currentStatusFilter) {
+        case 'All (Sale)':
+          baseProperties = baseProperties.filter(p => !p.is_for_rent);
+          break;
+        case 'Pending':
+          baseProperties = baseProperties.filter(p => p.status === 'Pending' || p.tags?.includes('Pending'));
+          break;
+        case 'Available (Sale)':
+          baseProperties = baseProperties.filter(p => p.status === 'Available' && !p.is_for_rent);
+          break;
+        case 'Sold':
+          baseProperties = baseProperties.filter(p => p.status === 'Sold' && !p.is_for_rent);
+          break;
+        case 'Sold (External)':
+          baseProperties = baseProperties.filter(p => p.status === 'Sold (External)');
+          break;
+        case 'All (Rent)':
+          baseProperties = baseProperties.filter(p => p.is_for_rent);
+          break;
+        case 'Available (Rent)':
+          baseProperties = baseProperties.filter(p => p.status === 'Available' && p.is_for_rent);
+          break;
+        case 'Rent Out':
+          baseProperties = baseProperties.filter(p => p.status === 'Rent Out');
+          break;
+        default:
+          baseProperties = baseProperties.filter(p => !p.is_for_rent);
+          break;
+      }
     }
 
-    // 4. Payment Status Tab Filter
-    if (activePaymentTab !== 'all') {
-      baseProperties = baseProperties.filter(prop => {
-        const status = prop.recording_payment_status || 'Unpaid';
-        if (activePaymentTab === 'Paid') {
-          return status === 'Paid Online';
-        }
-        if (activePaymentTab === 'Pending') {
-          return status === 'Pending Cash';
-        }
-        return status === 'Unpaid' && activePaymentTab === 'Unpaid';
-      });
+    // 4. Tag Filter
+    if (activeCustomTags.length > 0) {
+      baseProperties = baseProperties.filter(p =>
+        p.tags && activeCustomTags.some(tag => p.tags!.includes(tag))
+      );
     }
 
-    // 5. Sorting
+    // 5. Listing Type Filter (badge)
+    if (activeListingType !== 'All') {
+      baseProperties = baseProperties.filter(p =>
+        activeListingType === 'For Rent' ? p.is_for_rent : !p.is_for_rent
+      );
+    }
+
+    // 6. Status Filter (badge) — checks both status field AND tags
+    if (activeStatus !== 'All') {
+      baseProperties = baseProperties.filter(p => p.status === activeStatus || p.tags?.includes(activeStatus));
+    }
+
+    // 7. Agent Filter
+    if (activeAgentFilter !== 'All') {
+      baseProperties = baseProperties.filter(p => p.assignedTo === activeAgentFilter);
+    }
+
+    // 8. Sorting
     return baseProperties.sort((a, b) => {
       const aNum = parseInt(a.serial_no.split('-')[1] || '0', 10);
       const bNum = parseInt(b.serial_no.split('-')[1] || '0', 10);
       return sortOrder === 'asc' ? aNum - bNum : bNum - aNum;
     });
 
-  }, [searchQuery, filters, allProperties, statusFilterFromURL, profile.role, user?.uid, sortOrder, activeAgencyTab, activePaymentTab]);
+  }, [searchQuery, filters, allProperties, statusFilterFromURL, profile.role, user?.uid, sortOrder, activeAgencyTab, activeListingType, activeStatus, activeCustomTags, activeAgentFilter]);
+
+  const nonDeletedProperties = useMemo(() => {
+    if (!allProperties) return [];
+    const seen = new Set();
+    return allProperties.filter(p => {
+      if (p.is_deleted || seen.has(p.id)) return false;
+      seen.add(p.id);
+      return true;
+    });
+  }, [allProperties]);
+
+  const allPropertyCounts = useMemo(() => {
+    const props = nonDeletedProperties;
+    const counts: Record<string, number> = { 'All': props.length, 'For Sale': 0, 'For Rent': 0 };
+    props.forEach(p => {
+      if (p.is_for_rent) counts['For Rent']++;
+      else counts['For Sale']++;
+      const s = p.status;
+      counts[s] = (counts[s] || 0) + 1;
+      if (p.tags) p.tags.forEach(t => { counts[t] = (counts[t] || 0) + 1; });
+    });
+    return counts;
+  }, [nonDeletedProperties]);
 
   const totalPages = Math.ceil(filteredProperties.length / ITEMS_PER_PAGE);
 
@@ -536,7 +550,7 @@ export default function PropertiesPage() {
   useEffect(() => {
     setCurrentPage(1);
     setSelectedProperties([]);
-  }, [searchQuery, filters, statusFilterFromURL, activeAgencyTab, activePaymentTab]);
+  }, [searchQuery, filters, statusFilterFromURL, activeAgencyTab]);
 
 
   const handleRowClick = (prop: Property) => {
@@ -576,11 +590,6 @@ export default function PropertiesPage() {
     setIsRentOutOpen(true);
   };
 
-  const handleRecordVideo = (prop: Property) => {
-    setPropertyForDetails(prop);
-    setIsRecordVideoOpen(true);
-  };
-
   const handleEdit = (prop: Property) => {
     setListingType(prop.is_for_rent ? 'For Rent' : 'For Sale');
     setPropertyToEdit(prop);
@@ -607,12 +616,6 @@ export default function PropertiesPage() {
     if (!profile.agency_id) return;
     const collectionRef = collection(firestore, 'agencies', profile.agency_id, 'appointments');
     await addDoc(collectionRef, appointment);
-  };
-
-  const handleUnmarkRecorded = async (prop: Property) => {
-    if (!profile.agency_id) return;
-    const docRef = doc(firestore, 'agencies', profile.agency_id, 'properties', prop.id);
-    await setDoc(docRef, { is_recorded: false, video_links: {} }, { merge: true });
   };
 
   const handleUpdateProperty = async (updatedProperty: Property) => {
@@ -659,6 +662,21 @@ export default function PropertiesPage() {
     toast({ title: 'Property Status Updated', description: `${prop.serial_no} marked as Available again.` });
   };
 
+  const handleEditTags = (prop: Property) => {
+    setPropertyForDetails(prop);
+    setIsEditTagsOpen(true);
+  };
+
+  const handleAssignOpen = (prop: Property) => {
+    setPropertyForDetails(prop);
+    setIsAssignOpen(true);
+  };
+
+  const handleSimpleAssignOpen = (prop: Property) => {
+    setPropertyForDetails(prop);
+    setIsSimpleAssignOpen(true);
+  };
+
   const handleDelete = async (property: Property) => {
     if (!profile.agency_id) return;
     const docRef = doc(firestore, 'agencies', profile.agency_id, 'properties', property.id);
@@ -686,6 +704,17 @@ export default function PropertiesPage() {
     setSelectedProperties([]);
   };
 
+  const getTagColor = (tagName: string) => {
+    const tagObj = agencyTags?.find(t => t.name === tagName);
+    if (tagObj) return tagObj.color;
+    return (statusVariant as any)[tagName] || 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700';
+  };
+
+  const handleNotesClick = (prop: Property) => {
+    setPropertyForDetails(prop);
+    setIsNotesOpen(true);
+  };
+
   const handleSaveProperty = async (propertyData: Omit<Property, 'id'> & { id?: string }) => {
     if (!profile.agency_id) return;
 
@@ -711,7 +740,14 @@ export default function PropertiesPage() {
     setPropertyToEdit(null);
   };
 
+  const handleToggleCustomTag = (tagName: string) => {
+    setActiveCustomTags(prev =>
+      prev.includes(tagName) ? prev.filter(t => t !== tagName) : [...prev, tagName]
+    );
+  };
+
   const handleStatusChange = (status: string) => {
+    setActiveStatus(status);
     const url = `${pathname}?status=${encodeURIComponent(status)}`;
     router.push(url);
   };
@@ -742,310 +778,88 @@ export default function PropertiesPage() {
     return `"${stringField}"`;
   };
 
-  const handleExport = (type: 'For Sale' | 'For Rent') => {
-    if (!allProperties || !user?.uid) return;
-
-    let sourceProperties = allProperties;
-    // If user is an agent, only export their own leads
-    if (profile.role === 'Agent') {
-      sourceProperties = allProperties.filter(p => p.created_by === user.uid);
+  const smartCleanValue = (val: string | undefined): string => {
+    if (!val || val.trim() === '') return '';
+    let cleaned = val.trim();
+    // Handle Excel ="..." format
+    if (cleaned.startsWith('=')) {
+      const match = cleaned.match(/="(.+?)"/);
+      if (match) return match[1].trim();
     }
-
-    const propertiesToExport = sortProperties(
-      sourceProperties.filter(p => {
-        const listingType = p.is_for_rent ? 'For Rent' : 'For Sale';
-        return !p.is_deleted && listingType === type;
-      })
-    );
-
-    if (propertiesToExport.length === 0) {
-      toast({ title: 'No Data', description: `You have no properties for ${type.toLowerCase()} to export.`, variant: 'destructive' });
-      return;
+    // Handle Excel scientific notation for numbers
+    if (/^\d*\.?\d+E[+-]\d+$/i.test(cleaned)) {
+      const parsed = parseFloat(cleaned);
+      if (!isNaN(parsed) && parsed > 0) {
+        return parsed.toString();
+      }
     }
-
-    const baseHeaders = ['Sr No', 'Video Record', 'Date', 'Number', 'City', 'Area', 'Address', 'Property Type', 'Size', 'Storey', 'Utilities', 'Status'];
-    const saleHeaders = [...baseHeaders, 'Road Size', 'Potential Rent', 'Front', 'Length', 'Demand', 'Documents', 'TikTok Link', 'YouTube Link', 'Instagram Link', 'Facebook Link', 'Other Link'];
-    const rentHeaders = [...baseHeaders, 'Rent', 'TikTok Link', 'YouTube Link', 'Instagram Link', 'Facebook Link', 'Other Link'];
-    const headers = type === 'For Sale' ? saleHeaders : rentHeaders;
-
-    const csvContent = [
-      headers.join(','),
-      ...propertiesToExport.map(p => {
-        const demandValue = p.demand_unit === 'Crore' ? `${p.demand_amount} Cr` : p.demand_unit === 'Lacs' ? `${p.demand_amount} Lacs` : `${p.demand_amount} K`;
-        const potentialRentValue = p.potential_rent_amount ? `${p.potential_rent_amount}${p.potential_rent_unit === 'Thousand' ? 'K' : ` ${p.potential_rent_unit}`}` : '';
-        const utilities = [
-          p.meters?.electricity && 'Electricity',
-          p.meters?.gas && 'Gas',
-          p.meters?.water && 'Water'
-        ].filter(Boolean).join('/');
-
-        const date = new Date(p.created_at);
-        const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-
-        const phoneNumber = p.owner_number.replace(p.country_code || '+92', '').replace(/\D/g, '');
-
-        const baseRow = [
-          escapeCsvField(p.serial_no),
-          escapeCsvField(p.is_recorded ? 'Yes' : 'No'),
-          escapeCsvField(formattedDate),
-          escapeCsvField(phoneNumber),
-          escapeCsvField(p.city),
-          escapeCsvField(p.area),
-          escapeCsvField(p.address),
-          escapeCsvField(p.property_type),
-          escapeCsvField(`${p.size_value} ${p.size_unit}`),
-          escapeCsvField(p.storey || ''),
-          escapeCsvField(utilities),
-          escapeCsvField(p.status)
-        ];
-
-        if (type === 'For Sale') {
-          return [
-            ...baseRow,
-            escapeCsvField(p.road_size_ft ? `${p.road_size_ft} ft` : ''),
-            escapeCsvField(potentialRentValue),
-            escapeCsvField(p.front_ft || ''),
-            escapeCsvField(p.length_ft || ''),
-            escapeCsvField(demandValue),
-            escapeCsvField(p.documents || ''),
-            escapeCsvField(p.video_links?.tiktok || ''),
-            escapeCsvField(p.video_links?.youtube || ''),
-            escapeCsvField(p.video_links?.instagram || ''),
-            escapeCsvField(p.video_links?.facebook || ''),
-            escapeCsvField(p.video_links?.other || '')
-          ].join(',');
-        } else { // For Rent
-          return [
-            ...baseRow,
-            escapeCsvField(demandValue),
-            escapeCsvField(p.video_links?.tiktok || ''),
-            escapeCsvField(p.video_links?.youtube || ''),
-            escapeCsvField(p.video_links?.instagram || ''),
-            escapeCsvField(p.video_links?.facebook || ''),
-            escapeCsvField(p.video_links?.other || '')
-          ].join(',');
-        }
-      })
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `properties-${type.toLowerCase().replace(' ', '-')}-${new Date().toISOString()}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    setIsExportDialogOpen(false);
+    return cleaned;
   };
 
-  const handleImportClick = (type: 'For Sale' | 'For Rent') => {
-    setImportType(type);
-    importInputRef.current?.click();
-    setIsImportDialogOpen(false);
-  };
-
-
-  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !profile.agency_id || !importType || !allProperties || !user?.uid) return;
-
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const text = e.target?.result;
-      if (typeof text !== 'string') return;
-
-      const parseCsvRow = (row: string): string[] => {
-        const result: string[] = [];
-        let currentField = '';
-        let inQuotes = false;
-        for (let i = 0; i < row.length; i++) {
-          const char = row[i];
-          if (char === '"') {
-            if (i + 1 < row.length && row[i + 1] === '"') {
-              currentField += '"';
-              i++;
-            } else {
-              inQuotes = !inQuotes;
-            }
-          } else if (char === ',' && !inQuotes) {
-            result.push(currentField.trim());
-            currentField = '';
-          } else {
-            currentField += char;
-          }
-        }
-        result.push(currentField.trim());
-        return result;
-      };
-
-      const rows = text.split('\n').filter(row => row.trim() !== '');
-      if (rows.length <= 1) {
-        toast({ title: 'Empty File', description: 'The CSV file is empty or invalid.', variant: 'destructive' });
-        return;
-      }
-
-      const listingTypeToImport: ListingType = importType;
-
-      let myProperties = allProperties;
-      if (profile.role === 'Agent') {
-        myProperties = allProperties.filter(p => p.created_by === user.uid);
-      }
-
-      const totalSaleProperties = myProperties.filter(p => !p.is_deleted && !p.is_for_rent).length;
-      const totalRentProperties = myProperties.filter(p => !p.is_deleted && p.is_for_rent).length;
-
-      const BATCH_SIZE = 499;
-      let batch = writeBatch(firestore);
-      let newPropertiesCount = 0;
-      let skippedCount = 0;
-
-      for (let i = 1; i < rows.length; i++) {
-        const row = rows[i];
-        if (!row) continue;
-
-        if (newPropertiesCount > 0 && newPropertiesCount % BATCH_SIZE === 0) {
-          await batch.commit();
-          batch = writeBatch(firestore);
-        }
-
-        const values = parseCsvRow(row);
-        let newProperty: Omit<Property, 'id'>;
-
-        if (listingTypeToImport === 'For Sale') {
-          const [
-            _serial, video_recorded, _date, number, city, area, address, property_type, size, storey, utilities, status,
-            road_size_ft, potential_rent, front_ft, length_ft, demand, documents,
-            tiktok, youtube, instagram, facebook, other
-          ] = values;
-
-          if (!number || number.trim() === '') {
-            skippedCount++;
-            continue;
-          }
-          newPropertiesCount++;
-
-          const [size_value_str, size_unit_str] = size ? size.split(' ') : ['', ''];
-          const [demand_amount_str, demand_unit_str] = demand ? demand.split(' ') : ['', ''];
-
-          const parseOptionalNumber = (val: string | undefined): number | null => {
-            if (!val || val.trim() === '') return null;
-            const parsed = parseInt(val.replace(/\D/g, ''), 10);
-            return isNaN(parsed) ? null : parsed;
-          };
-
-          const potentialRentLower = (potential_rent || '').toLowerCase();
-          let potentialRentAmount: number | null = null;
-          let potentialRentUnit: PriceUnit = 'Thousand';
-
-          if (potentialRentLower.includes('lac')) {
-            potentialRentAmount = parseFloat(potentialRentLower.replace('lac', '').trim()) || null;
-            potentialRentUnit = 'Lacs';
-          } else if (potentialRentLower.includes('cr')) {
-            potentialRentAmount = parseFloat(potentialRentLower.replace('cr', '').trim()) || null;
-            potentialRentUnit = 'Crore';
-          } else {
-            potentialRentAmount = parseOptionalNumber(potential_rent);
-          }
-
-          newProperty = {
-            serial_no: `P-${totalSaleProperties + newPropertiesCount}`,
-            auto_title: `${size || 'N/A'} ${property_type || ''} in ${area || ''}`.trim(),
-            property_type: (property_type as PropertyType) || 'House',
-            area: area || '',
-            address: address || '',
-            city: city || 'Lahore',
-            size_value: parseFloat(size_value_str) || 0,
-            size_unit: (size_unit_str as SizeUnit) || 'Marla',
-            demand_amount: parseFloat(demand_amount_str) || 0,
-            demand_unit: demand_unit_str?.endsWith('Cr') ? 'Crore' : 'Lacs',
-            status: 'Available',
-            owner_number: formatPhoneNumber(number, '+92'),
-            country_code: '+92',
-            listing_type: 'For Sale',
-            is_for_rent: false,
-            created_at: new Date().toISOString(),
-            created_by: profile.user_id,
-            agency_id: profile.agency_id,
-            is_recorded: video_recorded?.toLowerCase() === 'yes',
-            video_links: { tiktok: tiktok || '', youtube: youtube || '', instagram: instagram || '', facebook: facebook || '', other: other || '' },
-            road_size_ft: parseOptionalNumber(road_size_ft),
-            storey: storey || '',
-            potential_rent_amount: potentialRentAmount,
-            potential_rent_unit: potentialRentUnit,
-            front_ft: parseOptionalNumber(front_ft),
-            length_ft: parseOptionalNumber(length_ft),
-            documents: documents || '',
-            meters: {
-              electricity: utilities?.includes('Electricity') || false,
-              gas: utilities?.includes('Gas') || false,
-              water: utilities?.includes('Water') || false,
-            },
-          };
-        } else {
-          const [
-            _serial, video_recorded, _date, number, city, area, address, property_type, size,
-            storey, utilities, status, rent,
-            tiktok, youtube, instagram, facebook, other
-          ] = values;
-
-          if (!number || number.trim() === '') {
-            skippedCount++;
-            continue;
-          }
-          newPropertiesCount++;
-
-          const [size_value_str, size_unit_str] = size ? size.split(' ') : ['', ''];
-          const [demand_amount_str, demand_unit_str] = rent ? rent.split(' ') : ['', ''];
-
-          newProperty = {
-            serial_no: `RP-${totalRentProperties + newPropertiesCount}`,
-            auto_title: `${size || 'N/A'} ${property_type || ''} for rent in ${area || ''}`.trim(),
-            property_type: (property_type as PropertyType) || 'House',
-            area: area || '',
-            address: address || '',
-            city: city || 'Lahore',
-            size_value: parseFloat(size_value_str) || 0,
-            size_unit: (size_unit_str as SizeUnit) || 'Marla',
-            demand_amount: parseFloat(demand_amount_str) || 0,
-            demand_unit: 'Thousand',
-            status: 'Available',
-            owner_number: formatPhoneNumber(number, '+92'),
-            country_code: '+92',
-            listing_type: 'For Rent',
-            is_for_rent: true,
-            created_at: new Date().toISOString(),
-            created_by: profile.user_id,
-            agency_id: profile.agency_id,
-            is_recorded: video_recorded?.toLowerCase() === 'yes',
-            video_links: { tiktok: tiktok || '', youtube: youtube || '', instagram: instagram || '', facebook: facebook || '', other: other || '' },
-            storey: storey || '',
-            meters: {
-              electricity: utilities?.includes('Electricity') || false,
-              gas: utilities?.includes('Gas') || false,
-              water: utilities?.includes('Water') || false,
-            },
-          };
-        }
-
-        batch.set(doc(collection(firestore, 'agencies', profile.agency_id, 'properties')), newProperty);
-      }
-
-      try {
-        await batch.commit();
-        toast({
-          title: 'Import Complete',
-          description: `${newPropertiesCount} new properties have been added. ${skippedCount > 0 ? `${skippedCount} rows were skipped due to missing phone numbers.` : ''}`
-        });
-      } catch (error) {
-        console.error(error);
-        toast({ title: 'Import Failed', description: 'An error occurred during import.', variant: 'destructive' });
-      }
+  const buildColumnMap = (headers: string[]): Record<string, number> => {
+    const aliases: Record<string, string[]> = {
+      number: ['number', 'phone', 'mobile', 'contact', 'phone number', 'owner phone', 'owner number', 'cell', 'tel', 'telephone'],
+      serial: ['sr no', 'serial', 'serial no', 's.no', 'sr#', 'id', 's no', 'sno'],
+      date: ['date', 'created date', 'created at', 'timestamp', 'entry date'],
+      city: ['city', 'location', 'sector'],
+      area: ['area', 'society', 'phase', 'sector area', 'locality'],
+      address: ['address', 'full address', 'location address', 'street address'],
+      property_type: ['property type', 'type', 'property type', 'prop type', 'type of property', 'category'],
+      size: ['size', 'area size', 'lot size', 'plot size', 'land size', 'dimensions'],
+      storey: ['storey', 'floor', 'story', 'levels', 'floors'],
+      utilities: ['utilities', 'meters', 'amenities', 'utility'],
+      status: ['status', 'property status', 'listing status'],
+      road_size: ['road size', 'road', 'road width', 'road size ft', 'road_size_ft'],
+      potential_rent: ['potential rent', 'rent potential', 'expected rent', 'potential rent', 'rent'],
+      front: ['front', 'front ft', 'frontage', 'front_ft'],
+      length: ['length', 'depth', 'length ft', 'length_ft'],
+      demand: ['demand', 'price', 'asking price', 'expected price', 'amount', 'cost', 'value', 'total demand'],
+      documents: ['documents', 'docs', 'papers', 'document'],
+      video_recorded: ['video recorded', 'video', 'recorded', 'video record'],
+      tiktok: ['tiktok', 'tiktok link', 'tiktok url'],
+      youtube: ['youtube', 'youtube link', 'youtube url'],
+      instagram: ['instagram', 'instagram link', 'instagram url'],
+      facebook: ['facebook', 'facebook link', 'facebook url'],
+      other: ['other', 'other link', 'other url', 'website'],
     };
-    reader.readAsText(file);
-    if (importInputRef.current) importInputRef.current.value = '';
-    setImportType(null);
+
+    const map: Record<string, number> = {};
+    headers.forEach((h, idx) => {
+      const key = h.toLowerCase().trim();
+      for (const [field, fieldAliases] of Object.entries(aliases)) {
+        if (fieldAliases.includes(key)) {
+          map[field] = idx;
+          break;
+        }
+      }
+    });
+    return map;
   };
+
+  const parseCsvRow = (row: string): string[] => {
+    const result: string[] = [];
+    let currentField = '';
+    let inQuotes = false;
+    for (let i = 0; i < row.length; i++) {
+      const char = row[i];
+      if (char === '"') {
+        if (i + 1 < row.length && row[i + 1] === '"') {
+          currentField += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === ',' && !inQuotes) {
+        result.push(currentField.trim());
+        currentField = '';
+      } else {
+        currentField += char;
+      }
+    }
+    result.push(currentField.trim());
+    return result;
+  };
+
 
 
   const handleSelectAll = (checked: boolean) => {
@@ -1063,8 +877,6 @@ export default function PropertiesPage() {
     if (properties.length === 0) {
       return <div className="text-center py-10 text-muted-foreground">No properties found for the current filters.</div>;
     }
-
-    const hasVideoLinks = (prop: Property) => prop.is_recorded && prop.video_links && Object.values(prop.video_links).some(link => !!link);
 
     return (
       <Table>
@@ -1085,16 +897,12 @@ export default function PropertiesPage() {
             <TableHead>Type</TableHead>
             <TableHead>Size</TableHead>
             <TableHead>Demand</TableHead>
-            <TableHead>Status</TableHead>
+            <TableHead>Status / Tags</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {properties.map((prop, index) => {
-            const paymentStatus = prop.recording_payment_status;
-            const paymentConfig = paymentStatus ? paymentStatusConfig[paymentStatus] : null;
-            const Icon = paymentConfig?.icon;
-
             return (
               <motion.tr
                 key={prop.id}
@@ -1117,26 +925,6 @@ export default function PropertiesPage() {
                   <div className="flex items-center gap-2">
                     <span className="font-bold font-headline text-base flex items-center gap-2">
                       {prop.auto_title || `${prop.size_value} ${prop.size_unit} ${prop.property_type} in ${prop.area}`}
-                      {hasVideoLinks(prop) && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Video className="h-4 w-4 text-primary" />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Video is recorded</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      )}
-                      {prop.uploaded_documents && prop.uploaded_documents.length > 0 && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <FileArchive className="h-4 w-4 text-primary" />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Documents are uploaded</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      )}
                     </span>
                   </div>
                   <div className="text-xs text-muted-foreground flex items-center gap-2 mt-1">
@@ -1151,6 +939,7 @@ export default function PropertiesPage() {
                     >
                       {prop.serial_no}
                     </Badge>
+                    {prop.owner_number && <PhoneValidationBadge phone={prop.owner_number} />}
                     <span className="truncate max-w-48">{prop.address}</span>
                   </div>
                 </TableCell>
@@ -1160,14 +949,6 @@ export default function PropertiesPage() {
                 <TableCell onClick={() => handleRowClick(prop)}>
                   <div className="flex flex-col gap-1 items-start">
                     <div className="flex items-center gap-2">
-                      {paymentConfig && Icon && (
-                        <Tooltip>
-                          <TooltipTrigger>
-                            <Icon className={cn("h-4 w-4", paymentConfig.color)} />
-                          </TooltipTrigger>
-                          <TooltipContent><p>{paymentConfig.label}</p></TooltipContent>
-                        </Tooltip>
-                      )}
                       <Badge className={prop.status === 'Sold' ? 'bg-green-600 hover:bg-green-700 text-white' : prop.status === 'Rent Out' ? 'bg-blue-600 hover:bg-blue-700 text-white' : prop.status === 'Sold (External)' ? 'bg-slate-500 hover:bg-slate-600 text-white' : 'bg-primary text-primary-foreground'}>
                         {prop.status}
                       </Badge>
@@ -1182,53 +963,41 @@ export default function PropertiesPage() {
                         <span className="sr-only">Toggle menu</span>
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="glass-card">
-                      <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleRowClick(prop); }}><Eye />View Details</DropdownMenuItem>
-                      <DropdownMenuItem onSelect={(e) => handleWhatsAppChat(e, prop)}><MessageSquare /> Chat on WhatsApp</DropdownMenuItem>
-                      <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleSetAppointment(prop); }}><CalendarPlus />Set Appointment</DropdownMenuItem>
+                    <DropdownMenuContent align="end" className="bg-background w-52">
+                      <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleRowClick(prop); }}><Eye className="mr-2 h-4 w-4" /> View Details</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleWhatsAppChat(e as unknown as React.MouseEvent, prop); }}><MessageSquare className="mr-2 h-4 w-4" /> WhatsApp Chat</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleSetAppointment(prop); }}><CalendarPlus className="mr-2 h-4 w-4" /> Set Appointment</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleNotesClick(prop); }}><MessageSquareText className="mr-2 h-4 w-4" /> Remarks</DropdownMenuItem>
 
-                      {profile.role !== 'Agent' && (
-                        <DropdownMenuSub>
-                          <DropdownMenuSubTrigger><UserPlus /> Assign to</DropdownMenuSubTrigger>
-                          <DropdownMenuPortal>
-                            <DropdownMenuSubContent>
-                              {prop.assignedTo && <DropdownMenuItem onSelect={() => handleAssignUser(prop, null)}>Unassign</DropdownMenuItem>}
-                              <DropdownMenuSeparator />
-                              {activeTeamMembers.map((member) => (
-                                <DropdownMenuItem key={member.id} onSelect={() => handleAssignUser(prop, member.id)} disabled={prop.assignedTo === member.id}>
-                                  {member.name} ({member.role})
-                                </DropdownMenuItem>
-                              ))}
-                            </DropdownMenuSubContent>
-                          </DropdownMenuPortal>
-                        </DropdownMenuSub>
-                      )}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleEdit(prop); }}><Edit className="mr-2 h-4 w-4" /> Edit Details</DropdownMenuItem>
 
-                      {prop.recording_payment_status === 'Paid Online' && profile.role !== 'Agent' && (
-                        <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleRevertPayment(prop); }} className="text-destructive focus:text-destructive-foreground focus:bg-destructive/10"><RotateCcw />Revert to Unpaid</DropdownMenuItem>
-                      )}
-                      {prop.is_for_rent && prop.status === 'Available' && (
-                        <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleMarkAsRentOut(prop); }}><ArchiveRestore />Mark as Rent Out</DropdownMenuItem>
-                      )}
-                      {prop.is_for_rent && prop.status === 'Rent Out' && (
-                        <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleMarkAsAvailableForRent(prop); }}><RotateCcw />Mark as Available</DropdownMenuItem>
-                      )}
                       {prop.status === 'Available' && !prop.is_for_rent && (
-                        <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleMarkAsSold(prop); }}><CheckCircle />Mark as Sold</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleMarkAsSold(prop); }}><CheckCircle className="mr-2 h-4 w-4" /> Mark as Sold</DropdownMenuItem>
                       )}
-                      {(prop.status === 'Sold' || prop.status === 'Sold (External)') && profile.role !== 'Agent' && (
-                        <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleMarkAsUnsold(prop); }}><RotateCcw />Mark as Unsold</DropdownMenuItem>
+                      {prop.status === 'Available' && prop.is_for_rent && (
+                        <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleMarkAsRentOut(prop); }}><ArchiveRestore className="mr-2 h-4 w-4" /> Mark as Rent Out</DropdownMenuItem>
                       )}
-                      {profile.role !== 'Agent' && (
-                        <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleEdit(prop); }}><Edit />Edit Details</DropdownMenuItem>
+                      {prop.status === 'Rent Out' && (
+                        <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleMarkAsAvailableForRent(prop); }}><RotateCcw className="mr-2 h-4 w-4" /> Mark as Available</DropdownMenuItem>
+                      )}
+                      {(prop.status === 'Sold' || prop.status === 'Sold (External)') && (
+                        <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleMarkAsUnsold(prop); }}><RotateCcw className="mr-2 h-4 w-4" /> Mark as Unsold</DropdownMenuItem>
                       )}
 
-                      {profile.role !== 'Agent' && (
-                        <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleRecordVideo(prop); }}><Video />Mark as Recorded</DropdownMenuItem>
-                      )}
+                      <DropdownMenuSeparator />
 
-                      {profile.role !== 'Agent' && (
-                        <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleDelete(prop); }} className="text-destructive focus:text-destructive-foreground focus:bg-destructive"><Trash2 />Delete</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleEditTags(prop); }}><Tag className="mr-2 h-4 w-4" /> Edit Tags</DropdownMenuItem>
+
+                      <DropdownMenuSeparator />
+
+                      {profile.role === 'Admin' && (
+                        <>
+                          <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleSimpleAssignOpen(prop); }} className="font-bold text-primary"><UserPlus className="mr-2 h-4 w-4" /> Direct Assign Agent</DropdownMenuItem>
+                          <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleAssignOpen(prop); }}><Sparkles className="mr-2 h-4 w-4" /> Smart Assign (Buyers)</DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleDelete(prop); }} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
+                        </>
                       )}
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -1245,14 +1014,10 @@ export default function PropertiesPage() {
     if (isAgencyLoading) return <p className="p-4 text-center">Loading properties...</p>;
     if (properties.length === 0) return <div className="text-center py-10 text-muted-foreground">No properties found for the current filters.</div>;
 
-    const hasVideoLinks = (prop: Property) => prop.is_recorded && prop.video_links && Object.values(prop.video_links).some(link => !!link);
-
     return (
       <div className="space-y-4">
         {properties.map((prop, index) => {
-          const paymentStatus = prop.recording_payment_status;
-          const paymentConfig = paymentStatus ? paymentStatusConfig[paymentStatus] : null;
-          const Icon = paymentConfig?.icon;
+          const hasUnreadNotes = prop.timeline_notes?.some(n => !n.readBy?.includes(profile.user_id));
 
           return (
             <motion.div
@@ -1261,125 +1026,140 @@ export default function PropertiesPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: index * 0.05 }}
             >
-              <Card>
-                <CardHeader>
-                  <div className="flex justify-between items-start gap-4">
-                    <div className="flex items-start gap-2">
-                      <Checkbox
-                        checked={selectedProperties.includes(prop.id)}
-                        onCheckedChange={(checked) => {
-                          setSelectedProperties(prev =>
-                            checked ? [...prev, prop.id] : prev.filter(id => id !== prop.id)
-                          );
-                        }}
-                        className="mt-1"
-                      />
-                      <div className="flex-1">
-                        <CardTitle className="font-bold font-headline text-base flex items-center gap-2">
-                          {prop.auto_title || `${prop.size_value} ${prop.size_unit} ${prop.property_type} in ${prop.area}`}
-                          {hasVideoLinks(prop) && <Video className="h-4 w-4 text-primary" />}
-                        </CardTitle>
-                        <div className="text-xs text-muted-foreground flex items-center gap-2 pt-1">
-                          <Badge
-                            variant="default"
-                            className={cn(
-                              'font-mono',
-                              prop.serial_no.startsWith('RP')
-                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 hover:bg-emerald-100/80'
-                                : 'bg-primary/20 text-primary hover:bg-primary/30'
-                            )}
-                          >
-                            {prop.serial_no}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-1 items-end">
+              <Card className="overflow-hidden border-l-4 border-l-primary/40 bg-background">
+                <CardHeader className="p-4 pb-2 flex flex-row items-start justify-between space-y-0">
+                  <div className="flex gap-3">
+                    <Checkbox
+                      checked={selectedProperties.includes(prop.id)}
+                      onClick={e => e.stopPropagation()}
+                      onCheckedChange={(c) => setSelectedProperties(p => c ? [...p, prop.id] : p.filter(id => id !== prop.id))}
+                    />
+                    <div onClick={() => handleRowClick(prop)} className="cursor-pointer">
                       <div className="flex items-center gap-2">
-                        {paymentConfig && Icon && (
-                          <Tooltip>
-                            <TooltipTrigger>
-                              <Icon className={cn("h-4 w-4", paymentConfig.color)} />
-                            </TooltipTrigger>
-                            <TooltipContent><p>{paymentConfig.label}</p></TooltipContent>
-                          </Tooltip>
+                        <CardTitle className="text-base font-bold font-headline">{prop.auto_title}</CardTitle>
+                        {hasUnreadNotes && (
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                          </span>
                         )}
-                        <Badge className={cn("flex-shrink-0", prop.status === 'Sold' ? 'bg-green-600 hover:bg-green-700 text-white' : prop.status === 'Rent Out' ? 'bg-blue-600 hover:bg-blue-700 text-white' : prop.status === 'Sold (External)' ? 'bg-slate-500 hover:bg-slate-600 text-white' : 'bg-primary text-primary-foreground')}>
-                          {prop.status}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge
+                          variant="default"
+                          className={cn(
+                            'font-mono text-[10px] bg-background',
+                            prop.serial_no.startsWith('RP')
+                              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300'
+                              : 'bg-primary/20 text-primary'
+                          )}
+                        >
+                          {prop.serial_no}
                         </Badge>
+                        <span className="text-[10px] text-muted-foreground">{prop.area}</span>
                       </div>
                     </div>
                   </div>
+                  <Badge className={cn("text-[9px] font-bold px-2", getTagColor(prop.status))}>
+                    {prop.status}
+                  </Badge>
                 </CardHeader>
-                <CardContent className="grid grid-cols-2 gap-4 text-sm">
-                  <div className="flex items-center gap-2"><Tag className="h-4 w-4 text-muted-foreground" /><div><p className="text-muted-foreground">Type</p><p className="font-medium">{prop.property_type}</p></div></div>
-                  <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-muted-foreground" /><div><p className="text-muted-foreground">Size</p><p className="font-medium">{formatSize(prop.size_value, prop.size_unit)}</p></div></div>
-                  <div className="flex items-center gap-2"><Wallet className="h-4 w-4 text-muted-foreground" /><div><p className="text-muted-foreground">Demand</p><p className="font-medium">{formatDemand(prop.demand_amount, prop.demand_unit)}</p></div></div>
+                <CardContent className="p-4 pt-0 cursor-pointer" onClick={() => handleRowClick(prop)}>
+                  <div className="grid grid-cols-2 gap-y-2 gap-x-4 mt-2">
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <Tag className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="font-medium">{prop.property_type}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <Ruler className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="font-medium">{formatSize(prop.size_value, prop.size_unit)}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs col-span-2 mt-1">
+                      <Wallet className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="font-bold text-primary">{formatDemand(prop.demand_amount, prop.demand_unit)}</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-dashed flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <UserIcon className="h-3.5 w-3.5 text-primary/60" />
+                      <span className="text-[10px] font-black uppercase tracking-widest text-foreground">
+                        {prop.assignedTo ? (activeTeamMembers?.find(m => (m.user_id || m.id) === prop.assignedTo)?.name || 'Assigned') : 'Agency Pool'}
+                      </span>
+                    </div>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground italic cursor-pointer hover:text-primary transition-colors" onClick={e => e.stopPropagation()}>
+                          <MapPin className="h-3 w-3" />
+                          <span className="truncate max-w-[100px]">{prop.address || prop.area || 'No location'}</span>
+                        </div>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-80 p-4 rounded-xl shadow-2xl border-none z-[110]" onClick={e => e.stopPropagation()}>
+                        <div className="space-y-2">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-primary/60 flex items-center gap-2">
+                            <MapPin className="h-3 w-3" /> Location
+                          </p>
+                          <p className="text-sm font-bold leading-relaxed text-foreground">{prop.address || prop.area || 'N/A'}</p>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  <div className="flex flex-wrap gap-1 mt-3">
+                    {prop.tags?.filter(t => t !== prop.status).map(tagName => (
+                      <Badge key={tagName} className={cn("text-[8px] px-1.5 py-0 font-bold", getTagColor(tagName))}>{tagName}</Badge>
+                    ))}
+                  </div>
                 </CardContent>
-                <CardFooter className="flex justify-end">
-                  <Sheet>
-                    <SheetTrigger asChild>
-                      <Button aria-haspopup="true" size="icon" variant="ghost" className="rounded-full -mr-4 -mb-4">
+                <CardFooter className="p-2 bg-muted/20 border-t justify-between items-center">
+                  <Button variant="ghost" size="sm" className="h-8 gap-2 text-[10px] font-bold" onClick={() => handleNotesClick(prop)}>
+                    <MessageSquareText className="h-3.5 w-3.5" />
+                    Remarks
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button aria-haspopup="true" size="icon" variant="ghost" className="rounded-full" onClick={(e) => e.stopPropagation()}>
                         <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Toggle menu</span>
                       </Button>
-                    </SheetTrigger>
-                    <SheetContent side="bottom" className="w-full">
-                      <SheetHeader className="text-left mb-4">
-                        <SheetTitle>Actions for {prop.serial_no}</SheetTitle>
-                      </SheetHeader>
-                      <div className="flex flex-col gap-2">
-                        <Button variant="outline" className="justify-start" onClick={(e) => { e.stopPropagation(); handleRowClick(prop); }}><Eye />View Details</Button>
-                        <Button variant="outline" className="justify-start" onClick={(e) => handleWhatsAppChat(e, prop)}><MessageSquare /> Chat on WhatsApp</Button>
-                        <Button variant="outline" className="justify-start" onClick={(e) => { e.stopPropagation(); handleSetAppointment(prop); }}><CalendarPlus />Set Appointment</Button>
-                        {profile.role !== 'Agent' && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="outline" className="justify-start w-full"><UserPlus /> Assign to</Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent side="top">
-                              <DropdownMenuItem onSelect={() => handleAssignUser(prop, null)} disabled={!prop.assignedTo}>Unassign</DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              {activeTeamMembers.map((member) => (
-                                <DropdownMenuItem key={member.id} onSelect={() => handleAssignUser(prop, member.id)} disabled={prop.assignedTo === member.id}>
-                                  {member.name} ({member.role})
-                                </DropdownMenuItem>
-                              ))}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
-                        {prop.recording_payment_status === 'Paid Online' && profile.role !== 'Agent' && (
-                          <Button variant="destructive" className="justify-start" onClick={(e) => { e.stopPropagation(); handleRevertPayment(prop); }}><RotateCcw />Revert to Unpaid</Button>
-                        )}
-                        {prop.is_for_rent && prop.status === 'Available' && (
-                          <Button variant="outline" className="justify-start" onClick={(e) => { e.stopPropagation(); handleMarkAsRentOut(prop); }}><ArchiveRestore />Mark as Rent Out</Button>
-                        )}
-                        {prop.is_for_rent && prop.status === 'Rent Out' && profile.role !== 'Agent' && (
-                          <Button variant="outline" className="justify-start" onClick={(e) => { e.stopPropagation(); handleMarkAsAvailableForRent(prop); }}><RotateCcw />Mark as Available</Button>
-                        )}
-                        {prop.status === 'Available' && !prop.is_for_rent && (
-                          <Button variant="outline" className="justify-start" onClick={(e) => { e.stopPropagation(); handleMarkAsSold(prop); }}><CheckCircle />Mark as Sold</Button>
-                        )}
-                        {(prop.status === 'Sold' || prop.status === 'Sold (External)') && profile.role !== 'Agent' && (
-                          <Button variant="outline" className="justify-start" onClick={(e) => { e.stopPropagation(); handleMarkAsUnsold(prop); }}><RotateCcw />Mark as Unsold</Button>
-                        )}
-                        {profile.role !== 'Agent' && (
-                          <Button variant="outline" className="justify-start" onClick={(e) => { e.stopPropagation(); handleEdit(prop); }}><Edit />Edit Details</Button>
-                        )}
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="bg-background w-52">
+                      <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleRowClick(prop); }}><Eye className="mr-2 h-4 w-4" /> View Details</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleWhatsAppChat(e as unknown as React.MouseEvent, prop); }}><MessageSquare className="mr-2 h-4 w-4" /> WhatsApp Chat</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleSetAppointment(prop); }}><CalendarPlus className="mr-2 h-4 w-4" /> Set Appointment</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleNotesClick(prop); }}><MessageSquareText className="mr-2 h-4 w-4" /> Remarks</DropdownMenuItem>
 
-                        {profile.role !== 'Agent' && (
-                          <Button variant="outline" className="justify-start" onClick={(e) => { e.stopPropagation(); handleRecordVideo(prop); }}><Video />Mark as Recorded</Button>
-                        )}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleEdit(prop); }}><Edit className="mr-2 h-4 w-4" /> Edit Details</DropdownMenuItem>
 
-                        {profile.role !== 'Agent' && (
-                          <>
-                            <Separator />
-                            <Button variant="destructive" className="justify-start" onClick={(e) => { e.stopPropagation(); handleDelete(prop); }}><Trash2 />Delete</Button>
-                          </>
-                        )}
-                      </div>
-                    </SheetContent>
-                  </Sheet>
+                      {prop.status === 'Available' && !prop.is_for_rent && (
+                        <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleMarkAsSold(prop); }}><CheckCircle className="mr-2 h-4 w-4" /> Mark as Sold</DropdownMenuItem>
+                      )}
+                      {prop.status === 'Available' && prop.is_for_rent && (
+                        <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleMarkAsRentOut(prop); }}><ArchiveRestore className="mr-2 h-4 w-4" /> Mark as Rent Out</DropdownMenuItem>
+                      )}
+                      {prop.status === 'Rent Out' && (
+                        <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleMarkAsAvailableForRent(prop); }}><RotateCcw className="mr-2 h-4 w-4" /> Mark as Available</DropdownMenuItem>
+                      )}
+                      {(prop.status === 'Sold' || prop.status === 'Sold (External)') && (
+                        <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleMarkAsUnsold(prop); }}><RotateCcw className="mr-2 h-4 w-4" /> Mark as Unsold</DropdownMenuItem>
+                      )}
+
+                      <DropdownMenuSeparator />
+
+                      <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleEditTags(prop); }}><Tag className="mr-2 h-4 w-4" /> Edit Tags</DropdownMenuItem>
+
+                      <DropdownMenuSeparator />
+
+                      {profile.role === 'Admin' && (
+                        <>
+                          <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleSimpleAssignOpen(prop); }} className="font-bold text-primary"><UserPlus className="mr-2 h-4 w-4" /> Direct Assign Agent</DropdownMenuItem>
+                          <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleAssignOpen(prop); }}><Sparkles className="mr-2 h-4 w-4" /> Smart Assign (Buyers)</DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onSelect={(e) => { e.stopPropagation(); handleDelete(prop); }} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </CardFooter>
               </Card>
             </motion.div>
@@ -1436,24 +1216,9 @@ export default function PropertiesPage() {
                 {profile.role === 'Agent' ? 'View your assigned properties.' : 'Manage your agency and personal properties.'}
               </p>
             </div>
-            <div className="flex w-full md:w-auto items-center gap-2 flex-wrap">
+            <div className="flex w-full md:w-auto items-center gap-2 flex-wrap justify-end ml-auto">
               {isMobile && (
-                <div className="flex w-full items-center gap-2">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="flex-1">
-                        {statusFilterFromURL ? propertyStatuses.find(s => s.value === statusFilterFromURL)?.label : 'All (Sale)'}
-                        <ChevronDown className="ml-2 h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      {propertyStatuses.map(status => (
-                        <DropdownMenuItem key={status.value} onSelect={() => handleStatusChange(status.value)}>
-                          {status.label}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                <div className="flex items-center gap-2">
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="select-all-mobile"
@@ -1471,8 +1236,8 @@ export default function PropertiesPage() {
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" className="rounded-full">
-                        <UserPlus className="mr-2 h-4 w-4" />
-                        Assign to Agent
+                        <UserPlus className="h-4 w-4" />
+                        <span className="hidden md:inline ml-2">Assign to Agent</span>
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
@@ -1483,11 +1248,11 @@ export default function PropertiesPage() {
                       ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
-                  <AlertDialog>
+                    <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="destructive" className="rounded-full">
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete ({selectedProperties.length})
+                        <Trash2 className="h-4 w-4" />
+                        <span className="hidden md:inline ml-2">Delete ({selectedProperties.length})</span>
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
@@ -1505,141 +1270,261 @@ export default function PropertiesPage() {
                   </AlertDialog>
                 </div>
               )}
-              {profile.role !== 'Agent' && (
-                <>
-                  <Popover open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="rounded-full"><Filter className="mr-2 h-4 w-4" />Filters</Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-80">
-                      <div className="grid gap-4">
-                        <div className="space-y-2">
-                          <h4 className="font-medium leading-none">Filters</h4>
-                          <p className="text-sm text-muted-foreground">Refine your property search.</p>
-                        </div>
-                        <div className="grid gap-2">
-                          <div className="grid grid-cols-3 items-center gap-4">
-                            <Label>Serial No</Label>
-                            <div className="col-span-2 grid grid-cols-2 gap-2">
-                              <Select value={filters.serialNoPrefix} onValueChange={(value: 'All' | 'P' | 'RP') => handleFilterChange('serialNoPrefix', value)}>
-                                <SelectTrigger className="h-8">
-                                  <SelectValue placeholder="Prefix" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="All">All</SelectItem>
-                                  <SelectItem value="P">P</SelectItem>
-                                  <SelectItem value="RP">RP</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <Input id="serialNo" placeholder="e.g. 1" type="number" value={filters.serialNo} onChange={e => handleFilterChange('serialNo', e.target.value)} className="h-8" />
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-3 items-center gap-4">
-                            <Label htmlFor="area">Area</Label>
-                            <Input id="area" value={filters.area} onChange={(e) => handleFilterChange('area', e.target.value)} className="col-span-2 h-8" />
-                          </div>
-                          <div className="grid grid-cols-3 items-center gap-4">
-                            <Label htmlFor="videoLink" className="flex items-center gap-1"><LinkIcon className="h-3 w-3" />Video Link</Label>
-                            <Input id="videoLink" value={filters.videoLink} onChange={(e) => handleFilterChange('videoLink', e.target.value)} className="col-span-2 h-8" />
-                          </div>
-                          <div className="grid grid-cols-3 items-center gap-4">
-                            <Label htmlFor="propertyType">Type</Label>
-                            <Select value={filters.propertyType} onValueChange={(value) => handleFilterChange('propertyType', value as PropertyType | 'All' | 'Other')}>
-                              <SelectTrigger className="col-span-2 h-8">
-                                <SelectValue placeholder="Property Type" />
+              <>
+                <Popover open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="rounded-full"><Filter className="h-4 w-4" /><span className="hidden md:inline ml-2">Filters</span></Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80">
+                    <div className="grid gap-4">
+                      <div className="space-y-2">
+                        <h4 className="font-medium leading-none">Filters</h4>
+                        <p className="text-sm text-muted-foreground">Refine your property search.</p>
+                      </div>
+                      <div className="grid gap-2">
+                        <div className="grid grid-cols-3 items-center gap-4">
+                          <Label>Serial No</Label>
+                          <div className="col-span-2 grid grid-cols-2 gap-2">
+                            <Select value={filters.serialNoPrefix} onValueChange={(value: 'All' | 'P' | 'RP') => handleFilterChange('serialNoPrefix', value)}>
+                              <SelectTrigger className="h-8">
+                                <SelectValue placeholder="Prefix" />
                               </SelectTrigger>
                               <SelectContent>
-                                {propertyTypesForFilter.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+                                <SelectItem value="All">All</SelectItem>
+                                <SelectItem value="P">P</SelectItem>
+                                <SelectItem value="RP">RP</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Input id="serialNo" placeholder="e.g. 1" type="number" value={filters.serialNo} onChange={e => handleFilterChange('serialNo', e.target.value)} className="h-8" />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 items-center gap-4">
+                          <Label htmlFor="area">Area</Label>
+                          <Input id="area" value={filters.area} onChange={(e) => handleFilterChange('area', e.target.value)} className="col-span-2 h-8" />
+                        </div>
+                        <div className="grid grid-cols-3 items-center gap-4">
+                          <Label htmlFor="videoLink" className="flex items-center gap-1"><LinkIcon className="h-3 w-3" />Video Link</Label>
+                          <Input id="videoLink" value={filters.videoLink} onChange={(e) => handleFilterChange('videoLink', e.target.value)} className="col-span-2 h-8" />
+                        </div>
+                        <div className="grid grid-cols-3 items-center gap-4">
+                          <Label htmlFor="propertyType">Type</Label>
+                          <Select value={filters.propertyType} onValueChange={(value) => handleFilterChange('propertyType', value as PropertyType | 'All' | 'Other')}>
+                            <SelectTrigger className="col-span-2 h-8">
+                              <SelectValue placeholder="Property Type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {propertyTypesForFilter.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {filters.propertyType === 'Other' && (
+                          <div className="grid grid-cols-3 items-center gap-4">
+                            <Label htmlFor="otherPropertyType" className="text-right pr-4">Custom</Label>
+                            <Input
+                              id="otherPropertyType"
+                              value={filters.otherPropertyType}
+                              onChange={(e) => handleFilterChange('otherPropertyType', e.target.value)}
+                              className="col-span-2 h-8"
+                              placeholder="Enter type..."
+                            />
+                          </div>
+                        )}
+                        <div className="grid grid-cols-3 items-center gap-4">
+                          <Label>Size</Label>
+                          <div className="col-span-2 grid grid-cols-2 gap-2">
+                            <Input id="minSize" placeholder="Min" type="number" value={filters.minSize} onChange={(e) => handleFilterChange('minSize', e.target.value)} className="h-8" />
+                            <Input id="maxSize" placeholder="Max" type="number" value={filters.maxSize} onChange={(e) => handleFilterChange('maxSize', e.target.value)} className="h-8" />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 items-center gap-4">
+                          <Label></Label>
+                          <div className="col-span-2">
+                            <Select value={filters.sizeUnit} onValueChange={(value: SizeUnit | 'All') => handleFilterChange('sizeUnit', value)}>
+                              <SelectTrigger className="h-8">
+                                <SelectValue placeholder="Unit" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="All">All Units</SelectItem>
+                                <SelectItem value="Marla">Marla</SelectItem>
+                                <SelectItem value="SqFt">SqFt</SelectItem>
+                                <SelectItem value="Kanal">Kanal</SelectItem>
+                                <SelectItem value="Acre">Acre</SelectItem>
+                                <SelectItem value="Maraba">Maraba</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
-                          {filters.propertyType === 'Other' && (
-                            <div className="grid grid-cols-3 items-center gap-4">
-                              <Label htmlFor="otherPropertyType" className="text-right pr-4">Custom</Label>
-                              <Input
-                                id="otherPropertyType"
-                                value={filters.otherPropertyType}
-                                onChange={(e) => handleFilterChange('otherPropertyType', e.target.value)}
-                                className="col-span-2 h-8"
-                                placeholder="Enter type..."
-                              />
-                            </div>
-                          )}
-                          <div className="grid grid-cols-3 items-center gap-4">
-                            <Label>Size</Label>
-                            <div className="col-span-2 grid grid-cols-2 gap-2">
-                              <Input id="minSize" placeholder="Min" type="number" value={filters.minSize} onChange={(e) => handleFilterChange('minSize', e.target.value)} className="h-8" />
-                              <Input id="maxSize" placeholder="Max" type="number" value={filters.maxSize} onChange={(e) => handleFilterChange('maxSize', e.target.value)} className="h-8" />
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-3 items-center gap-4">
-                            <Label></Label>
-                            <div className="col-span-2">
-                              <Select value={filters.sizeUnit} onValueChange={(value: SizeUnit | 'All') => handleFilterChange('sizeUnit', value)}>
-                                <SelectTrigger className="h-8">
-                                  <SelectValue placeholder="Unit" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="All">All Units</SelectItem>
-                                  <SelectItem value="Marla">Marla</SelectItem>
-                                  <SelectItem value="SqFt">SqFt</SelectItem>
-                                  <SelectItem value="Kanal">Kanal</SelectItem>
-                                  <SelectItem value="Acre">Acre</SelectItem>
-                                  <SelectItem value="Maraba">Maraba</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-3 items-center gap-4">
-                            <Label>Demand</Label>
-                            <div className="col-span-2 grid grid-cols-2 gap-2">
-                              <Input id="minDemand" placeholder="Min" type="number" value={filters.minDemand} onChange={(e) => handleFilterChange('minDemand', e.target.value)} className="h-8" />
-                              <Input id="maxDemand" placeholder="Max" type="number" value={filters.maxDemand} onChange={(e) => handleFilterChange('maxDemand', e.target.value)} className="h-8" />
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-3 items-center gap-4">
-                            <Label></Label>
-                            <div className="col-span-2">
-                              <Select value={filters.demandUnit} onValueChange={(value: PriceUnit | 'All') => handleFilterChange('demandUnit', value)}>
-                                <SelectTrigger className="h-8">
-                                  <SelectValue placeholder="Unit" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="All">All Units</SelectItem>
-                                  <SelectItem value="Lacs">Lacs</SelectItem>
-                                  <SelectItem value="Crore">Crore</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
+                        </div>
+                        <div className="grid grid-cols-3 items-center gap-4">
+                          <Label>Demand</Label>
+                          <div className="col-span-2 grid grid-cols-2 gap-2">
+                            <Input id="minDemand" placeholder="Min" type="number" value={filters.minDemand} onChange={(e) => handleFilterChange('minDemand', e.target.value)} className="h-8" />
+                            <Input id="maxDemand" placeholder="Max" type="number" value={filters.maxDemand} onChange={(e) => handleFilterChange('maxDemand', e.target.value)} className="h-8" />
                           </div>
                         </div>
-                        <div className="flex justify-end gap-2">
-                          <Button variant="ghost" onClick={clearFilters}>Clear</Button>
-                          <Button onClick={() => setIsFilterPopoverOpen(false)}>Apply</Button>
+                        <div className="grid grid-cols-3 items-center gap-4">
+                          <Label></Label>
+                          <div className="col-span-2">
+                            <Select value={filters.demandUnit} onValueChange={(value: PriceUnit | 'All') => handleFilterChange('demandUnit', value)}>
+                              <SelectTrigger className="h-8">
+                                <SelectValue placeholder="Unit" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="All">All Units</SelectItem>
+                                <SelectItem value="Lacs">Lacs</SelectItem>
+                                <SelectItem value="Crore">Crore</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
                       </div>
-                    </PopoverContent>
-                  </Popover>
-                  <Button variant="outline" className="rounded-full" onClick={() => setIsImportDialogOpen(true)}><Upload className="mr-2 h-4 w-4" />Import</Button>
-                  <input type="file" ref={importInputRef} className="hidden" accept=".csv" onChange={handleImport} />
-                  <Button variant="outline" className="rounded-full" onClick={() => setIsExportDialogOpen(true)}><Download className="mr-2 h-4 w-4" />Export</Button>
-                  <Button variant="outline" className="rounded-full" onClick={() => setIsTagsDialogOpen(true)}><Tag className="mr-2 h-4 w-4" />Tags</Button>
-                </>
-              )}
+                      <div className="flex justify-end gap-2">
+                        <Button variant="ghost" onClick={clearFilters}>Clear</Button>
+                        <Button onClick={() => setIsFilterPopoverOpen(false)}>Apply</Button>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+
+                <Button className="rounded-full glowing-btn px-3 md:px-6" onClick={() => { setListingType('For Sale'); setIsAddPropertyOpen(true); }}>
+                  <PlusCircle className="h-4 w-4" />
+                  <span className="hidden md:inline ml-2">Add Property</span>
+                </Button>
+              </>
             </div>
           </div>
 
-          {profile.role !== 'Agent' && (
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-muted-foreground">{isAgent ? "My Property Leads Usage" : "Property Leads Usage"}</span>
-                  <span className="text-sm font-bold">{currentCount} / {limit === Infinity ? 'Unlimited' : limit}</span>
+          <Card className="border-none shadow-none bg-transparent">
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center gap-2">
+                  <ScrollArea className="flex-1 whitespace-nowrap pb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 pr-4 border-r border-border/50">
+                        <Badge
+                          variant={activeListingType === 'All' ? 'default' : 'outline'}
+                          className={cn("cursor-pointer px-4 py-1.5 rounded-full flex items-center gap-1", activeListingType === 'All' ? "bg-primary" : "hover:bg-accent")}
+                          onClick={() => { setActiveListingType('All'); setIsTypesExpanded(!isTypesExpanded); }}
+                        >
+                          All Types ({allPropertyCounts['All'] || 0}) {isTypesExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                        </Badge>
+                        <AnimatePresence>
+                          {isTypesExpanded && (
+                            <motion.div
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0, x: -10 }}
+                              transition={{ duration: 0.15 }}
+                              className="flex items-center gap-2"
+                            >
+                              <Badge variant={activeListingType === 'For Sale' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800", activeListingType === 'For Sale' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Sale')}>For Sale ({allPropertyCounts['For Sale'] || 0})</Badge>
+                              <Badge variant={activeListingType === 'For Rent' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800", activeListingType === 'For Rent' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Rent')}>For Rent ({allPropertyCounts['For Rent'] || 0})</Badge>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                      <div className="flex items-center gap-2 pr-4 border-r border-border/50">
+                        <Badge
+                          variant={activeStatus === 'All' ? 'default' : 'outline'}
+                          className={cn("cursor-pointer px-4 py-1.5 rounded-full flex items-center gap-1", activeStatus === 'All' ? "bg-primary" : "hover:bg-accent")}
+                          onClick={() => { setActiveStatus('All'); setIsStatusExpanded(!isStatusExpanded); }}
+                        >
+                          All Status {isStatusExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                        </Badge>
+                        <AnimatePresence>
+                          {isStatusExpanded && (
+                            <motion.div
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0, x: -10 }}
+                              transition={{ duration: 0.15 }}
+                              className="flex items-center gap-2"
+                            >
+                              {['Pending', 'Available', 'Sold', 'Sold (External)', 'Available (Rent)', 'Rent Out'].map(status => (
+                                <Badge
+                                  key={status}
+                                  variant={activeStatus === status ? 'default' : 'outline'}
+                                  className={cn("cursor-pointer px-4 py-1.5 rounded-full transition-all", activeStatus === status && "ring-2 ring-primary ring-offset-2")}
+                                  onClick={() => setActiveStatus(status)}
+                                >
+                                  {status} ({allPropertyCounts[status] || 0})
+                                </Badge>
+                              ))}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant={activeCustomTags.length === 0 ? 'default' : 'outline'}
+                          className={cn("cursor-pointer px-4 py-1.5 rounded-full flex items-center gap-1", activeCustomTags.length === 0 ? "bg-primary" : "hover:bg-accent")}
+                          onClick={() => { setActiveCustomTags([]); setIsTagsExpanded(!isTagsExpanded); }}
+                        >
+                          All Tags {isTagsExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                        </Badge>
+                        <AnimatePresence>
+                          {isTagsExpanded && (
+                            <motion.div
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0, x: -10 }}
+                              transition={{ duration: 0.15 }}
+                              className="flex items-center gap-2"
+                            >
+                              {agencyTags?.map(tag => (
+                                <Badge key={tag.id} variant={activeCustomTags.includes(tag.name) ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full transition-all", tag.color, activeCustomTags.includes(tag.name) && "ring-2 ring-primary ring-offset-2")} onClick={() => handleToggleCustomTag(tag.name)}>{tag.name} ({allPropertyCounts[tag.name] || 0})</Badge>
+                              ))}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    </div>
+                    <ScrollBar orientation="horizontal" />
+                  </ScrollArea>
+                  <div className="pb-4">
+                    <Button variant="ghost" size="sm" className="rounded-full h-8 px-4 text-xs font-bold gap-2 text-primary hover:bg-primary/10 shadow-sm border border-primary/20" onClick={() => setIsManageTagsOpen(true)}>
+                      <PlusCircle className="h-4 w-4" />
+                      <span className="hidden md:inline">Manage </span>Tags
+                    </Button>
+                  </div>
                 </div>
-                <Progress value={progress} />
-              </CardContent>
+              </div>
             </Card>
+
+          {profile.role === 'Admin' && (
+            <div className="flex items-center gap-3 pb-2">
+              <div className="flex items-center gap-2 bg-card/60 backdrop-blur-sm border border-primary/10 rounded-full px-4 py-1.5 shadow-sm">
+                <Users className="h-4 w-4 text-primary" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Assigned Agent:</span>
+                <Select value={activeAgentFilter} onValueChange={setActiveAgentFilter}>
+                  <SelectTrigger className="h-7 border-none bg-transparent focus:ring-0 text-xs font-bold w-[180px] p-0 shadow-none">
+                    <SelectValue placeholder="All Agency Inventory" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl shadow-2xl border-none">
+                    <SelectItem value="All" className="font-bold">All Agency Leads</SelectItem>
+                    {activeAgents.map((agent: any) => (
+                      <SelectItem key={agent.id} value={agent.user_id || agent.id}>
+                        {agent.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {activeAgentFilter !== 'All' && (
+                <Button variant="ghost" size="sm" onClick={() => setActiveAgentFilter('All')} className="h-8 rounded-full text-[10px] font-black uppercase tracking-tighter hover:bg-destructive/10 hover:text-destructive">
+                  <X className="h-3 w-3 mr-1" /> Clear Filter
+                </Button>
+              )}
+            </div>
           )}
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium text-muted-foreground">{isAgent ? "My Property Leads Usage" : "Property Leads Usage"}</span>
+                <span className="text-sm font-bold">{currentCount} / {limit === Infinity ? 'Unlimited' : limit}</span>
+              </div>
+              <Progress value={progress} />
+            </CardContent>
+          </Card>
 
           {isAgent && profile.agencies && profile.agencies.length > 1 ? (
             <Tabs value={activeAgencyTab} onValueChange={setActiveAgencyTab}>
@@ -1653,16 +1538,6 @@ export default function PropertiesPage() {
             </Tabs>
           ) : null}
 
-          <Tabs defaultValue="all" value={activePaymentTab} onValueChange={setActivePaymentTab}>
-            <TabsList className="grid grid-cols-4 w-full max-w-lg">
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="Unpaid">Unpaid</TabsTrigger>
-              <TabsTrigger value="Pending">Pending</TabsTrigger>
-              <TabsTrigger value="Paid">Paid</TabsTrigger>
-            </TabsList>
-          </Tabs>
-
-
           <div className="mt-4">
             {renderContent(paginatedProperties)}
           </div>
@@ -1670,24 +1545,38 @@ export default function PropertiesPage() {
         </div>
       </TooltipProvider>
 
-      {profile.role !== 'Agent' && (
-        <div className={cn('fixed bottom-24 right-4 md:bottom-8 md:right-8 z-50 transition-opacity', isMoreMenuOpen && 'opacity-0 pointer-events-none')}>
-          <Popover open={isAddMenuOpen} onOpenChange={setIsAddMenuOpen}>
-            <PopoverTrigger asChild>
-              <Button onClick={() => user && !user.emailVerified && handleOpenAddDialog('For Sale')} className="rounded-full w-14 h-14 shadow-lg glowing-btn" size="icon">
-                <PlusCircle className="h-6 w-6" />
-                <span className="sr-only">Add Property</span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-40 p-2 mb-2">
-              <div className="flex flex-col gap-2">
-                <Button variant="ghost" onClick={() => { handleOpenAddDialog('For Sale'); setIsAddMenuOpen(false); }}>For Sale</Button>
-                <Button variant="ghost" onClick={() => { handleOpenAddDialog('For Rent'); setIsAddMenuOpen(false); }}>For Rent</Button>
-              </div>
-            </PopoverContent>
-          </Popover>
-        </div>
+      {isManageTagsOpen && (
+        <ManageTagsDialog isOpen={isManageTagsOpen} setIsOpen={setIsManageTagsOpen} />
       )}
+
+      {propertyForDetails && isEditTagsOpen && (
+        <EditPropertyTagsDialog property={propertyForDetails} isOpen={isEditTagsOpen} setIsOpen={setIsEditTagsOpen} />
+      )}
+
+      {propertyForDetails && isAssignOpen && (
+        <AssignPropertyToAgentDialog property={propertyForDetails} isOpen={isAssignOpen} setIsOpen={setIsAssignOpen} />
+      )}
+
+      {propertyForDetails && isSimpleAssignOpen && (
+        <SimpleAssignPropertyAgentDialog property={propertyForDetails} isOpen={isSimpleAssignOpen} setIsOpen={setIsSimpleAssignOpen} teamMembers={activeTeamMembers} />
+      )}
+
+      <div className={cn('fixed bottom-24 right-4 md:bottom-8 md:right-8 z-50 transition-opacity', isMoreMenuOpen && 'opacity-0 pointer-events-none')}>
+        <Popover open={isAddMenuOpen} onOpenChange={setIsAddMenuOpen}>
+          <PopoverTrigger asChild>
+            <Button onClick={() => user && !user.emailVerified && handleOpenAddDialog('For Sale')} className="rounded-full w-14 h-14 shadow-lg glowing-btn" size="icon">
+              <PlusCircle className="h-6 w-6" />
+              <span className="sr-only">Add Property</span>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-40 p-2 mb-2">
+            <div className="flex flex-col gap-2">
+              <Button variant="ghost" onClick={() => { handleOpenAddDialog('For Sale'); setIsAddMenuOpen(false); }}>For Sale</Button>
+              <Button variant="ghost" onClick={() => { handleOpenAddDialog('For Rent'); setIsAddMenuOpen(false); }}>For Rent</Button>
+            </div>
+          </PopoverContent>
+        </Popover>
+      </div>
 
       <AddPropertyDialog
         isOpen={isAddPropertyOpen}
@@ -1713,52 +1602,9 @@ export default function PropertiesPage() {
           <PropertyDetailsDialog property={propertyForDetails} isOpen={isDetailsOpen} setIsOpen={setIsDetailsOpen} />
           <MarkAsSoldDialog property={propertyForDetails} isOpen={isSoldOpen} setIsOpen={setIsSoldOpen} onUpdateProperty={handleUpdateProperty} />
           <MarkAsRentOutDialog property={propertyForDetails} isOpen={isRentOutOpen} setIsOpen={setIsRentOutOpen} onUpdateProperty={handleUpdateProperty} />
-          <RecordVideoDialog property={propertyForDetails} isOpen={isRecordVideoOpen} setIsOpen={setIsRecordVideoOpen} onUpdateProperty={handleUpdateProperty} />
+          <PropertyNotesDialog property={propertyForDetails} isOpen={isNotesOpen} setIsOpen={setIsNotesOpen} />
         </>
       )}
-
-      {assignmentDetails && (
-        <SetRecordingPaymentDialog
-          isOpen={isPaymentDialogOpen}
-          setIsOpen={setIsPaymentDialogOpen}
-          property={assignmentDetails.property}
-          agentId={assignmentDetails.agentId}
-          agentName={assignmentDetails.agentName}
-          onConfirm={handleConfirmPaymentAndAssign}
-        />
-      )}
-
-      <AlertDialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Choose Export Type</AlertDialogTitle>
-            <AlertDialogDescription>
-              Select which type of properties you would like to export to a CSV file.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => handleExport('For Sale')}>Export Sale Properties</AlertDialogAction>
-            <AlertDialogAction onClick={() => handleExport('For Rent')}>Export Rent Properties</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Choose Import Type</AlertDialogTitle>
-            <AlertDialogDescription>
-              Select the type of properties you are importing from a CSV file.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => handleImportClick('For Sale')}>Import Sale Properties</AlertDialogAction>
-            <AlertDialogAction onClick={() => handleImportClick('For Rent')}>Import Rent Properties</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
     </>
   );

@@ -10,11 +10,12 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { buyerStatuses } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
-import { Edit, MoreHorizontal, PlusCircle, Trash2, Wallet, Ruler, Eye, MessageSquare, ChevronLeft, ChevronRight, ArrowUpDown, Tag as TagIcon, MapPin, ChevronDown, UserPlus, UserMinus, CalendarPlus, Sparkles, MessageSquareText, Filter, User as UserIcon, Users, X } from 'lucide-react';
-import { useState, useMemo, Suspense } from 'react';
+import { Edit, MoreHorizontal, PlusCircle, Trash2, Wallet, Ruler, Eye, MessageSquare, ChevronLeft, ChevronRight, ArrowUpDown, Tag as TagIcon, MapPin, ChevronDown, UserPlus, UserMinus, CalendarPlus, Sparkles, MessageSquareText, Filter, User as UserIcon, Users, X, Upload } from 'lucide-react';
+import { useState, useMemo, Suspense, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 import { useIsMobile } from '@/hooks/use-is-mobile';
-import { Buyer, PriceUnit, SizeUnit, PropertyType, Activity, ListingType, Tag, Appointment, Property } from '@/lib/types';
+import { Buyer, PriceUnit, SizeUnit, PropertyType, Activity, ListingType, Tag, Appointment, Property, PlanName } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -28,8 +29,8 @@ import { useFirestore } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, addDoc, setDoc, doc, updateDoc, writeBatch, query, where, or } from 'firebase/firestore';
 import { useMemoFirebase } from '@/firebase/hooks';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { cn } from '@/lib/utils';
+import { cn, formatPhoneNumber } from '@/lib/utils';
+import { PhoneValidationBadge } from '@/components/phone-validation-badge';
 import React from 'react';
 import { useUser } from '@/firebase/auth/use-user';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -53,6 +54,12 @@ const AssignBuyerToAgentDialog = dynamic(() => import('@/components/assign-buyer
 const SimpleAssignAgentDialog = dynamic(() => import('@/components/simple-assign-agent-dialog').then(mod => mod.SimpleAssignAgentDialog), { ssr: false });
 
 const ITEMS_PER_PAGE = 50;
+
+const planLimits = {
+  Basic: { properties: 500, buyers: 500, team: 3 },
+  Standard: { properties: 2500, buyers: 2500, team: 10 },
+  Premium: { properties: Infinity, buyers: Infinity, team: Infinity },
+};
 
 const statusVariant = {
     'New': 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800',
@@ -123,7 +130,15 @@ function BuyersPageContent() {
         profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'tags') : null,
         [profile.agency_id, firestore]
     );
-    const { data: agencyTags } = useCollection<Tag>(tagsQuery);
+    const { data: allAgencyTags } = useCollection<Tag>(tagsQuery);
+
+    const agencyTags = useMemo(() => {
+        if (!allAgencyTags) return [];
+        if (profile.role === 'Agent') {
+            return allAgencyTags.filter(t => t.createdBy === profile.user_id);
+        }
+        return allAgencyTags;
+    }, [allAgencyTags, profile.role, profile.user_id]);
 
     const [activeListingType, setActiveListingType] = useState<ListingType | 'All'>('All');
     const [activeStatus, setActiveStatus] = useState<string>('All');
@@ -136,6 +151,8 @@ function BuyersPageContent() {
     const [isAppointmentOpen, setIsAppointmentOpen] = useState(false);
     const [isRecommenderOpen, setIsRecommenderOpen] = useState(false);
     const [isNotesOpen, setIsNotesOpen] = useState(false);
+
+
     const [isAssignOpen, setIsAssignOpen] = useState(false);
     const [isSimpleAssignOpen, setIsSimpleAssignOpen] = useState(false);
 
@@ -146,6 +163,11 @@ function BuyersPageContent() {
     const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+    const currentPlan = (profile?.planName as PlanName) || 'Basic';
+    const limit = planLimits[currentPlan]?.buyers || 0;
+    const currentCount = allBuyers?.length || 0;
+    const progress = limit === Infinity ? 100 : (currentCount / limit) * 100;
 
     const [isTypesExpanded, setIsTypesExpanded] = useState(false);
     const [isStatusExpanded, setIsStatusExpanded] = useState(false);
@@ -412,13 +434,18 @@ function BuyersPageContent() {
     };
 
     const formatBuyerBudgetInline = (buyer: Buyer) => {
-        if (!buyer.budget_min_amount || !buyer.budget_min_unit) return 'N/A';
-        const minVal = formatUnit(buyer.budget_min_amount, buyer.budget_min_unit);
-        if (!buyer.budget_max_amount || !buyer.budget_max_unit || (buyer.budget_min_amount === buyer.budget_max_amount && buyer.budget_min_unit === buyer.budget_max_unit)) {
-            return formatCurrency(minVal, currency);
+        if (buyer.budget_max_amount && buyer.budget_max_unit) {
+            const maxVal = formatUnit(buyer.budget_max_amount, buyer.budget_max_unit);
+            if (buyer.budget_min_amount && buyer.budget_min_unit && !(buyer.budget_min_amount === buyer.budget_max_amount && buyer.budget_min_unit === buyer.budget_max_unit)) {
+                const minVal = formatUnit(buyer.budget_min_amount, buyer.budget_min_unit);
+                return `${formatCurrency(minVal, currency)} - ${formatCurrency(maxVal, currency)}`;
+            }
+            return formatCurrency(maxVal, currency);
         }
-        const maxVal = formatUnit(buyer.budget_max_amount, buyer.budget_max_unit);
-        return `${formatCurrency(minVal, currency)} - ${formatCurrency(maxVal, currency)}`;
+        if (buyer.budget_min_amount && buyer.budget_min_unit) {
+            return formatCurrency(formatUnit(buyer.budget_min_amount, buyer.budget_min_unit), currency);
+        }
+        return 'N/A';
     }
 
     const getTagColor = (tagName: string) => {
@@ -502,6 +529,70 @@ function BuyersPageContent() {
         return filteredBuyers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
     }, [filteredBuyers, currentPage]);
 
+    const parseCsvRow = (row: string): string[] => {
+        const result: string[] = [];
+        let currentField = '';
+        let inQuotes = false;
+        for (let i = 0; i < row.length; i++) {
+            const char = row[i];
+            if (char === '"') {
+                if (i + 1 < row.length && row[i + 1] === '"') {
+                    currentField += '"';
+                    i++;
+                } else {
+                    inQuotes = !inQuotes;
+                }
+            } else if (char === ',' && !inQuotes) {
+                result.push(currentField.trim());
+                currentField = '';
+            } else {
+                currentField += char;
+            }
+        }
+        result.push(currentField.trim());
+        return result;
+    };
+
+    const smartCleanValue = (val: string | undefined): string => {
+        if (!val || val.trim() === '') return '';
+        let cleaned = val.trim();
+        if (cleaned.startsWith('=')) {
+            const match = cleaned.match(/="(.+?)"/);
+            if (match) return match[1].trim();
+        }
+        if (/^\d*\.?\d+E[+-]\d+$/i.test(cleaned)) {
+            const parsed = parseFloat(cleaned);
+            if (!isNaN(parsed) && parsed > 0) return parsed.toString();
+        }
+        return cleaned;
+    };
+
+    const buildColumnMap = (headers: string[]): Record<string, number> => {
+        const aliases: Record<string, string[]> = {
+            phone: ['phone', 'number', 'mobile', 'contact', 'cell', 'tel', 'telephone', 'phone number', 'contact number'],
+            serial: ['serial', 'sr no', 's.no', 'sr#', 'id', 's no', 'sno', 'serial no'],
+            name: ['name', 'full name', 'buyer name', 'client name', 'customer name', 'lead name'],
+            email: ['email', 'e-mail', 'email address', 'mail'],
+            status: ['status', 'lead status', 'buyer status', 'current status'],
+            listing: ['listing', 'listing type', 'type', 'for sale/rent'],
+            area: ['area', 'preferred area', 'area preference', 'areas', 'location', 'society', 'phase'],
+            propType: ['property type', 'type', 'prop type', 'property type preference', 'preferred type'],
+            minB: ['min budget', 'minimum budget', 'budget min', 'min', 'budget from', 'min price'],
+            maxB: ['max budget', 'maximum budget', 'budget max', 'max', 'budget to', 'max price'],
+            notes: ['notes', 'remarks', 'comments', 'note', 'description', 'additional notes'],
+        };
+        const map: Record<string, number> = {};
+        headers.forEach((h, idx) => {
+            const key = h.toLowerCase().trim();
+            for (const [field, fieldAliases] of Object.entries(aliases)) {
+                if (fieldAliases.includes(key)) { map[field] = idx; break; }
+            }
+        });
+        return map;
+    };
+
+
+
     const renderTable = (buyers: Buyer[]) => {
         if (isAgencyLoading) return <p className="p-4 text-center">Loading buyers...</p>;
         if (buyers.length === 0) return <div className="text-center py-10 text-muted-foreground">No buyers found.</div>;
@@ -546,6 +637,7 @@ function BuyersPageContent() {
                                     <div className="flex gap-1 mt-1">
                                         <Badge variant="outline" className={cn("text-[10px] border-primary/20", (buyer.serial_no || '').startsWith('RB') ? "bg-emerald-100 text-emerald-700" : "bg-primary/10 text-primary")}>{buyer.serial_no}</Badge>
                                         <span className="text-[10px] text-muted-foreground">{buyer.phone}</span>
+                                        <PhoneValidationBadge phone={buyer.phone} countryCode={buyer.country_code} />
                                     </div>
                                 </TableCell>
                                 <TableCell>
@@ -655,6 +747,7 @@ function BuyersPageContent() {
                                 <div className="flex items-center gap-2 mt-1">
                                     <Badge variant="outline" className="text-[10px] bg-background font-mono">{buyer.serial_no}</Badge>
                                     <span className="text-[10px] text-muted-foreground">{buyer.phone}</span>
+                                    <PhoneValidationBadge phone={buyer.phone} countryCode={buyer.country_code} />
                                 </div>
                             </div>
                         </div>
@@ -674,7 +767,7 @@ function BuyersPageContent() {
                             </div>
                             <div className="flex items-center gap-1.5 text-xs col-span-2 mt-1">
                                 <Wallet className="h-3.5 w-3.5 text-muted-foreground" />
-                                <span className="font-bold text-primary">Budget: {formatBuyerBudgetInline(buyer)}</span>
+                                <span className="font-bold text-primary">Budget: {buyer.budget_max_amount ? formatCurrency(formatUnit(buyer.budget_max_amount, buyer.budget_max_unit || 'Lacs'), currency) : formatBuyerBudgetInline(buyer)}</span>
                             </div>
                         </div>
                         
@@ -763,6 +856,20 @@ function BuyersPageContent() {
                     <p className="text-muted-foreground">Manage and track your agency leads.</p>
                 </div>
                 <div className="flex w-full md:w-auto items-center gap-2 flex-wrap justify-end ml-auto">
+                    {isMobile && (
+                        <div className="flex items-center gap-2">
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="select-all-mobile"
+                                    checked={paginatedBuyers.length > 0 && selectedBuyers.length === paginatedBuyers.length}
+                                    onCheckedChange={(checked) => setSelectedBuyers(checked ? paginatedBuyers.map(b => b.id) : [])}
+                                />
+                                <Label htmlFor="select-all-mobile" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                    All
+                                </Label>
+                            </div>
+                        </div>
+                    )}
                     {selectedBuyers.length > 0 && profile.role === 'Admin' && (
                         <div className="flex items-center gap-2">
                             <DropdownMenu>
@@ -792,75 +899,73 @@ function BuyersPageContent() {
                             </Button>
                         </div>
                     )}
-                    <AlertDialog open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
-                        <AlertDialogTrigger asChild>
-                            <Button variant="outline" className="rounded-full px-3 md:px-4">
-                                <Filter className="h-4 w-4" />
-                                <span className="hidden md:inline ml-2">Filters</span>
-                                {filters.area.length > 0 && <span className="ml-1 text-xs">({filters.area.length})</span>}
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent className="max-w-md bg-background">
-                            <AlertDialogHeader><AlertDialogTitle>Refine Buyer Search</AlertDialogTitle></AlertDialogHeader>
-                            <div className="grid gap-4 py-4">
-                                <div className="grid grid-cols-3 items-center gap-4">
-                                    <Label>Serial No</Label>
-                                    <div className="col-span-2 grid grid-cols-2 gap-2">
-                                        <Select value={filters.serialNoPrefix} onValueChange={(v: any) => handleFilterChange('serialNoPrefix', v)}>
-                                            <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
-                                            <SelectContent><SelectItem value="All">All</SelectItem><SelectItem value="B">B</SelectItem><SelectItem value="RB">RB</SelectItem></SelectContent>
-                                        </Select>
-                                        <Input placeholder="e.g. 1" type="number" value={filters.serialNo} onChange={e => handleFilterChange('serialNo', e.target.value)} className="h-8" />
+                    <Popover open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
+                        <PopoverTrigger asChild>
+                            <Button variant="outline" className="rounded-full"><Filter className="h-4 w-4" /><span className="hidden md:inline ml-2">Filters</span></Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80">
+                            <div className="grid gap-4">
+                                <div className="space-y-2">
+                                    <h4 className="font-medium leading-none">Filters</h4>
+                                    <p className="text-sm text-muted-foreground">Refine your buyer search.</p>
+                                </div>
+                                <div className="grid gap-2">
+                                    <div className="grid grid-cols-3 items-center gap-4">
+                                        <Label>Serial No</Label>
+                                        <div className="col-span-2 grid grid-cols-2 gap-2">
+                                            <Select value={filters.serialNoPrefix} onValueChange={(v: any) => handleFilterChange('serialNoPrefix', v)}>
+                                                <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                                                <SelectContent><SelectItem value="All">All</SelectItem><SelectItem value="B">B</SelectItem><SelectItem value="RB">RB</SelectItem></SelectContent>
+                                            </Select>
+                                            <Input placeholder="e.g. 1" type="number" value={filters.serialNo} onChange={e => handleFilterChange('serialNo', e.target.value)} className="h-8" />
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="grid grid-cols-3 items-center gap-4">
-                                    <Label htmlFor="propertyType">Type</Label>
-                                    <Select value={filters.propertyType} onValueChange={(value: any) => handleFilterChange('propertyType', value)}>
-                                        <SelectTrigger className="col-span-2 h-8">
-                                            <SelectValue placeholder="Property Type" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {propertyTypesForFilter.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="grid grid-cols-3 items-center gap-4">
-                                    <Label>Budget</Label>
-                                    <div className="col-span-2 grid grid-cols-2 gap-2">
-                                        <Input placeholder="Min" type="number" value={filters.minBudget} onChange={e => handleFilterChange('minBudget', e.target.value)} className="h-8" />
-                                        <Input placeholder="Max" type="number" value={filters.maxBudget} onChange={e => handleFilterChange('maxBudget', e.target.value)} className="h-8" />
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-3 items-center gap-4">
-                                    <Label></Label>
-                                    <div className="col-span-2">
-                                        <Select value={filters.budgetUnit} onValueChange={(value: any) => handleFilterChange('budgetUnit', value)}>
-                                            <SelectTrigger className="h-8">
-                                                <SelectValue placeholder="Unit" />
+                                    <div className="grid grid-cols-3 items-center gap-4">
+                                        <Label htmlFor="propertyType">Type</Label>
+                                        <Select value={filters.propertyType} onValueChange={(value: any) => handleFilterChange('propertyType', value)}>
+                                            <SelectTrigger className="col-span-2 h-8">
+                                                <SelectValue placeholder="Property Type" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="All">All Units</SelectItem>
-                                                <SelectItem value="Thousand">Thousand</SelectItem>
-                                                <SelectItem value="Lacs">Lacs</SelectItem>
-                                                <SelectItem value="Crore">Crore</SelectItem>
+                                                {propertyTypesForFilter.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
                                             </SelectContent>
                                         </Select>
                                     </div>
+                                    <div className="grid grid-cols-3 items-center gap-4">
+                                        <Label>Budget</Label>
+                                        <div className="col-span-2 grid grid-cols-2 gap-2">
+                                            <Input placeholder="Min" type="number" value={filters.minBudget} onChange={e => handleFilterChange('minBudget', e.target.value)} className="h-8" />
+                                            <Input placeholder="Max" type="number" value={filters.maxBudget} onChange={e => handleFilterChange('maxBudget', e.target.value)} className="h-8" />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-3 items-center gap-4">
+                                        <Label></Label>
+                                        <div className="col-span-2">
+                                            <Select value={filters.budgetUnit} onValueChange={(value: any) => handleFilterChange('budgetUnit', value)}>
+                                                <SelectTrigger className="h-8">
+                                                    <SelectValue placeholder="Unit" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="All">All Units</SelectItem>
+                                                    <SelectItem value="Thousand">Thousand</SelectItem>
+                                                    <SelectItem value="Lacs">Lacs</SelectItem>
+                                                    <SelectItem value="Crore">Crore</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex justify-end gap-2">
+                                    <Button variant="ghost" onClick={clearFilters}>Clear</Button>
+                                    <Button onClick={() => setIsFilterPopoverOpen(false)}>Apply</Button>
                                 </div>
                             </div>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <Button variant="ghost" onClick={clearFilters}>Clear All</Button>
-                                <AlertDialogAction onClick={() => setIsFilterPopoverOpen(false)}>Apply</AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                    {profile.role === 'Admin' && (
-                        <Button className="rounded-full glowing-btn px-3 md:px-6" onClick={() => { setBuyerToEdit(null); setIsAddBuyerOpen(true); }}>
-                            <PlusCircle className="h-4 w-4" />
-                            <span className="hidden md:inline ml-2">Add Buyer</span>
-                        </Button>
-                    )}
+                        </PopoverContent>
+                    </Popover>
+                    <Button className="rounded-full glowing-btn px-3 md:px-6" onClick={() => { setBuyerToEdit(null); setIsAddBuyerOpen(true); }}>
+                        <PlusCircle className="h-4 w-4" />
+                        <span className="hidden md:inline ml-2">Add Buyer</span>
+                    </Button>
                 </div>
             </div>
 
@@ -999,6 +1104,16 @@ function BuyersPageContent() {
                         </div>
                     )}
                 </div>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-medium text-muted-foreground">Buyer Leads Usage</span>
+                  <span className="text-sm font-bold">{currentCount} / {limit === Infinity ? 'Unlimited' : limit}</span>
+                </div>
+                <Progress value={progress} />
+              </CardContent>
             </Card>
 
             <div className="mt-4">{isMobile ? renderCards(paginatedBuyers) : <Card className="p-0 overflow-hidden bg-background">{renderTable(paginatedBuyers)}</Card>}</div>

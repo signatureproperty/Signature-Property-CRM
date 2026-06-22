@@ -31,10 +31,11 @@ interface EditPropertyTagsDialogProps {
   setIsOpen: (open: boolean) => void;
 }
 
-const defaultPropertyStatuses = ['New', 'Available', 'Sold', 'Rent Out', 'Sold (External)'];
+const defaultPropertyStatuses = ['New', 'Pending', 'Available', 'Sold', 'Rent Out', 'Sold (External)'];
 
 const statusVariant = {
   'New': 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800',
+  'Pending': 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800',
   'Available': 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800',
   'Sold': 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800',
   'Rent Out': 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800',
@@ -51,7 +52,15 @@ export function EditPropertyTagsDialog({ property, isOpen, setIsOpen }: EditProp
     profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'tags') : null,
     [profile.agency_id, firestore]
   );
-  const { data: agencyTags } = useCollection<Tag>(tagsQuery);
+  const { data: allAgencyTags } = useCollection<Tag>(tagsQuery);
+
+  const agencyTags = useMemo(() => {
+    if (!allAgencyTags) return [];
+    if (profile.role === 'Agent') {
+      return allAgencyTags.filter(t => t.createdBy === profile.user_id);
+    }
+    return allAgencyTags;
+  }, [allAgencyTags, profile.role, profile.user_id]);
 
   const allAvailableTags = useMemo(() => {
     const statusTags = defaultPropertyStatuses.map(status => ({

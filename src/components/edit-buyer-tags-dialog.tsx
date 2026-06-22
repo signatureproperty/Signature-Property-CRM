@@ -52,7 +52,15 @@ export function EditBuyerTagsDialog({ buyer, isOpen, setIsOpen }: EditBuyerTagsD
     profile.agency_id ? collection(firestore, 'agencies', profile.agency_id, 'tags') : null,
     [profile.agency_id, firestore]
   );
-  const { data: agencyTags } = useCollection<Tag>(tagsQuery);
+  const { data: allAgencyTags } = useCollection<Tag>(tagsQuery);
+
+  const agencyTags = useMemo(() => {
+    if (!allAgencyTags) return [];
+    if (profile.role === 'Agent') {
+      return allAgencyTags.filter(t => t.createdBy === profile.user_id);
+    }
+    return allAgencyTags;
+  }, [allAgencyTags, profile.role, profile.user_id]);
 
   const allAvailableTags = useMemo(() => {
     const statusTags = buyerStatuses.map(status => ({

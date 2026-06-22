@@ -61,18 +61,16 @@ export function AssignBuyerToAgentDialog({ buyer, isOpen, setIsOpen }: AssignBuy
         const propertyListingType = property.is_for_rent ? 'For Rent' : 'For Sale';
         if (buyerListingType !== propertyListingType) return false;
 
-        // 2. Budget Match (MANDATORY with 15% margin)
+        // 2. Budget Match: property price up to 20-25% more than buyer's max budget
         // Convert everything to base units for comparison
         const propDemand = formatUnit(property.demand_amount, property.demand_unit);
         const buyerMin = formatUnit(buyer.budget_min_amount || 0, buyer.budget_min_unit || 'Thousand');
         const buyerMax = formatUnit(buyer.budget_max_amount || buyer.budget_min_amount || 0, buyer.budget_max_unit || 'Lacs');
         
-        // Strict boundary: Property must be within [85% of Min, 115% of Max]
-        const absoluteMin = buyerMin * 0.85;
-        const absoluteMax = buyerMax * 1.15;
+        const lowerBound = buyerMin * 0.85;
+        const upperBound = buyerMax * 1.25;
         
-        // If the property is way too expensive (e.g. 5.5Cr for a 1.35Cr buyer), block it!
-        const budgetMatch = (propDemand >= absoluteMin && propDemand <= absoluteMax);
+        const budgetMatch = propDemand >= lowerBound && propDemand <= upperBound;
         if (!budgetMatch) return false;
 
         // 3. Property Type Match (Fuzzy)
