@@ -55,80 +55,20 @@ function SuperLoginPageContent() {
 
   const onSubmit = async (values: LoginFormValues) => {
     setIsLoading(true);
-    const SUPER_ADMIN_EMAIL = 'usmansagheer444@gmail.com';
-    const isMasterEmail = values.email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
 
     try {
       if (!auth || !firestore) {
         throw new Error('Firebase services are not initialized.');
       }
       
-      let user;
-      try {
-          // 1. Try to login normally
-          const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
-          user = userCredential.user;
-      } catch (loginError: any) {
-          // 2. If user doesn't exist and it's the master email, auto-create it (Provisioning)
-          if ((loginError.code === 'auth/user-not-found' || loginError.code === 'auth/invalid-credential') && isMasterEmail) {
-              const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-              user = userCredential.user;
-              await updateProfile(user, { displayName: 'Usman Sagheer' });
-              toast({ title: 'Provisioning Master Admin...', description: 'Creating your secure master account.' });
-          } else {
-              throw loginError;
-          }
-      }
-
-      if (user) {
-          const userDocRef = doc(firestore, 'users', user.uid);
-          
-          if (isMasterEmail) {
-              // Force elevate this specific user to Super Admin in Firestore
-              const adminData = {
-                  id: user.uid,
-                  email: user.email,
-                  name: user.displayName || 'Usman Sagheer',
-                  role: 'Super Admin',
-                  updatedAt: serverTimestamp(),
-                  agency_id: 'master_control',
-              };
-              
-              await setDoc(userDocRef, adminData, { merge: true });
-              
-              // Immediately update local profile to bypass AuthGuard
-              setProfile({
-                  ...adminData,
-                  agencyName: 'Platform Master Control',
-                  user_id: user.uid,
-                  role: 'Super Admin'
-              } as any);
-
-              toast({
-                title: 'Master Control Unlocked',
-                description: 'Authentication successful. Redirecting to platform control.',
-              });
-              
-              router.push('/super-admin');
-          } else {
-              // Non-master emails must already be Super Admins in DB
-              const userDocSnap = await getDoc(userDocRef);
-              if (!userDocSnap.exists() || userDocSnap.data().role !== 'Super Admin') {
-                 await auth.signOut();
-                 toast({
-                    variant: 'destructive',
-                    title: 'Unauthorized Access',
-                    description: 'This area is restricted to platform administrators only.',
-                 });
-                 return;
-              }
-              router.push('/super-admin');
-          }
+      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+      
+      if (userCredential.user) {
+        router.push('/overview');
       }
     } catch (error: any) {
-      console.error('Super Login Error:', error);
-      let errorMsg = 'Invalid credentials or unauthorized access attempt.';
-      if (error.code === 'auth/wrong-password') errorMsg = 'Incorrect master key.';
+      console.error('Login Error:', error);
+      let errorMsg = 'Invalid credentials.';
       
       toast({
         variant: 'destructive',

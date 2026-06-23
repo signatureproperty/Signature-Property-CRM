@@ -26,19 +26,12 @@ import { useEffect, useState } from 'react';
 import { useFirestore, useAuth } from '@/firebase/provider';
 import { doc, setDoc, serverTimestamp, writeBatch, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { useProfile } from '@/context/profile-context';
-import { Loader2, Mail, Shield, User as UserIcon, Lock } from 'lucide-react';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { Loader2, Mail, Shield, User as UserIcon } from 'lucide-react';
 
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   email: z.string().email('Invalid email address'),
-  role: z.enum(['Agent', 'Admin', 'Video Recorder']).default('Agent'),
-  password: z.string().optional(),
-}).refine(data => {
-    return data.role !== 'Video Recorder' || (data.password && data.password.length >= 6);
-}, {
-    message: "Password must be at least 6 characters for Video Recorder.",
-    path: ["password"],
+  role: z.enum(['Agent', 'Admin']).default('Agent'),
 });
 
 type AddMemberFormValues = z.infer<typeof formSchema>;
@@ -62,7 +55,6 @@ export function AddTeamMemberForm({ setDialogOpen, memberToEdit, onRoleChange }:
       name: '',
       email: '',
       role: 'Agent',
-      password: '',
     },
   });
 
@@ -77,7 +69,7 @@ export function AddTeamMemberForm({ setDialogOpen, memberToEdit, onRoleChange }:
       form.reset({
         name: memberToEdit.name,
         email: memberToEdit.email || '',
-        role: (memberToEdit.role === 'Super Admin' ? 'Admin' : memberToEdit.role) as any,
+        role: memberToEdit.role === 'Admin' ? 'Admin' : 'Agent',
       });
     }
   }, [memberToEdit, form]);
@@ -109,46 +101,7 @@ export function AddTeamMemberForm({ setDialogOpen, memberToEdit, onRoleChange }:
                 return;
             }
 
-            if (values.role === 'Video Recorder') {
-                if (!values.password) return;
-                
-                const tempAuth = auth;
-                const userCredential = await createUserWithEmailAndPassword(tempAuth, values.email, values.password);
-                const newUser = userCredential.user;
-
-                const batch = writeBatch(firestore);
-                
-                // Fallbacks during creation
-                const userName = values.name || 'Unnamed Recorder';
-                const userEmail = values.email;
-
-                batch.set(doc(firestore, 'users', newUser.uid), {
-                    id: newUser.uid,
-                    name: userName,
-                    email: userEmail,
-                    role: 'Video Recorder',
-                    agency_id: profile.agency_id,
-                    createdAt: serverTimestamp()
-                });
-                batch.set(doc(firestore, 'agencies', profile.agency_id, 'teamMembers', newUser.uid), {
-                    id: newUser.uid,
-                    user_id: newUser.uid,
-                    name: userName,
-                    email: userEmail,
-                    role: 'Video Recorder',
-                    status: 'Active',
-                    agency_id: profile.agency_id,
-                    agency_name: profile.agencyName,
-                    joinedAt: serverTimestamp()
-                });
-                await batch.commit();
-                
-                await auth.signOut();
-                toast({ title: "Recorder Account Created", description: "Please log in again as Admin to continue." });
-                window.location.href = '/login';
-                return;
-
-            } else {
+            {
                 const batch = writeBatch(firestore);
                 const newMemberRef = doc(teamMembersRef);
                 
@@ -230,7 +183,6 @@ export function AddTeamMemberForm({ setDialogOpen, memberToEdit, onRoleChange }:
                 </FormControl>
                 <SelectContent>
                   <SelectItem value="Agent">Agent (Recommended)</SelectItem>
-                  <SelectItem value="Video Recorder">Video Recorder</SelectItem>
                   <SelectItem value="Admin">Co-Admin</SelectItem>
                 </SelectContent>
               </Select>
@@ -238,26 +190,11 @@ export function AddTeamMemberForm({ setDialogOpen, memberToEdit, onRoleChange }:
             </FormItem>
           )}
         />
-        {watchedRole === 'Video Recorder' && !memberToEdit && (
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2"><Lock className="h-3.5 w-3.5" /> Set Account Password</FormLabel>
-                  <FormControl>
-                    <Input type="password" {...field} placeholder="Min. 6 characters" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-        )}
         <div className="flex justify-end gap-2 pt-6 border-t mt-4">
           <Button type="button" variant="ghost" onClick={() => setDialogOpen(false)}>Cancel</Button>
           <Button type="submit" className="glowing-btn px-6" disabled={isLoading}>
             {isLoading && <Loader2 className="animate-spin mr-2" />}
-            {memberToEdit ? 'Save Changes' : (watchedRole === 'Video Recorder' ? 'Create Account' : 'Send Invitation')}
+            {memberToEdit ? 'Save Changes' : 'Send Invitation'}
           </Button>
         </div>
       </form>

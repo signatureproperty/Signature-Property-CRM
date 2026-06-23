@@ -1,6 +1,6 @@
 'use client';
 
-export type UserRole = 'Admin' | 'Agent' | 'Video Recorder' | 'Super Admin';
+export type UserRole = 'Admin' | 'Agent';
 export type PlanName = 'Basic' | 'Standard' | 'Premium';
 
 export type User = {
@@ -50,8 +50,6 @@ export type SizeUnit = 'Marla' | 'SqFt' | 'Kanal' | 'Acre' | 'Maraba';
 export type PriceUnit = 'Thousand' | 'Lacs' | 'Crore';
 export type PropertyStatus = 'New' | 'Pending' | 'Available' | 'Sold' | 'Rent Out' | 'Sold (External)';
 export type ListingType = 'For Sale' | 'For Rent';
-export type EditingStatus = 'In Editing' | 'Complete';
-export type RecordingPaymentStatus = 'Unpaid' | 'Paid Online' | 'Pending Cash';
 
 export type UploadedDocument = {
     name: string;
@@ -90,9 +88,6 @@ export type Property = {
   documents?: string;
   message?: string; // General notes for any property type
   status: PropertyStatus;
-  is_recorded: boolean;
-  editing_status?: EditingStatus;
-  recording_notes?: string; // New field for video recording feedback
   created_at: string;
   created_by: string; // user id
   agency_id: string;
@@ -144,11 +139,6 @@ export type Property = {
   
   // Document Management
   uploaded_documents?: UploadedDocument[];
-  
-  // Recording Payment
-  recording_payment_status?: RecordingPaymentStatus;
-  recording_payment_amount?: number;
-  recording_payment_date?: string;
 
   // Tags
   tags?: string[];
@@ -341,7 +331,7 @@ export type UpgradeRequest = {
     reviewerId?: string;
 };
 
-export type InboxMessageType = 'cannot_record' | 'payment_confirmation' | 'lead_update';
+export type InboxMessageType = 'lead_update';
 
 export interface InboxMessage {
     id: string;

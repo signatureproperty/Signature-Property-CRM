@@ -30,12 +30,7 @@ export function MobileNav() {
   const { profile } = useProfile();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  // Recorders have a very specific workflow
-  if (profile.role === 'Video Recorder') return null;
-
   const menuItems = [
-    { href: '/super-admin', label: 'Admin Control', icon: <ShieldAlert />, roles: ['Super Admin'] },
-    { href: '/super-admin/branding', label: 'App Branding', icon: <Palette />, roles: ['Super Admin'] },
     { href: '/team', label: 'Team', icon: <UserCog />, roles: ['Admin'] },
     { href: '/analytics', label: 'Analytics', icon: <BarChart3 />, roles: ['Admin'] },
     { href: '/services', label: 'Services', icon: <Sparkles />, roles: ['Admin', 'Agent'] },

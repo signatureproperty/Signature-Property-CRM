@@ -97,7 +97,7 @@ export function PropertyDetailsDialog({
     return formatCurrency(valueInPkr, currency);
   }
 
-  const hasVideoLinks = property?.is_recorded && property?.video_links && Object.values(property.video_links).some(link => !!link);
+  const hasVideoLinks = property?.video_links && Object.values(property.video_links).some(link => !!link);
 
   const getStatusBadgeClass = (status: string) => {
     switch (status) {

@@ -128,7 +128,7 @@ function formatSize(value: number, unit: string) {
 }
 
 interface Filters {
-  area: string;
+  area: string[];
   propertyType: PropertyType | 'All' | 'Other';
   otherPropertyType: string;
   minSize: string;
@@ -249,8 +249,21 @@ export default function PropertiesPage() {
     return allAgencyTags;
   }, [allAgencyTags, profile.role, profile.user_id]);
 
+  const allAreas = useMemo(() => {
+    if (!allProperties) return [];
+    const areas = new Set<string>();
+    allProperties.forEach((p) => { if (p.area) areas.add(p.area); });
+    return Array.from(areas).sort((a, b) => a.localeCompare(b));
+  }, [allProperties]);
+
+  const [areaSearch, setAreaSearch] = useState('');
+
+  const filteredAreas = useMemo(() => {
+    return allAreas.filter(a => a.toLowerCase().includes(areaSearch.toLowerCase()));
+  }, [allAreas, areaSearch]);
+
   const [filters, setFilters] = useState<Filters>({
-    area: '',
+    area: [],
     propertyType: 'All',
     otherPropertyType: '',
     minSize: '',
@@ -309,7 +322,7 @@ export default function PropertiesPage() {
 
   const clearFilters = () => {
     setFilters({
-      area: '',
+    area: [],
       propertyType: 'All',
       otherPropertyType: '',
       minSize: '',
@@ -425,7 +438,7 @@ export default function PropertiesPage() {
     }
 
     // 2. Secondary Filter: Advanced Filters Popover
-    if (filters.area) baseProperties = baseProperties.filter((p) => p.area.toLowerCase().includes(filters.area.toLowerCase()));
+    if (filters.area.length > 0) baseProperties = baseProperties.filter((p) => filters.area.includes(p.area));
 
     if (filters.propertyType !== 'All') {
       if (filters.propertyType === 'Other') {
@@ -1298,9 +1311,90 @@ export default function PropertiesPage() {
                             <Input id="serialNo" placeholder="e.g. 1" type="number" value={filters.serialNo} onChange={e => handleFilterChange('serialNo', e.target.value)} className="h-8" />
                           </div>
                         </div>
-                        <div className="grid grid-cols-3 items-center gap-4">
-                          <Label htmlFor="area">Area</Label>
-                          <Input id="area" value={filters.area} onChange={(e) => handleFilterChange('area', e.target.value)} className="col-span-2 h-8" />
+                        <div className="grid grid-cols-3 items-start gap-4">
+                          <Label className="mt-1">Area</Label>
+                          <div className="col-span-2">
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button variant="outline" className="w-full justify-between h-8 text-sm">
+                                  {filters.area.length > 0 ? (
+                                    <span className="font-medium text-primary">{filters.area.length} Area{filters.area.length > 1 ? 's' : ''} Selected</span>
+                                  ) : (
+                                    <span className="text-muted-foreground">Search Areas...</span>
+                                  )}
+                                  <ChevronDown className="h-4 w-4 opacity-50" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="p-0 w-[280px]" align="start">
+                                <div className="p-2 border-b">
+                                  <div className="relative">
+                                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                      placeholder="Search area..."
+                                      className="h-9 pl-8 text-sm"
+                                      value={areaSearch}
+                                      onChange={(e) => setAreaSearch(e.target.value)}
+                                    />
+                                  </div>
+                                </div>
+                                <div className="p-1.5 border-b flex items-center justify-between">
+                                  <span className="text-[10px] font-semibold uppercase text-muted-foreground px-1">Areas</span>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 text-[10px] font-semibold uppercase"
+                                    onClick={() => {
+                                      setFilters(prev => ({
+                                        ...prev,
+                                        area: prev.area.length === allAreas.length ? [] : [...allAreas],
+                                      }))
+                                    }}
+                                  >
+                                    {filters.area.length === allAreas.length ? 'Deselect All' : 'Select All'}
+                                  </Button>
+                                </div>
+                                <ScrollArea className="max-h-[200px] p-1">
+                                  {filteredAreas.length > 0 ? (
+                                    <div className="space-y-0.5">
+                                      {filteredAreas.map((areaName) => (
+                                        <div
+                                          key={areaName}
+                                          className={cn(
+                                            "flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer text-sm",
+                                            filters.area.includes(areaName) ? "bg-primary/5 text-primary" : "hover:bg-accent"
+                                          )}
+                                          onClick={() => {
+                                            setFilters(prev => ({
+                                              ...prev,
+                                              area: prev.area.includes(areaName)
+                                                ? prev.area.filter(a => a !== areaName)
+                                                : [...prev.area, areaName],
+                                            }))
+                                          }}
+                                        >
+                                          <Checkbox
+                                            checked={filters.area.includes(areaName)}
+                                            className="pointer-events-none"
+                                          />
+                                          <span className="truncate">{areaName}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <div className="py-8 text-center text-sm text-muted-foreground">No matching areas.</div>
+                                  )}
+                                </ScrollArea>
+                                {filters.area.length > 0 && (
+                                  <div className="p-1.5 border-t flex justify-between items-center">
+                                    <span className="text-[10px] font-semibold uppercase text-muted-foreground px-1">{filters.area.length} Selected</span>
+                                    <Button variant="ghost" size="sm" className="h-7 text-[10px] font-semibold uppercase" onClick={() => setFilters(prev => ({ ...prev, area: [] }))}>
+                                      Clear All
+                                    </Button>
+                                  </div>
+                                )}
+                              </PopoverContent>
+                            </Popover>
+                          </div>
                         </div>
                         <div className="grid grid-cols-3 items-center gap-4">
                           <Label htmlFor="videoLink" className="flex items-center gap-1"><LinkIcon className="h-3 w-3" />Video Link</Label>

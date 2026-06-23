@@ -116,7 +116,7 @@ const RecommendedPropertyCard = ({ property, buyer, onShareConfirmed, onViewDeta
     const [shareStatus, setShareStatus] = useState<ShareStatus>('idle');
 
     const availableLinks = useMemo(() => {
-        if (!property.is_recorded || !property.video_links) return [];
+        if (!property.video_links) return [];
         return (Object.keys(property.video_links) as VideoLinkPlatform[]).filter(key => !!property.video_links![key as VideoLinkPlatform]);
     }, [property]);
 

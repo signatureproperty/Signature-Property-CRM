@@ -19,35 +19,22 @@ interface AddTeamMemberDialogProps {
 }
 
 export function AddTeamMemberDialog({ isOpen, setIsOpen, memberToEdit }: AddTeamMemberDialogProps) {
-  const [selectedRole, setSelectedRole] = useState(memberToEdit?.role || 'Agent');
-
-  const getTitle = () => {
-    if (memberToEdit) return 'Edit Team Member';
-    if (selectedRole === 'Video Recorder') return 'Create New Account';
-    return 'Invite New Member';
-  }
-
-  const getDescription = () => {
-    if (memberToEdit) return "Update the member's details below.";
-    if (selectedRole === 'Video Recorder') return "Create a new account for your Video Recorder. They can log in with this email and password.";
-    return 'Fill in the details to invite a new member to your agency.';
-  }
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="font-headline">
-            {getTitle()}
+            {memberToEdit ? 'Edit Team Member' : 'Invite New Member'}
           </DialogTitle>
           <DialogDescription>
-            {getDescription()}
+            {memberToEdit ? "Update the member's details below." : 'Fill in the details to invite a new member to your agency.'}
           </DialogDescription>
         </DialogHeader>
         <AddTeamMemberForm 
             setDialogOpen={setIsOpen} 
             memberToEdit={memberToEdit}
-            onRoleChange={setSelectedRole}
+            onRoleChange={() => {}}
         />
       </DialogContent>
     </Dialog>

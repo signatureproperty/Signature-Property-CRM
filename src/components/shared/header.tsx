@@ -269,7 +269,7 @@ export function AppHeader({
           <DropdownMenuContent align="end" className="bg-background">
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {(profile.role === 'Admin' || profile.role === 'Agent' || (profile.role as string) === 'Super Admin') && (
+            {(profile.role === 'Admin' || profile.role === 'Agent') && (
               <DropdownMenuItem onClick={() => router.push('/settings')}>
                   <Settings className="mr-2 h-4 w-4" />
                   Settings

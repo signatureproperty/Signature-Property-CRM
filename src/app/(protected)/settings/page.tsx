@@ -195,7 +195,7 @@ export default function SettingsPage() {
             const teamMemberRef = doc(firestore, 'agencies', profile.agency_id, 'teamMembers', user.uid);
             batch.update(teamMemberRef, { avatar: downloadURL });
             
-            if (profile.role === 'Admin' || profile.role === 'Super Admin') {
+            if (profile.role === 'Admin') {
                 const agencyDocRef = doc(firestore, 'agencies', profile.agency_id);
                 batch.update(agencyDocRef, { avatar: downloadURL });
             }
@@ -244,7 +244,7 @@ export default function SettingsPage() {
         return;
     }
 
-    const isUserAdmin = profile.role === 'Admin' || profile.role === 'Super Admin';
+    const isUserAdmin = profile.role === 'Admin';
 
     try {
         const batch = writeBatch(firestore);
@@ -1228,7 +1228,7 @@ export default function SettingsPage() {
         </Card>
       )}
 
-      {(profile.role === 'Admin' || profile.role === 'Super Admin') && (
+      {(profile.role === 'Admin') && (
         <Card className="border-none shadow-xl bg-card/60 backdrop-blur-sm overflow-hidden">
             <CardHeader>
                 <CardTitle className="flex items-center gap-2"><FileSpreadsheet className="h-5 w-5 text-primary" /> Data Management</CardTitle>
@@ -1511,7 +1511,7 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {(profile.role === 'Admin' || profile.role === 'Super Admin') && (
+      {(profile.role === 'Admin') && (
         <Card className="border-2 border-destructive/20 shadow-xl bg-destructive/5 overflow-hidden">
             <CardHeader className="bg-destructive/10">
                 <CardTitle className="flex items-center gap-2 text-destructive"><AlertTriangle className="h-5 w-5" /> Danger Zone</CardTitle>

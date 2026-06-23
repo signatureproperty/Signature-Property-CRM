@@ -745,7 +745,7 @@ function ShareDetailsDialog({ isOpen, setIsOpen, onSetMessage, startSharing, all
     }, [propertySearch, allProperties]);
     
     const availableLinks = useMemo(() => {
-        if (!selectedProperty?.is_recorded || !selectedProperty.video_links) return [];
+        if (!selectedProperty?.video_links) return [];
         return (Object.keys(selectedProperty.video_links) as VideoLinkPlatform[]).filter(key => !!selectedProperty.video_links![key as VideoLinkPlatform]);
     }, [selectedProperty]);
 

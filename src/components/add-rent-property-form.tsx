@@ -157,7 +157,6 @@ export function AddRentPropertyForm({
       property_type: finalPropertyType,
       demand_unit: (values.demand_unit as 'Lacs' | 'Crore' | 'Thousand') || 'Thousand',
       tags: tagsArray,
-      is_recorded: propertyToEdit?.is_recorded ?? false,
       auto_title: values.auto_title || 'Untitled Rental',
       address: values.address || '',
     };
