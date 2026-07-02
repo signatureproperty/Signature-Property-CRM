@@ -66,7 +66,17 @@ export default function LoginPage() {
     const userDocRef = doc(firestore, 'users', user.uid);
     const userDocSnap = await getDoc(userDocRef);
 
-    router.push('/overview');
+    if (userDocSnap.exists()) {
+      const userData = userDocSnap.data();
+      if (userData.role === 'Super Admin') {
+        router.push('/super-admin');
+      } else {
+        router.push('/overview');
+      }
+    } else {
+      // Default fallback
+      router.push('/overview');
+    }
   };
 
   const onSubmit = async (values: LoginFormValues) => {

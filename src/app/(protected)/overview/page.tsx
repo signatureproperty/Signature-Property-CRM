@@ -151,6 +151,7 @@ export default function OverviewPage() {
     const last30DaysStart = subDays(now, 30);
     
     const isAgent = profile.role === 'Agent';
+    const isRecorder = profile.role === 'Video Recorder';
 
     // --- Data Fetching ---
     const teamMembersQuery = useMemoFirebase(() => canFetch ? collection(firestore, 'agencies', profile.agency_id, 'teamMembers') : null, [canFetch, firestore, profile.agency_id]);
@@ -164,8 +165,12 @@ export default function OverviewPage() {
             return query(ref, or(where('created_by', '==', profile.user_id), where('assignedTo', 'array-contains', profile.user_id)));
         }
         
+        if (isRecorder) {
+            return query(ref, where('assignedTo', 'array-contains', profile.user_id));
+        }
+
         return ref;
-    }, [canFetch, firestore, profile.agency_id, isAgent, profile.user_id]);
+    }, [canFetch, firestore, profile.agency_id, isAgent, isRecorder, profile.user_id]);
     const { data: properties, isLoading: isPropertiesLoading } = useCollection<Property>(propertiesQuery);
     
     const buyersQuery = useMemoFirebase(() => {
@@ -309,7 +314,7 @@ export default function OverviewPage() {
         { title: "Interested", value: stats.interested, change: "Hot leads", icon: <Star className="h-5 w-5" />, color: "bg-purple-500/10 text-purple-600", href: "/buyers?status=Interested", isLoading },
     ];
 
-    if (!isAgent) {
+    if (!isAgent && !isRecorder) {
         statCards.push({
             title: "Returned Leads",
             value: stats.returnedLeads,
@@ -327,6 +332,27 @@ export default function OverviewPage() {
                 <div className="flex flex-col items-center gap-4">
                     <AppLoader />
                     <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground animate-pulse">Loading Workspace...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (isRecorder) {
+        const assigned = properties || [];
+        const recorderStats: StatCardProps[] = [
+            { title: "Pending", value: assigned.filter(p => !p.is_recorded).length, icon: <VideoOff className="h-5 w-5" />, color: "bg-red-500/10 text-red-600", isLoading, href: "/recording" },
+            { title: "In Editing", value: assigned.filter(p => p.is_recorded && p.editing_status === 'In Editing').length, icon: <PlayCircle className="h-5 w-5" />, color: "bg-yellow-500/10 text-yellow-600", isLoading, href: "/editing" },
+            { title: "Paid Online", value: assigned.filter(p => p.recording_payment_status === 'Paid Online').length, icon: <CheckCircle className="h-5 w-5" />, color: "bg-emerald-500/10 text-emerald-600", isLoading, href: "/recording?tab=Paid Online" },
+            { title: "Pending Cash", value: assigned.filter(p => p.recording_payment_status === 'Pending Cash').length, icon: <Clock className="h-5 w-5" />, color: "bg-purple-500/10 text-purple-600", isLoading, href: "/recording?tab=Pending Cash" },
+        ];
+        return (
+             <div className="space-y-8 animate-fade-in">
+                <div>
+                    <h1 className="text-3xl font-black tracking-tight font-headline flex items-center gap-3">Workflow Dashboard</h1>
+                    <p className="text-muted-foreground font-medium">Hello, {profile.name}. Here is your recording queue.</p>
+                </div>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    {recorderStats.map(card => <StatCard key={card.title} {...card} />)}
                 </div>
             </div>
         );

@@ -148,7 +148,7 @@ export function SharePropertyDialog({
   });
 
   const availableLinks = useMemo(() => {
-    if (!property.video_links) return [];
+    if (!property.is_recorded || !property.video_links) return [];
     return (Object.keys(property.video_links) as VideoLinkPlatform[]).filter(key => !!property.video_links![key as VideoLinkPlatform]);
   }, [property]);
 

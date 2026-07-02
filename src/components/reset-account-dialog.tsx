@@ -29,6 +29,7 @@ interface ResetAccountDialogProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   isPasswordRequired: boolean;
+  selectedCollections?: string[];
 }
 
 const formSchema = (isPasswordRequired: boolean) => z.object({
@@ -41,6 +42,7 @@ export function ResetAccountDialog({
   isOpen,
   setIsOpen,
   isPasswordRequired,
+  selectedCollections,
 }: ResetAccountDialogProps) {
   const { toast } = useToast();
   const { user } = useUser();
@@ -70,7 +72,9 @@ export function ResetAccountDialog({
     console.log("Triggering account data reset...");
     
     try {
-        const subCollections = ['properties', 'buyers', 'teamMembers', 'appointments', 'followUps', 'activityLogs'];
+        const subCollections = selectedCollections && selectedCollections.length > 0
+          ? selectedCollections
+          : ['properties', 'buyers', 'teamMembers', 'appointments', 'followUps', 'activityLogs'];
         const BATCH_SIZE = 499;
 
         for (const subCol of subCollections) {
@@ -96,9 +100,11 @@ export function ResetAccountDialog({
             }
         }
         
-        // Remove the admin from the teamMembers subcollection
-        const adminTeamMemberRef = doc(firestore, 'agencies', profile.agency_id, 'teamMembers', profile.user_id);
-        await deleteDoc(adminTeamMemberRef);
+        // Remove the admin from the teamMembers subcollection if included
+        if (!selectedCollections || selectedCollections.includes('teamMembers')) {
+          const adminTeamMemberRef = doc(firestore, 'agencies', profile.agency_id, 'teamMembers', profile.user_id);
+          await deleteDoc(adminTeamMemberRef);
+        }
 
 
         toast({
@@ -169,7 +175,7 @@ export function ResetAccountDialog({
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Warning!</AlertTitle>
             <AlertDescription>
-                You are about to delete all CRM data, including properties, buyers, and appointments. This action cannot be undone.
+                You are about to delete: {selectedCollections?.join(', ') || 'all CRM data'}. This action cannot be undone.
             </AlertDescription>
         </Alert>
 

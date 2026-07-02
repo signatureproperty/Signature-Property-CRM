@@ -166,7 +166,8 @@ function BuyersPageContent() {
 
     const currentPlan = (profile?.planName as PlanName) || 'Basic';
     const limit = planLimits[currentPlan]?.buyers || 0;
-    const currentCount = allBuyers?.length || 0;
+    const nonDeletedBuyerCount = allBuyers?.filter(b => !b.is_deleted).length || 0;
+    const currentCount = nonDeletedBuyerCount;
     const progress = limit === Infinity ? 100 : (currentCount / limit) * 100;
 
     const [isTypesExpanded, setIsTypesExpanded] = useState(false);

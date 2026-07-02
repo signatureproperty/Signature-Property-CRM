@@ -62,12 +62,27 @@ function AuthGuard({ children }: { children: ReactNode }) {
     );
   }
 
+  // --- Role Based Access Control (RBAC) ---
+  
+  if ((profile.role as string) === 'Super Admin') {
+      return <>{children}</>;
+  }
+
   const agentForbiddenPaths = ['/team', '/analytics', '/reports', '/finance', '/services'];
+  const recorderForbiddenPaths = [
+    '/team', '/upgrade', '/buyers', '/analytics', '/reports', '/tools', 
+    '/follow-ups', '/appointments', '/activities', '/trash', '/settings', 
+    '/support', '/properties', '/finance'
+  ];
 
   let isAllowed = true;
   let message = "This page is not accessible with your current role.";
 
-  if (profile.role === 'Agent' && agentForbiddenPaths.some(path => pathname.startsWith(path))) {
+  if (pathname.startsWith('/super-admin')) {
+      isAllowed = (profile.role as string) === 'Super Admin';
+  } else if (profile.role === 'Agent' && agentForbiddenPaths.some(path => pathname.startsWith(path))) {
+      isAllowed = false;
+  } else if (profile.role === 'Video Recorder' && recorderForbiddenPaths.some(path => pathname.startsWith(path))) {
       isAllowed = false;
   }
 
@@ -97,7 +112,7 @@ function AuthGuard({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex flex-col h-screen w-full overflow-hidden">
-        {!user.emailVerified && (
+        {!user.emailVerified && (profile.role as string) !== 'Super Admin' && (
             <div className="z-50 w-full bg-amber-500 text-amber-900 shadow-md flex-shrink-0">
                 <div className="container mx-auto flex items-center justify-center p-2 px-4 text-[11px] sm:text-sm font-bold gap-3 sm:gap-6 text-center">
                     <div className="flex items-center gap-2">

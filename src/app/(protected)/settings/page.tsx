@@ -95,6 +95,7 @@ export default function SettingsPage() {
   const [tempAvatarPreview, setTempAvatarPreview] = useState<string | null>(null);
 
   const [isImporting, setIsImporting] = useState(false);
+  const isImportingRef = useRef(false);
   const [isPropImportDialogOpen, setIsPropImportDialogOpen] = useState(false);
   const [isPropExportDialogOpen, setIsPropExportDialogOpen] = useState(false);
   const [isBuyersImportDialogOpen, setIsBuyersImportDialogOpen] = useState(false);
@@ -115,6 +116,20 @@ export default function SettingsPage() {
   const [importStatus, setImportStatus] = useState<'idle' | 'importing' | 'complete' | 'error'>('idle');
   const [importResult, setImportResult] = useState<{ success: number; failed: number; errors: string[] } | undefined>();
   const [isAiEnhancing, setIsAiEnhancing] = useState(false);
+
+  const resetableEntities = [
+    { key: 'properties', label: 'Properties Leads' },
+    { key: 'buyers', label: 'Buyers Leads' },
+    { key: 'appointments', label: 'Appointments' },
+    { key: 'services', label: 'Services' },
+    { key: 'providedServices', label: 'Provided Services' },
+    { key: 'followUps', label: 'Follow Ups' },
+    { key: 'activityLogs', label: 'Activity Logs' },
+    { key: 'tags', label: 'Tags' },
+  ] as const;
+  const [resetSelections, setResetSelections] = useState<Record<string, boolean>>(
+    Object.fromEntries(resetableEntities.map(e => [e.key, true]))
+  );
 
   const [appointmentNotifications, setAppointmentNotifications] = useState(true);
 
@@ -654,19 +669,28 @@ export default function SettingsPage() {
           minB: ['min budget', 'minimum budget', 'budget min', 'min', 'budget min max'],
           maxB: ['max budget', 'maximum budget', 'budget max', 'max', 'budget'],
           notes: ['notes', 'remarks', 'comments', 'note', 'description'],
+          investor: ['investor', 'is investor', 'investor?', 'investor status'],
         }
       : {
           phone: ['number', 'phone', 'mobile', 'contact', 'owner phone', 'owner number', 'cell', 'tel', 'telephone'],
           serial: ['sr no', 'serial', 'serial no', 's.no', 'sr#', 'id', 's no', 'sno'],
           title: ['title', 'auto title', 'property title', 'name'],
+          city: ['city', 'property city', 'location', 'city area'],
           area: ['area', 'society', 'phase', 'locality'],
           address: ['address', 'full address', 'location', 'street address'],
           property_type: ['property type', 'type', 'prop type', 'category'],
           size: ['size', 'area size', 'lot size', 'plot size', 'land size', 'total size', 'dimension'],
           unit: ['unit', 'size unit', 'area unit', 'size unit', 'measurement unit'],
+          storey: ['storey', 'floor', 'storeys', 'stories', 'level'],
+          utilities: ['utilities', 'utility', 'meters', 'meter'],
+          status: ['status', 'property status', 'listing status'],
+          road_size_ft: ['road size', 'road width', 'road front', 'road'],
+          potential_rent: ['potential rent', 'expected rent', 'rent amount', 'rent'],
+          front_ft: ['front', 'frontage', 'front size', 'front width'],
+          length_ft: ['length', 'depth', 'property length'],
           demand: ['demand', 'price', 'asking price', 'expected price', 'amount', 'cost', 'value', 'total price', 'rate'],
           demandUnit: ['demand unit', 'unit', 'price unit', 'price in'],
-          status: ['status', 'property status', 'listing status'],
+          documents: ['documents', 'docs', 'document', 'papers'],
         };
 
     const map: Record<string, number> = {};
@@ -697,73 +721,133 @@ export default function SettingsPage() {
     return result;
   };
 
-  const doImport = async (type: 'Buyers' | 'Properties', text: string, listingType: 'For Sale' | 'For Rent') => {
-    const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-    const lines = normalized.split('\n').filter(l => l.trim());
-    if (lines.length <= 1) return;
+  const splitLines = (t: string) => {
+    const lines = t.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+    while (lines.length > 0 && lines[lines.length - 1].trim() === '') lines.pop();
+    return lines;
+  };
 
-    const headers = parseCsvRow(lines[0]).map(h => smartCleanValue(h));
-    const colMap = buildColumnMap(headers, type);
+  const doImport = async (type: 'Buyers' | 'Properties', text: string, listingType: 'For Sale' | 'For Rent') => {
+    const allLines = splitLines(text);
+    const headerLine = allLines[0];
+    const dataLines = allLines.slice(1);
+    if (!headerLine || dataLines.length === 0) return;
+
+    const rawHeaders = parseCsvRow(headerLine).map(h => smartCleanValue(h));
+    const colMap = buildColumnMap(rawHeaders, type);
+
+    // Build a direct name-based fallback: CSV header lowercase → field name
+    const headerToFieldBase: Record<string, string> = {
+      'sr no': 'serial', 'serial': 'serial', 's.no': 'serial', 'serial no': 'serial',
+      'number': 'phone', 'phone': 'phone', 'mobile': 'phone',
+      'title': 'title', 'auto title': 'title', 'name': 'name',
+      'city': 'city',
+      'area': 'area', 'society': 'area', 'phase': 'area',
+      'address': 'address', 'location': 'address',
+      'size': 'size', 'lot size': 'size', 'plot size': 'size', 'land size': 'size',
+      'unit': 'unit', 'size unit': 'unit', 'measurement unit': 'unit',
+      'storey': 'storey', 'floor': 'storey',
+      'utilities': 'utilities',
+      'status': 'status',
+      'email': 'email', 'e-mail': 'email',
+      'listing': 'listing', 'listing type': 'listing',
+      'notes': 'notes', 'remarks': 'notes',
+      'full address': 'address', 'street address': 'address',
+      'locality': 'area',
+      'owner number': 'phone', 'owner phone': 'phone',
+    };
+    const headerToFieldBuyer: Record<string, string> = {
+      'prop type': 'propType', 'preferred type': 'propType',
+      'type': 'propType',
+      'min budget': 'minB', 'minimum budget': 'minB',
+      'max budget': 'maxB', 'maximum budget': 'maxB', 'budget': 'maxB',
+      'investor': 'investor', 'is investor': 'investor',
+      'buyer name': 'name', 'client name': 'name', 'lead name': 'name',
+      'lead status': 'status', 'buyer status': 'status',
+    };
+    const headerToFieldProp: Record<string, string> = {
+      'prop type': 'property_type', 'property type': 'property_type',
+      'type': 'property_type', 'category': 'property_type',
+      'road size': 'road_size_ft', 'road width': 'road_size_ft', 'road front': 'road_size_ft',
+      'potential rent': 'potential_rent', 'expected rent': 'potential_rent', 'rent amount': 'potential_rent', 'rent': 'potential_rent',
+      'front': 'front_ft', 'frontage': 'front_ft', 'front size': 'front_ft', 'front width': 'front_ft',
+      'length': 'length_ft', 'depth': 'length_ft', 'property length': 'length_ft',
+      'demand': 'demand', 'price': 'demand', 'asking price': 'demand', 'total price': 'demand', 'amount': 'demand', 'cost': 'demand', 'value': 'demand', 'rate': 'demand',
+      'demand unit': 'demandUnit', 'price unit': 'demandUnit', 'price in': 'demandUnit',
+      'documents': 'documents', 'docs': 'documents', 'document': 'documents', 'papers': 'documents',
+      'property status': 'status', 'listing status': 'status',
+    };
+    const headerToField = type === 'Buyers'
+      ? { ...headerToFieldBase, ...headerToFieldBuyer }
+      : { ...headerToFieldBase, ...headerToFieldProp };
 
     let batch = writeBatch(firestore);
     const collectionRef = collection(firestore, 'agencies', profile.agency_id, type.toLowerCase());
 
-    let rowIndex = 0;
     let successCount = 0;
-    let phoneOnlyCount = 0;
     const errors: string[] = [];
-    const total = lines.length - 1;
+    const total = dataLines.length;
 
     setImportProgress({ current: 0, total });
     setImportStatus('importing');
 
-    for (let i = 1; i < lines.length; i++) {
-        if (!lines[i].trim()) continue;
-        rowIndex++;
-        const values = parseCsvRow(lines[i]).map(v => smartCleanValue(v));
+    for (let di = 0; di < dataLines.length; di++) {
+        const line = dataLines[di];
+        const rawValues = parseCsvRow(line);
+        const values = rawValues.map(v => smartCleanValue(v));
+
+        // Also build a raw header→value map for fallback
+        const rowByHeader: Record<string, string> = {};
+        rawHeaders.forEach((h, idx) => {
+          const key = h.toLowerCase().trim();
+          const v = rawValues[idx] !== undefined ? rawValues[idx].trim() : '';
+          rowByHeader[key] = v;
+          const mapped = headerToField[key];
+          if (mapped && !rowByHeader[mapped]) rowByHeader[mapped] = v;
+        });
+
         const get = (field: string): string => {
           const idx = colMap[field];
-          return idx !== undefined ? values[idx] : '';
+          if (idx !== undefined && values[idx] !== undefined) return values[idx];
+          return rowByHeader[field] || rowByHeader[field.toLowerCase()] || '';
         };
 
         try {
             if (type === 'Buyers') {
-                const phone = get('phone') || '';
-                const name = get('name') || 'Lead (Imported)';
-
-                successCount++;
-
-                const formattedPhone = formatPhoneNumber(phone);
-                if (!formattedPhone) phoneOnlyCount++;
+                const phone = get('phone') || get('number') || rowByHeader['number'] || '';
+                const name = get('name') || rowByHeader['name'] || 'Lead (Imported)';
+                const formattedPhone = phone ? (formatPhoneNumber(phone) || phone) : '';
 
                 const toLacs = (v: number, u: string) => u === 'Crore' ? v * 100 : u === 'Thousand' ? v / 100000 : v;
 
-                const rawBudget = get('maxB') || get('minB') || '';
+                const rawBudget = get('maxB') || get('minB') || rowByHeader['budget'] || '';
                 const parsedBudget = smartParseRange(rawBudget);
                 const budgetMin = parsedBudget.min ? toLacs(parsedBudget.min.value, parsedBudget.min.unit) : null;
                 const budgetMax = parsedBudget.max ? toLacs(parsedBudget.max.value, parsedBudget.max.unit) : null;
 
-                const areaText = get('area') || '';
-                const sizeText = get('size') || '';
+                const areaText = get('area') || rowByHeader['area'] || '';
+                const sizeText = get('size') || rowByHeader['size'] || '';
                 const parsedSize = smartParseRange(sizeText);
 
                 const newBuyerRef = doc(collectionRef);
                 const buyerData: Record<string, any> = {
-                    serial_no: get('serial') || `B-${successCount}`,
+                    serial_no: get('serial') || rowByHeader['sr no'] || rowByHeader['serial'] || `B-${successCount}`,
                     name,
                     phone: formattedPhone,
+                    country_code: formattedPhone && formattedPhone.startsWith('+') ? '+' + formattedPhone.replace(/[^0-9]/g, '').substring(0, 3) : '',
                     email: get('email') || '',
-                    status: get('status') || 'New',
+                    status: get('status') || rowByHeader['status'] || 'New',
                     listing_type: get('listing') || 'For Sale',
-                    city: get('city') || '',
+                    city: get('city') || rowByHeader['city'] || '',
                     area_preference: areaText,
-                    property_type_preference: get('propType') || 'House',
+                    property_type_preference: get('propType') || rowByHeader['property type'] || rowByHeader['type'] || 'House',
                     budget_max_amount: budgetMax ?? 0,
-                    notes: get('notes') || '',
+                    is_investor: (get('investor') || '').toLowerCase() === 'yes' || get('investor') === 'true' || false,
+                    notes: get('notes') || rowByHeader['notes'] || rowByHeader['remarks'] || '',
                     agency_id: profile.agency_id,
                     created_by: profile.user_id,
                     created_at: new Date().toISOString(),
-                    tags: [get('status') || 'New'],
+                    tags: [get('status') || rowByHeader['status'] || 'New'],
                     is_deleted: false
                 };
                 if (budgetMin != null) buyerData.budget_min_amount = budgetMin;
@@ -773,101 +857,104 @@ export default function SettingsPage() {
                 if (parsedSize.max?.unit) buyerData.size_max_unit = parsedSize.max.unit;
                 batch.set(newBuyerRef, buyerData);
             } else {
-                const phone = get('phone');
-                if (!phone) continue;
-                successCount++;
+                const phone = get('phone') || rowByHeader['number'] || rowByHeader['phone'] || '';
+                const formattedPhone = phone ? (formatPhoneNumber(phone) || phone) : '';
+                const area = get('area') || rowByHeader['area'] || '';
+                const typeVal = get('property_type') || rowByHeader['property type'] || rowByHeader['type'] || 'House';
 
-                const formattedPhone = formatPhoneNumber(phone);
-                const area = get('area') || '';
-                const typeVal = get('property_type') || 'House';
-
-                const rawSize = get('size') || '0';
+                // Size
+                const rawSize = get('size') || rowByHeader['size'] || '';
                 const rawUnit = get('unit') || '';
                 let sizeValue = 0;
                 let sizeUnit = 'Marla';
-
-                const parsed = smartParseCombined(rawSize);
-                if (parsed && parsed.unit) {
-                  sizeValue = parsed.value;
-                  sizeUnit = parsed.unit;
-                } else if (rawUnit) {
-                  sizeValue = Number(rawSize) || 0;
-                  sizeUnit = normalizeUnit(rawUnit);
-                } else {
-                  const fallback = smartParseCombined(rawSize + '');
-                  if (fallback && fallback.unit) {
-                    sizeValue = fallback.value;
-                    sizeUnit = fallback.unit;
-                  } else {
-                    sizeValue = Number(rawSize) || 0;
+                if (rawSize) {
+                  const parsed = smartParseCombined(rawSize);
+                  if (parsed && parsed.unit) { sizeValue = parsed.value; sizeUnit = parsed.unit; }
+                  else if (rawUnit) { sizeValue = Number(rawSize.replace(/,/g, '')) || 0; sizeUnit = normalizeUnit(rawUnit); }
+                  else {
+                    const fb = smartParseCombined(rawSize + '');
+                    if (fb && fb.unit) { sizeValue = fb.value; sizeUnit = fb.unit; }
+                    else { sizeValue = Number(rawSize.replace(/,/g, '')) || 0; }
                   }
                 }
 
-                const rawDemand = get('demand') || '0';
+                // Demand
+                const rawDemand = get('demand') || rowByHeader['demand'] || rowByHeader['price'] || '';
                 const rawDemandUnit = get('demandUnit') || '';
                 let demandAmount = 0;
                 let demandUnit = 'Lacs';
-
-                const parsedDemand = smartParseCombined(rawDemand);
-                if (parsedDemand && parsedDemand.unit) {
-                  demandAmount = parsedDemand.value;
-                  demandUnit = parsedDemand.unit;
-                } else if (rawDemandUnit) {
-                  demandAmount = Number(rawDemand) || 0;
-                  demandUnit = normalizeUnit(rawDemandUnit);
-                } else {
-                  const fallback = smartParseCombined(rawDemand + '');
-                  if (fallback && fallback.unit) {
-                    demandAmount = fallback.value;
-                    demandUnit = fallback.unit;
-                  } else {
-                    demandAmount = Number(rawDemand) || 0;
-                    demandUnit = 'Lacs';
+                if (rawDemand) {
+                  const parsedDemand = smartParseCombined(rawDemand);
+                  if (parsedDemand && parsedDemand.unit) { demandAmount = parsedDemand.value; demandUnit = parsedDemand.unit; }
+                  else if (rawDemandUnit) { demandAmount = Number(rawDemand.replace(/,/g, '')) || 0; demandUnit = normalizeUnit(rawDemandUnit); }
+                  else {
+                    const fb = smartParseCombined(rawDemand + '');
+                    if (fb && fb.unit) { demandAmount = fb.value; demandUnit = fb.unit; }
+                    else { demandAmount = Number(rawDemand.replace(/,/g, '')) || 0; demandUnit = 'Lacs'; }
                   }
                 }
 
-                if (!area) phoneOnlyCount++;
-
                 const newPropRef = doc(collectionRef);
-                batch.set(newPropRef, {
-                    serial_no: get('serial') || `${listingType === 'For Rent' ? 'RP' : 'P'}-${successCount}`,
-                    auto_title: get('title') || `${sizeValue} ${sizeUnit} ${typeVal} ${area ? `in ${area}` : ''}`.trim() || `Lead from Import (${phone})`,
+                const propData: Record<string, any> = {
+                    serial_no: get('serial') || rowByHeader['sr no'] || rowByHeader['serial'] || `${listingType === 'For Rent' ? 'RP' : 'P'}-${successCount}`,
+                    auto_title: `${sizeValue} ${sizeUnit} ${typeVal}`.trim() || get('title') || rowByHeader['title'] || 'Lead from Import',
                     owner_number: formattedPhone,
+                    country_code: formattedPhone && formattedPhone.startsWith('+') ? '+' + formattedPhone.replace(/[^0-9]/g, '').substring(0, 3) : '',
+                    city: get('city') || rowByHeader['city'] || '',
                     area,
-                    address: get('address') || '',
+                    address: get('address') || rowByHeader['address'] || '',
                     property_type: typeVal,
                     size_value: sizeValue,
                     size_unit: sizeUnit,
+                    storey: get('storey') || rowByHeader['storey'] || rowByHeader['floor'] || '',
                     demand_amount: demandAmount,
                     demand_unit: demandUnit,
-                    status: get('status') || 'New',
+                    documents: get('documents') || rowByHeader['documents'] || rowByHeader['docs'] || '',
+                    status: get('status') || rowByHeader['status'] || 'New',
                     agency_id: profile.agency_id,
                     created_by: profile.user_id,
                     created_at: new Date().toISOString(),
                     is_for_rent: listingType === 'For Rent',
                     listing_type: listingType,
-                    is_recorded: false,
-                    tags: [get('status') || 'New'],
+                    tags: [get('status') || rowByHeader['status'] || 'New'],
                     is_deleted: false
-                });
+                };
+                // Optional numeric fields — only if valid
+                const addNum = (k: string, ...src: (string | undefined)[]) => {
+                  for (const s of src) {
+                    if (!s) continue;
+                    const c = s.replace(/,/g, '').trim();
+                    if (c) { const n = Number(c); if (!isNaN(n)) { propData[k] = n; return; } }
+                  }
+                };
+                addNum('road_size_ft', get('road_size_ft'), rowByHeader['road size'], rowByHeader['road width']);
+                addNum('potential_rent_amount', get('potential_rent'), rowByHeader['potential rent'], rowByHeader['expected rent']);
+                addNum('front_ft', get('front_ft'), rowByHeader['front'], rowByHeader['frontage']);
+                addNum('length_ft', get('length_ft'), rowByHeader['length'], rowByHeader['depth']);
+                batch.set(newPropRef, propData);
             }
+
+            successCount++;
 
             if (successCount % 499 === 0) {
               await batch.commit();
               batch = writeBatch(firestore);
             }
         } catch (err: any) {
-            errors.push(`Row ${i}: ${err?.message || 'Failed'}`);
+            errors.push(`Row ${di + 1}: ${err?.message || 'Failed'}`);
         }
 
-        setImportProgress({ current: i, total });
+        if (di % 50 === 0 || di === dataLines.length - 1) {
+          setImportProgress({ current: di + 1, total });
+        }
     }
 
     try {
         await batch.commit();
-        const note = phoneOnlyCount > 0 ? ` ${phoneOnlyCount} had minimal data.` : '';
+        const errNote = errors.length > 0 ? ` ${errors.length} row(s) had errors.` : '';
         setImportResult({ success: successCount, failed: errors.length, errors });
         setImportStatus('complete');
+        toast({ title: 'Import Complete', description: `${successCount} lead(s) imported.${errNote}` });
     } catch (err: any) {
         setImportResult({ success: successCount, failed: errors.length + 1, errors: [...errors, `Batch commit: ${err?.message || ''}`] });
         setImportStatus('error');
@@ -883,36 +970,41 @@ export default function SettingsPage() {
         const text = event.target?.result as string;
         if (!text) { toast({ title: 'Empty File', variant: 'destructive' }); return; }
 
-        const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-        const lines = normalized.split('\n').filter(l => l.trim());
-        if (lines.length <= 1) {
-          toast({ title: 'Empty File', description: 'No data rows found.', variant: 'destructive' });
+        const allLines = splitLines(text);
+        const headerLine = allLines[0]?.trim();
+        if (!headerLine) {
+          toast({ title: 'Empty File', description: 'No header row found.', variant: 'destructive' });
           return;
         }
 
-        const headers = parseCsvRow(lines[0]).map(h => smartCleanValue(h));
+        const headers = parseCsvRow(headerLine).map(h => smartCleanValue(h));
         const colMap = buildColumnMap(headers, type);
         const fieldLabels: Record<string, string> = {};
         for (const [field, idx] of Object.entries(colMap)) {
           fieldLabels[field] = headers[idx] || '—';
         }
-        const missing = Object.entries(fieldLabels).filter(([, v]) => v === '—').map(([k]) => k);
-
-        const sampleRows: Record<string, string>[] = [];
-        for (let i = 1; i < Math.min(4, lines.length); i++) {
-          const vals = parseCsvRow(lines[i]).map(v => smartCleanValue(v));
+        
+        // Parse ALL rows for preview and "View All" feature
+        const allRows: Record<string, string>[] = [];
+        const dataLines = allLines.slice(1);
+        for (let i = 0; i < dataLines.length; i++) {
+          const vals = parseCsvRow(dataLines[i]).map(v => smartCleanValue(v));
           const row: Record<string, string> = {};
           headers.forEach((h, idx) => { row[fieldLabels[h] || h] = vals[idx] || ''; });
           const phoneIdx = colMap['phone'] ?? colMap['owner_number'];
           if (phoneIdx !== undefined) {
             row['Phone (normalized)'] = formatPhoneNumber(vals[phoneIdx]);
           }
-          sampleRows.push(row);
+          allRows.push(row);
+        }
+        if (allRows.length === 0) {
+          toast({ title: 'Empty File', description: 'No data rows found.', variant: 'destructive' });
+          return;
         }
 
         setPreviewType(type);
-        setPreviewRows(sampleRows);
-        setPreviewTotalRows(lines.length - 1);
+        setPreviewRows(allRows);
+        setPreviewTotalRows(allRows.length);
         setPreviewColMapping(fieldLabels);
         setPreviewFileText(text);
         setPreviewFileName(file.name);
@@ -921,10 +1013,6 @@ export default function SettingsPage() {
         setImportResult(undefined);
         setIsPreviewOpen(true);
         setIsImporting(false);
-
-        if (missing.length > 0) {
-          toast({ title: 'Unmatched Columns', description: `${missing.join(', ')} not found in CSV. These will be empty.`, variant: 'default' });
-        }
     };
     reader.readAsText(file);
   }
@@ -934,17 +1022,19 @@ export default function SettingsPage() {
     setIsAiEnhancing(true);
 
     try {
-      const normalized = previewFileText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-      const lines = normalized.split('\n').filter(l => l.trim());
-      const headers = parseCsvRow(lines[0]).map(h => smartCleanValue(h));
+      const allLines = splitLines(previewFileText);
+      const headerLine = allLines[0]?.trim();
+      const dataLines = allLines.slice(1);
+      if (!headerLine) { setIsAiEnhancing(false); return; }
+      const headers = parseCsvRow(headerLine).map(h => smartCleanValue(h));
       const colMap = buildColumnMap(headers, previewType === 'Buyers' ? 'Buyers' : 'Properties');
 
       const cells: { row: number; field: string; value: string }[] = [];
       const parseableFields = ['size', 'area', 'unit', 'demand', 'maxB', 'minB', 'demandUnit'];
       const phoneFields = ['phone', 'number'];
 
-      for (let i = 1; i < lines.length; i++) {
-        const vals = parseCsvRow(lines[i]).map(v => smartCleanValue(v));
+      for (let i = 0; i < dataLines.length; i++) {
+        const vals = parseCsvRow(dataLines[i]).map(v => smartCleanValue(v));
         for (const [field, idx] of Object.entries(colMap)) {
           const val = vals[idx] || '';
           if (!val) continue;
@@ -984,7 +1074,7 @@ export default function SettingsPage() {
         }
 
         const updatedRows = previewRows.map(r => ({ ...r }));
-        for (let i = 0; i < lines.length - 1; i++) {
+        for (let i = 0; i < dataLines.length; i++) {
           const rowNum = i + 1;
           for (const [field, idx] of Object.entries(colMap)) {
             const key = `${rowNum}-${field}`;
@@ -1340,10 +1430,13 @@ export default function SettingsPage() {
         colMapping={previewColMapping}
         sampleRows={previewRows}
         onConfirm={async () => {
+          if (isImportingRef.current) return;
+          isImportingRef.current = true;
           setImportStatus('importing');
           setImportProgress({ current: 0, total: previewTotalRows });
           await doImport(previewType, previewFileText, previewType === 'Properties' ? propImportListingType : buyersImportListingType);
           setImportProgress(null);
+          isImportingRef.current = false;
         }}
         importProgress={importProgress}
         importStatus={importStatus}
@@ -1542,28 +1635,34 @@ export default function SettingsPage() {
                             </AlertDialogContent>
                         </AlertDialog>
                     </div>
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-5 rounded-2xl bg-background/50 border border-destructive/10">
-                        <div>
-                            <h3 className="font-black text-sm text-foreground uppercase tracking-tight">Full System Reset</h3>
-                            <p className="text-xs text-muted-foreground font-medium">Wipe properties, buyers, and team records. Login remains active.</p>
+                    <div className="p-5 rounded-2xl bg-background/50 border border-destructive/10">
+                        <div className="mb-3">
+                            <h3 className="font-black text-sm text-foreground uppercase tracking-tight">Reset Database</h3>
+                            <p className="text-xs text-muted-foreground font-medium">Select which data to delete. Login remains active.</p>
                         </div>
-                        <AlertDialog>
-                             <AlertDialogTrigger asChild>
-                                <Button variant="destructive" className="mt-3 sm:mt-0 h-9 px-6 rounded-lg font-bold">Reset Database</Button>
-                             </AlertDialogTrigger>
-                             <AlertDialogContent className="rounded-3xl border-none shadow-2xl">
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle className="font-headline text-2xl font-black text-destructive">Wipe All Agency Data?</AlertDialogTitle>
-                                    <AlertDialogDescription className="text-base">
-                                        This will permanently delete every property, buyer, and team assignment. Your account will be like new.
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter className="mt-6">
-                                    <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => setIsResetDialogOpen(true)} className="bg-destructive text-white rounded-xl font-bold px-8">Confirm Wipe</AlertDialogAction>
-                                </AlertDialogFooter>
-                             </AlertDialogContent>
-                        </AlertDialog>
+                        <div className="space-y-1.5 mb-4">
+                          <label className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 p-1.5 rounded">
+                            <input type="checkbox" checked={Object.values(resetSelections).every(Boolean)} onChange={() => {
+                              const allChecked = Object.values(resetSelections).every(Boolean);
+                              setResetSelections(Object.fromEntries(resetableEntities.map(e => [e.key, !allChecked])));
+                            }} className="rounded" />
+                            <span className="font-medium">Select All</span>
+                          </label>
+                          {resetableEntities.map(e => (
+                            <label key={e.key} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 p-1.5 rounded ml-4">
+                              <input type="checkbox" checked={resetSelections[e.key]} onChange={() => setResetSelections(prev => ({ ...prev, [e.key]: !prev[e.key] }))} className="rounded" />
+                              {e.label}
+                            </label>
+                          ))}
+                        </div>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="h-9 px-6 rounded-lg font-bold"
+                          onClick={() => setIsResetDialogOpen(true)}
+                        >
+                          Reset Selected ({Object.values(resetSelections).filter(Boolean).length})
+                        </Button>
                     </div>
                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-5 rounded-2xl bg-destructive/10 border border-destructive/20">
                         <div>
@@ -1595,7 +1694,7 @@ export default function SettingsPage() {
       )}
 
     </div>
-    <ResetAccountDialog isOpen={isResetDialogOpen} setIsOpen={setIsResetDialogOpen} isPasswordRequired={isPasswordSignIn} />
+    <ResetAccountDialog isOpen={isResetDialogOpen} setIsOpen={setIsResetDialogOpen} isPasswordRequired={isPasswordSignIn} selectedCollections={resetableEntities.filter(e => resetSelections[e.key]).map(e => e.key)} />
     <DeleteConfirmationDialog 
         isOpen={isDeleteAgencyDialogOpen}
         setIsOpen={setDeleteAgencyDialogOpen}

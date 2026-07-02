@@ -22,9 +22,11 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
-const roleConfig: Record<string, { icon: React.ReactNode, color: string }> = {
+const roleConfig: Record<UserRole, { icon: React.ReactNode, color: string }> = {
     Admin: { icon: <Shield className="h-4 w-4" />, color: 'bg-red-500/10 text-red-500' },
     Agent: { icon: <User className="h-4 w-4" />, color: 'bg-green-500/10 text-green-500' },
+    'Video Recorder': { icon: <Camera className="h-4 w-4" />, color: 'bg-orange-500/10 text-orange-500' },
+    'Super Admin': { icon: <ShieldAlert className="h-4 w-4" />, color: 'bg-purple-500/10 text-purple-500' },
 };
 
 const planLimits = {
@@ -113,7 +115,7 @@ function TeamPageContent() {
         // Safety Filter: STRICT filtering for valid members only.
         const validMembers = teamMembers.filter(m => m.id && m.name && m.email);
 
-        const roleOrder: Record<string, number> = { Admin: 0, Agent: 1 };
+        const roleOrder: Record<string, number> = { 'Super Admin': 0, Admin: 1, Agent: 2, 'Video Recorder': 3 };
         return [...validMembers].sort((a, b) => {
             return (roleOrder[a.role] || 4) - (roleOrder[b.role] || 4);
         });
@@ -137,7 +139,7 @@ function TeamPageContent() {
                 {sortedTeamMembers.map(member => {
                     const config = roleConfig[member.role] || roleConfig.Agent;
                     const isOwner = member.id === profile.user_id;
-                    const status = (member.role === 'Admin' || member.status === 'Active') ? 'Active' : 'Pending';
+                    const status = (member.role === 'Admin' || member.role === 'Super Admin' || member.status === 'Active') ? 'Active' : 'Pending';
                     
                     const joinedSource = member.joinedAt || member.invitedAt;
                     let joinedDateStr = 'N/A';
@@ -212,7 +214,7 @@ function TeamPageContent() {
         {sortedTeamMembers.map(member => {
             const config = roleConfig[member.role] || roleConfig.Agent;
             const isOwner = member.id === profile.user_id;
-            const status = (member.role === 'Admin' || member.status === 'Active') ? 'Active' : 'Pending';
+            const status = (member.role === 'Admin' || member.role === 'Super Admin' || member.status === 'Active') ? 'Active' : 'Pending';
 
             const joinedSource = member.joinedAt || member.invitedAt;
             let joinedDateStr = 'N/A';

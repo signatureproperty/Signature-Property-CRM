@@ -293,7 +293,8 @@ export default function PropertiesPage() {
   }, [allProperties, user]);
 
   const limit = isAgent ? AGENT_LEAD_LIMIT : agencyLimit;
-  const currentCount = isAgent ? myLeadsCount : (allProperties?.length || 0);
+  const nonDeletedCount = allProperties?.filter(p => !p.is_deleted).length || 0;
+  const currentCount = isAgent ? myLeadsCount : nonDeletedCount;
   const progress = limit === Infinity ? 100 : (currentCount / limit) * 100;
   const isLimitReached = currentCount >= limit;
 

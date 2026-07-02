@@ -43,7 +43,9 @@ import {
 import { useProfile } from '@/context/profile-context';
 
 const allMenuItems = [
-  { href: '/overview', label: 'Dashboard', roles: ['Admin', 'Agent'], icon: <LayoutDashboard /> },
+  { href: '/overview', label: 'Dashboard', roles: ['Admin', 'Agent', 'Video Recorder', 'Super Admin'], icon: <LayoutDashboard /> },
+  { href: '/super-admin', label: 'Admin Control', roles: ['Super Admin'], icon: <ShieldAlert /> },
+  { href: '/super-admin/branding', label: 'App Branding', roles: ['Super Admin'], icon: <Palette /> },
   { href: '/properties', label: 'Properties', roles: ['Admin', 'Agent'], icon: <Building2 /> },
   { href: '/buyers', label: 'Buyers', roles: ['Admin', 'Agent'], icon: <Users /> },
   { href: '/services', label: 'Services', roles: ['Admin'], icon: <Sparkles /> },
@@ -56,8 +58,13 @@ const allMenuItems = [
   { href: '/trash', label: 'Trash', roles: ['Admin', 'Agent'], icon: <Trash2 /> },
 ];
 
+const videoMenuItems = [
+    { href: '/recording', label: 'Recording', roles: ['Video Recorder'], icon: <Video /> },
+    { href: '/editing', label: 'Editing', roles: ['Video Recorder'], icon: <Edit /> },
+];
+
 const bottomMenuItems = [
-  { href: '/settings', label: 'Settings', roles: ['Admin', 'Agent'], icon: <Settings /> },
+  { href: '/settings', label: 'Settings', roles: ['Admin', 'Agent', 'Super Admin'], icon: <Settings /> },
   { href: '/support', label: 'Support', roles: ['Admin', 'Agent'], icon: <MessageSquare /> },
 ];
 
@@ -113,6 +120,7 @@ export function AppSidebar() {
         <SidebarContent className="flex-1 p-2">
           <SidebarMenu className="gap-1">
             {allMenuItems.map(renderMenuItem)}
+            {profile.role === 'Video Recorder' && videoMenuItems.map(renderMenuItem)}
           </SidebarMenu>
         </SidebarContent>
 

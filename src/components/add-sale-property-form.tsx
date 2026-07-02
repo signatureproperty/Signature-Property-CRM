@@ -170,6 +170,7 @@ export function AddSalePropertyForm({
       property_type: finalPropertyType,
       demand_unit: (values.demand_unit as 'Lacs' | 'Crore' | 'Thousand') || 'Lacs',
       tags: tagsArray,
+      is_recorded: propertyToEdit?.is_recorded ?? false,
       auto_title: values.auto_title || 'Untitled Property',
       address: values.address || '',
       road_size_ft: values.road_size_ft ?? undefined,

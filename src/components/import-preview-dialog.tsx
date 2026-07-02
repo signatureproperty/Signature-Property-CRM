@@ -5,8 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Loader2, AlertTriangle, CheckCircle, FileSpreadsheet, Sparkles } from 'lucide-react';
+import { Loader2, AlertTriangle, CheckCircle, FileSpreadsheet, Sparkles, Eye } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -27,20 +26,20 @@ export function ImportPreviewDialog({
   isOpen, onClose, type, totalRows, colMapping, sampleRows,
   onConfirm, importProgress, importStatus, importResult, onAiEnhance, isAiEnhancing,
 }: Props) {
-  const mappedCount = Object.values(colMapping).filter(v => v !== '—').length;
-  const phoneCol = colMapping['phone'] || colMapping['owner_number'];
+  const [showAllRows, setShowAllRows] = useState(false);
+  const columns = Object.keys(sampleRows[0] || {});
+  const displayRows = showAllRows ? sampleRows : sampleRows.slice(0, 3);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open && importStatus !== 'importing') onClose(); }}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5 text-primary" />
             Import {type}
           </DialogTitle>
           <DialogDescription>
-            {totalRows} rows found · {mappedCount} columns matched
-            {phoneCol && phoneCol !== '—' ? ` · Phone column: "${phoneCol}"` : ''}
+            {totalRows} rows found from CSV
           </DialogDescription>
         </DialogHeader>
 
@@ -48,33 +47,45 @@ export function ImportPreviewDialog({
           <div className="space-y-4">
             <div className="flex gap-2 flex-wrap">
               {Object.entries(colMapping).map(([field, header]) => (
-                <Badge key={field} variant={header === '—' ? 'destructive' : 'secondary'} className="text-xs">
-                  {header === '—' ? <AlertTriangle className="h-3 w-3 mr-1" /> : null}
-                  {field}: {header}
-                </Badge>
+                <div key={field} className="text-xs text-muted-foreground bg-secondary/50 px-2 py-1 rounded">
+                  <span className="font-medium text-foreground">{header}</span> → {field}
+                </div>
               ))}
             </div>
 
             {sampleRows.length > 0 && (
-              <div className="rounded-lg border overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      {Object.keys(sampleRows[0]).map(k => (
-                        <TableHead key={k} className="text-xs whitespace-nowrap">{k}</TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {sampleRows.slice(0, 3).map((row, i) => (
-                      <TableRow key={i}>
-                        {Object.values(row).map((v, j) => (
-                          <TableCell key={j} className="text-xs max-w-[150px] truncate">{v || '—'}</TableCell>
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs text-muted-foreground">
+                    {showAllRows ? `All ${sampleRows.length} rows` : 'First 3 rows'}
+                  </p>
+                  <Button variant="ghost" size="sm" className="text-xs gap-1" onClick={() => setShowAllRows(!showAllRows)}>
+                    <Eye className="h-3 w-3" />
+                    {showAllRows ? 'Show Less' : `View All (${sampleRows.length})`}
+                  </Button>
+                </div>
+                <div className={`rounded-lg border overflow-hidden ${showAllRows ? 'max-h-96 overflow-y-auto' : ''}`}>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-xs whitespace-nowrap w-8">#</TableHead>
+                        {columns.map(k => (
+                          <TableHead key={k} className="text-xs whitespace-nowrap">{k}</TableHead>
                         ))}
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {displayRows.map((row, i) => (
+                        <TableRow key={i}>
+                          <TableCell className="text-xs text-muted-foreground">{i + 1}</TableCell>
+                          {columns.map(k => (
+                            <TableCell key={k} className="text-xs max-w-[150px] truncate">{row[k] || '—'}</TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
             )}
 
