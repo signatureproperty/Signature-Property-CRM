@@ -772,13 +772,7 @@ function BuyersPageContent() {
                             </div>
                         </div>
                         
-                        <div className="mt-4 pt-3 border-t border-dashed flex items-center justify-between">
-                             <div className="flex items-center gap-2">
-                                <UserIcon className="h-3.5 w-3.5 text-primary/60" />
-                                <span className="text-[10px] font-black uppercase tracking-widest text-foreground">
-                                    {buyer.assignedTo ? (teamMembers?.find(m => (m.user_id || m.id) === buyer.assignedTo)?.name || 'Assigned') : 'Agency Pool'}
-                                </span>
-                            </div>
+                        <div className="flex items-center justify-between">
                             <Popover>
                                 <PopoverTrigger asChild>
                                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground italic cursor-pointer hover:text-primary transition-colors" onClick={e => e.stopPropagation()}>
@@ -1070,9 +1064,8 @@ function BuyersPageContent() {
                             <ScrollBar orientation="horizontal" />
                         </ScrollArea>
                         <div className="pb-4">
-                            <Button variant="ghost" size="sm" className="rounded-full h-8 px-4 text-xs font-bold gap-2 text-primary hover:bg-primary/10 shadow-sm border border-primary/20" onClick={() => setIsManageTagsOpen(true)}>
+                            <Button variant="ghost" size="sm" className="rounded-full h-8 w-8 p-0 text-primary hover:bg-primary/10 shadow-sm border border-primary/20" onClick={() => setIsManageTagsOpen(true)}>
                                 <PlusCircle className="h-4 w-4" />
-                                <span className="hidden md:inline">Manage </span>Tags
                             </Button>
                         </div>
                     </div>
