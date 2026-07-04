@@ -554,29 +554,27 @@ export default function PropertiesPage() {
 
   const allPropertyCounts = useMemo(() => {
     const props = nonDeletedProperties;
-    const filteredByType = activeListingType === 'For Sale' ? props.filter(p => !p.is_for_rent)
-      : activeListingType === 'For Rent' ? props.filter(p => p.is_for_rent)
+    const saleProps = props.filter(p => !p.is_for_rent);
+    const rentProps = props.filter(p => p.is_for_rent);
+    const currentProps = activeListingType === 'For Sale' ? saleProps
+      : activeListingType === 'For Rent' ? rentProps
       : props;
-    const counts: Record<string, number> = { 'All': props.length, 'For Sale': 0, 'For Rent': 0 };
-    props.forEach(p => {
-      if (p.is_for_rent) counts['For Rent']++;
-      else counts['For Sale']++;
-    });
-    filteredByType.forEach(p => {
-      const s = p.status;
-      counts[s] = (counts[s] || 0) + 1;
+
+    const counts: Record<string, number> = {
+      'All': props.length, 'For Sale': saleProps.length, 'For Rent': rentProps.length,
+      'All (Sale)': saleProps.length, 'All (Rent)': rentProps.length,
+    };
+
+    currentProps.forEach(p => {
+      if (p.status === 'Available') {
+        if (p.is_for_rent) counts['Available (Rent)'] = (counts['Available (Rent)'] || 0) + 1;
+        else counts['Available (Sale)'] = (counts['Available (Sale)'] || 0) + 1;
+      } else {
+        counts[p.status] = (counts[p.status] || 0) + 1;
+      }
       if (p.tags) p.tags.forEach(t => { counts[t] = (counts[t] || 0) + 1; });
     });
-    counts['All (Sale)'] = props.filter(p => !p.is_for_rent).length;
-    counts['All (Rent)'] = props.filter(p => p.is_for_rent).length;
-    if (activeListingType === 'All') {
-      counts['Available (Sale)'] = props.filter(p => p.status === 'Available' && !p.is_for_rent).length;
-      counts['Available (Rent)'] = props.filter(p => p.status === 'Available' && p.is_for_rent).length;
-    } else if (activeListingType === 'For Sale') {
-      counts['Available (Sale)'] = counts['Available'] || 0;
-    } else {
-      counts['Available (Rent)'] = counts['Available'] || 0;
-    }
+
     return counts;
   }, [nonDeletedProperties, activeListingType]);
 
