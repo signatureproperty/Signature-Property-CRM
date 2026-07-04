@@ -151,16 +151,22 @@ const statusVariant = {
     'Rent Out': 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800',
 } as const;
 
-const propertyStatuses = [
-  { value: 'All (Sale)', label: 'All (Sale)' },
-  { value: 'Pending', label: 'Pending' },
-  { value: 'Available (Sale)', label: 'Available (Sale)' },
-  { value: 'Sold', label: 'Sold' },
-  { value: 'Sold (External)', label: 'Sold (External)' },
-  { value: 'All (Rent)', label: 'All (Rent)' },
-  { value: 'Available (Rent)', label: 'Available (Rent)' },
-  { value: 'Rent Out', label: 'Rent Out' },
+type StatusConfig = { label: string; dbStatus: string; type: 'sale' | 'rent' | 'both' };
+
+const propertyStatuses: StatusConfig[] = [
+  { label: 'All (Sale)', dbStatus: 'All', type: 'sale' },
+  { label: 'Pending', dbStatus: 'Pending', type: 'sale' },
+  { label: 'Available (Sale)', dbStatus: 'Available', type: 'sale' },
+  { label: 'Sold', dbStatus: 'Sold', type: 'sale' },
+  { label: 'Sold (External)', dbStatus: 'Sold (External)', type: 'sale' },
+  { label: 'All (Rent)', dbStatus: 'All', type: 'rent' },
+  { label: 'Available (Rent)', dbStatus: 'Available', type: 'rent' },
+  { label: 'Rent Out', dbStatus: 'Rent Out', type: 'rent' },
 ];
+
+const statusLabelToDb: Record<string, string> = Object.fromEntries(
+  propertyStatuses.map(s => [s.label, s.dbStatus])
+);
 
 const propertyTypesForFilter: (PropertyType | 'All' | 'Other')[] = [
   'All', 'House', 'Flat', 'Farm House', 'Penthouse', 'Plot', 'Residential Plot', 'Commercial Plot', 'Agricultural Land', 'Industrial Land', 'Office', 'Shop', 'Warehouse', 'Factory', 'Building', 'Residential Property', 'Commercial Property', 'Semi Commercial', 'Other'
@@ -199,12 +205,15 @@ export default function PropertiesPage() {
     if (isMobile && profile.role === 'Agent' && !activeAgencyTab && profile.agencies && profile.agencies.length > 0) {
       setActiveAgencyTab(profile.agencies[0].agency_id);
     }
-    if (statusFilterFromURL) setActiveStatus(statusFilterFromURL);
+    if (statusFilterFromURL) {
+      setActiveStatus(statusFilterFromURL);
+      if (statusFilterFromURL === 'All (Sale)') setActiveListingType('For Sale');
+      else if (statusFilterFromURL === 'All (Rent)') setActiveListingType('For Rent');
+    }
   }, [profile.agencies, activeAgencyTab, isMobile, profile.role, statusFilterFromURL]);
 
 
 
-  const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
   const [isEditTagsOpen, setIsEditTagsOpen] = useState(false);
   const [isAssignOpen, setIsAssignOpen] = useState(false);
   const [isSimpleAssignOpen, setIsSimpleAssignOpen] = useState(false);
@@ -293,8 +302,7 @@ export default function PropertiesPage() {
   }, [allProperties, user]);
 
   const limit = isAgent ? AGENT_LEAD_LIMIT : agencyLimit;
-  const nonDeletedCount = allProperties?.filter(p => !p.is_deleted).length || 0;
-  const currentCount = isAgent ? myLeadsCount : nonDeletedCount;
+  const currentCount = isAgent ? myLeadsCount : (allProperties?.length || 0);
   const progress = limit === Infinity ? 100 : (currentCount / limit) * 100;
   const isLimitReached = currentCount >= limit;
 
@@ -512,9 +520,12 @@ export default function PropertiesPage() {
       );
     }
 
-    // 6. Status Filter (badge) — checks both status field AND tags
+    // 6. Status Filter (badge) — maps display labels to DB values
     if (activeStatus !== 'All') {
-      baseProperties = baseProperties.filter(p => p.status === activeStatus || p.tags?.includes(activeStatus));
+      const dbStatus = statusLabelToDb[activeStatus] || activeStatus;
+      if (dbStatus !== 'All') {
+        baseProperties = baseProperties.filter(p => p.status === dbStatus || p.tags?.includes(dbStatus));
+      }
     }
 
     // 7. Agent Filter
@@ -543,16 +554,31 @@ export default function PropertiesPage() {
 
   const allPropertyCounts = useMemo(() => {
     const props = nonDeletedProperties;
+    const filteredByType = activeListingType === 'For Sale' ? props.filter(p => !p.is_for_rent)
+      : activeListingType === 'For Rent' ? props.filter(p => p.is_for_rent)
+      : props;
     const counts: Record<string, number> = { 'All': props.length, 'For Sale': 0, 'For Rent': 0 };
     props.forEach(p => {
       if (p.is_for_rent) counts['For Rent']++;
       else counts['For Sale']++;
+    });
+    filteredByType.forEach(p => {
       const s = p.status;
       counts[s] = (counts[s] || 0) + 1;
       if (p.tags) p.tags.forEach(t => { counts[t] = (counts[t] || 0) + 1; });
     });
+    counts['All (Sale)'] = props.filter(p => !p.is_for_rent).length;
+    counts['All (Rent)'] = props.filter(p => p.is_for_rent).length;
+    if (activeListingType === 'All') {
+      counts['Available (Sale)'] = props.filter(p => p.status === 'Available' && !p.is_for_rent).length;
+      counts['Available (Rent)'] = props.filter(p => p.status === 'Available' && p.is_for_rent).length;
+    } else if (activeListingType === 'For Sale') {
+      counts['Available (Sale)'] = counts['Available'] || 0;
+    } else {
+      counts['Available (Rent)'] = counts['Available'] || 0;
+    }
     return counts;
-  }, [nonDeletedProperties]);
+  }, [nonDeletedProperties, activeListingType]);
 
   const totalPages = Math.ceil(filteredProperties.length / ITEMS_PER_PAGE);
 
@@ -1094,7 +1120,13 @@ export default function PropertiesPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between">
+                  <div className="mt-4 pt-3 border-t border-dashed flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <UserIcon className="h-3.5 w-3.5 text-primary/60" />
+                      <span className="text-[10px] font-black uppercase tracking-widest text-foreground">
+                        {prop.assignedTo ? (activeTeamMembers?.find(m => (m.user_id || m.id) === prop.assignedTo)?.name || 'Assigned') : 'Agency Pool'}
+                      </span>
+                    </div>
                     <Popover>
                       <PopoverTrigger asChild>
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground italic cursor-pointer hover:text-primary transition-colors" onClick={e => e.stopPropagation()}>
@@ -1487,83 +1519,67 @@ export default function PropertiesPage() {
                 <div className="flex items-center gap-2">
                   <ScrollArea className="flex-1 whitespace-nowrap pb-4">
                     <div className="flex items-center gap-3">
+                      {/* Types - All / For Sale / For Rent */}
                       <div className="flex items-center gap-2 pr-4 border-r border-border/50">
                         <Badge
                           variant={activeListingType === 'All' ? 'default' : 'outline'}
-                          className={cn("cursor-pointer px-4 py-1.5 rounded-full flex items-center gap-1", activeListingType === 'All' ? "bg-primary" : "hover:bg-accent")}
-                          onClick={() => { setActiveListingType('All'); setIsTypesExpanded(!isTypesExpanded); }}
+                          className={cn("cursor-pointer px-4 py-1.5 rounded-full", activeListingType === 'All' && "ring-2 ring-primary ring-offset-2")}
+                          onClick={() => { setActiveListingType('All'); setActiveStatus('All'); }}
                         >
-                          All Types ({allPropertyCounts['All'] || 0}) {isTypesExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                          All ({allPropertyCounts['All'] || 0})
                         </Badge>
-                        <AnimatePresence>
-                          {isTypesExpanded && (
-                            <motion.div
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              exit={{ opacity: 0, x: -10 }}
-                              transition={{ duration: 0.15 }}
-                              className="flex items-center gap-2"
-                            >
-                              <Badge variant={activeListingType === 'For Sale' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800", activeListingType === 'For Sale' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Sale')}>For Sale ({allPropertyCounts['For Sale'] || 0})</Badge>
-                              <Badge variant={activeListingType === 'For Rent' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800", activeListingType === 'For Rent' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Rent')}>For Rent ({allPropertyCounts['For Rent'] || 0})</Badge>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
-                      <div className="flex items-center gap-2 pr-4 border-r border-border/50">
                         <Badge
-                          variant={activeStatus === 'All' ? 'default' : 'outline'}
-                          className={cn("cursor-pointer px-4 py-1.5 rounded-full flex items-center gap-1", activeStatus === 'All' ? "bg-primary" : "hover:bg-accent")}
-                          onClick={() => { setActiveStatus('All'); setIsStatusExpanded(!isStatusExpanded); }}
+                          variant={activeListingType === 'For Sale' ? 'default' : 'outline'}
+                          className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800", activeListingType === 'For Sale' && "ring-2 ring-primary ring-offset-2")}
+                          onClick={() => { setActiveListingType('For Sale'); setActiveStatus('All'); }}
                         >
-                          All Status {isStatusExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                          For Sale ({allPropertyCounts['For Sale'] || 0})
                         </Badge>
-                        <AnimatePresence>
-                          {isStatusExpanded && (
-                            <motion.div
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              exit={{ opacity: 0, x: -10 }}
-                              transition={{ duration: 0.15 }}
-                              className="flex items-center gap-2"
-                            >
-                              {['Pending', 'Available', 'Sold', 'Sold (External)', 'Available (Rent)', 'Rent Out'].map(status => (
-                                <Badge
-                                  key={status}
-                                  variant={activeStatus === status ? 'default' : 'outline'}
-                                  className={cn("cursor-pointer px-4 py-1.5 rounded-full transition-all", activeStatus === status && "ring-2 ring-primary ring-offset-2")}
-                                  onClick={() => setActiveStatus(status)}
-                                >
-                                  {status} ({allPropertyCounts[status] || 0})
-                                </Badge>
-                              ))}
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
+                        <Badge
+                          variant={activeListingType === 'For Rent' ? 'default' : 'outline'}
+                          className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800", activeListingType === 'For Rent' && "ring-2 ring-primary ring-offset-2")}
+                          onClick={() => { setActiveListingType('For Rent'); setActiveStatus('All'); }}
+                        >
+                          For Rent ({allPropertyCounts['For Rent'] || 0})
+                        </Badge>
                       </div>
+                      {/* Status + Custom Tags in one line */}
                       <div className="flex items-center gap-2">
-                        <Badge
-                          variant={activeCustomTags.length === 0 ? 'default' : 'outline'}
-                          className={cn("cursor-pointer px-4 py-1.5 rounded-full flex items-center gap-1", activeCustomTags.length === 0 ? "bg-primary" : "hover:bg-accent")}
-                          onClick={() => { setActiveCustomTags([]); setIsTagsExpanded(!isTagsExpanded); }}
-                        >
-                          All Tags {isTagsExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                        </Badge>
-                        <AnimatePresence>
-                          {isTagsExpanded && (
-                            <motion.div
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              exit={{ opacity: 0, x: -10 }}
-                              transition={{ duration: 0.15 }}
-                              className="flex items-center gap-2"
-                            >
-                              {agencyTags?.map(tag => (
-                                <Badge key={tag.id} variant={activeCustomTags.includes(tag.name) ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full transition-all", tag.color, activeCustomTags.includes(tag.name) && "ring-2 ring-primary ring-offset-2")} onClick={() => handleToggleCustomTag(tag.name)}>{tag.name} ({allPropertyCounts[tag.name] || 0})</Badge>
-                              ))}
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
+                        {propertyStatuses
+                          .filter(s => activeListingType === 'All' || s.type === 'both' || s.type === (activeListingType === 'For Sale' ? 'sale' : 'rent'))
+                          .map(({ label, dbStatus, type }) => (
+                          <Badge
+                            key={label}
+                            variant={activeStatus === label ? 'default' : 'outline'}
+                            className={cn("cursor-pointer px-4 py-1.5 rounded-full transition-all", 
+                              (statusVariant as any)[dbStatus],
+                              activeStatus === label && "ring-2 ring-primary ring-offset-2"
+                            )}
+                            onClick={() => {
+                              if (label === 'All (Sale)') {
+                                setActiveStatus('All (Sale)');
+                                setActiveListingType('For Sale');
+                              } else if (label === 'All (Rent)') {
+                                setActiveStatus('All (Rent)');
+                                setActiveListingType('For Rent');
+                              } else {
+                                setActiveStatus(label);
+                              }
+                            }}
+                          >
+                            {label} ({allPropertyCounts[label] || 0})
+                          </Badge>
+                        ))}
+                        {agencyTags?.map(tag => (
+                          <Badge
+                            key={tag.id}
+                            variant={activeCustomTags.includes(tag.name) ? 'default' : 'outline'}
+                            className={cn("cursor-pointer px-4 py-1.5 rounded-full transition-all", tag.color, activeCustomTags.includes(tag.name) && "ring-2 ring-primary ring-offset-2")}
+                            onClick={() => handleToggleCustomTag(tag.name)}
+                          >
+                            {tag.name} ({allPropertyCounts[tag.name] || 0})
+                          </Badge>
+                        ))}
                       </div>
                     </div>
                     <ScrollBar orientation="horizontal" />
@@ -1648,23 +1664,6 @@ export default function PropertiesPage() {
       {propertyForDetails && isSimpleAssignOpen && (
         <SimpleAssignPropertyAgentDialog property={propertyForDetails} isOpen={isSimpleAssignOpen} setIsOpen={setIsSimpleAssignOpen} teamMembers={activeTeamMembers} />
       )}
-
-      <div className={cn('fixed bottom-24 right-4 md:bottom-8 md:right-8 z-50 transition-opacity', isMoreMenuOpen && 'opacity-0 pointer-events-none')}>
-        <Popover open={isAddMenuOpen} onOpenChange={setIsAddMenuOpen}>
-          <PopoverTrigger asChild>
-            <Button onClick={() => user && !user.emailVerified && handleOpenAddDialog('For Sale')} className="rounded-full w-14 h-14 shadow-lg glowing-btn" size="icon">
-              <PlusCircle className="h-6 w-6" />
-              <span className="sr-only">Add Property</span>
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-40 p-2 mb-2">
-            <div className="flex flex-col gap-2">
-              <Button variant="ghost" onClick={() => { handleOpenAddDialog('For Sale'); setIsAddMenuOpen(false); }}>For Sale</Button>
-              <Button variant="ghost" onClick={() => { handleOpenAddDialog('For Rent'); setIsAddMenuOpen(false); }}>For Rent</Button>
-            </div>
-          </PopoverContent>
-        </Popover>
-      </div>
 
       <AddPropertyDialog
         isOpen={isAddPropertyOpen}

@@ -166,8 +166,7 @@ function BuyersPageContent() {
 
     const currentPlan = (profile?.planName as PlanName) || 'Basic';
     const limit = planLimits[currentPlan]?.buyers || 0;
-    const nonDeletedBuyerCount = allBuyers?.filter(b => !b.is_deleted).length || 0;
-    const currentCount = nonDeletedBuyerCount;
+    const currentCount = allBuyers?.length || 0;
     const progress = limit === Infinity ? 100 : (currentCount / limit) * 100;
 
     const [isTypesExpanded, setIsTypesExpanded] = useState(false);
@@ -194,6 +193,9 @@ function BuyersPageContent() {
     const buyerCounts = useMemo(() => {
         if (!allBuyers) return {};
         const activeBuyers = allBuyers.filter(b => !b.is_deleted);
+        const filteredByType = activeListingType === 'For Sale' ? activeBuyers.filter(b => (b.listing_type || 'For Sale') === 'For Sale')
+            : activeListingType === 'For Rent' ? activeBuyers.filter(b => b.listing_type === 'For Rent')
+            : activeBuyers;
         const counts: Record<string, number> = {
             'For Sale': activeBuyers.filter(b => (b.listing_type || 'For Sale') === 'For Sale').length,
             'For Rent': activeBuyers.filter(b => b.listing_type === 'For Rent').length,
@@ -201,15 +203,15 @@ function BuyersPageContent() {
         };
 
         buyerStatuses.forEach(status => {
-            counts[status] = activeBuyers.filter(b => b.status === status).length;
+            counts[status] = filteredByType.filter(b => b.status === status).length;
         });
 
         agencyTags?.forEach(tag => {
-            counts[tag.name] = activeBuyers.filter(b => b.tags?.includes(tag.name)).length;
+            counts[tag.name] = filteredByType.filter(b => b.tags?.includes(tag.name)).length;
         });
 
         return counts;
-    }, [allBuyers, agencyTags]);
+    }, [allBuyers, agencyTags, activeListingType]);
 
     const handleFilterChange = (key: keyof Filters, value: any) => {
         setFilters((prev) => ({ ...prev, [key]: value }));
@@ -772,7 +774,13 @@ function BuyersPageContent() {
                             </div>
                         </div>
                         
-                        <div className="flex items-center justify-between">
+                        <div className="mt-4 pt-3 border-t border-dashed flex items-center justify-between">
+                             <div className="flex items-center gap-2">
+                                <UserIcon className="h-3.5 w-3.5 text-primary/60" />
+                                <span className="text-[10px] font-black uppercase tracking-widest text-foreground">
+                                    {buyer.assignedTo ? (teamMembers?.find(m => (m.user_id || m.id) === buyer.assignedTo)?.name || 'Assigned') : 'Agency Pool'}
+                                </span>
+                            </div>
                             <Popover>
                                 <PopoverTrigger asChild>
                                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground italic cursor-pointer hover:text-primary transition-colors" onClick={e => e.stopPropagation()}>
@@ -964,101 +972,61 @@ function BuyersPageContent() {
                 </div>
             </div>
 
-            <Card className="border-none shadow-none bg-transparent">
+                        <Card className="border-none shadow-none bg-transparent">
                 <div className="flex flex-col gap-4">
                     <div className="flex items-center gap-2">
                         <ScrollArea className="flex-1 whitespace-nowrap pb-4">
                             <div className="flex items-center gap-3">
+                                {/* Types - All / For Sale / For Rent */}
                                 <div className="flex items-center gap-2 pr-4 border-r border-border/50">
-                                    <Badge 
-                                        variant={activeListingType === 'All' ? 'default' : 'outline'} 
-                                        className={cn("cursor-pointer px-4 py-1.5 rounded-full flex items-center gap-1", activeListingType === 'All' ? "bg-primary" : "hover:bg-accent")} 
-                                        onClick={() => {
-                                            setActiveListingType('All');
-                                            setIsTypesExpanded(!isTypesExpanded);
-                                        }}
+                                    <Badge
+                                        variant={activeListingType === 'All' ? 'default' : 'outline'}
+                                        className={cn("cursor-pointer px-4 py-1.5 rounded-full", activeListingType === 'All' && "ring-2 ring-primary ring-offset-2")}
+                                        onClick={() => { setActiveListingType('All'); setActiveStatus('All'); }}
                                     >
-                                        All Types ({buyerCounts['All'] || 0}) {isTypesExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                                        All ({buyerCounts['All'] || 0})
                                     </Badge>
-                                    <AnimatePresence>
-                                        {isTypesExpanded && (
-                                            <motion.div 
-                                                initial={{ opacity: 0, x: -10 }} 
-                                                animate={{ opacity: 1, x: 0 }} 
-                                                exit={{ opacity: 0, x: -10 }}
-                                                transition={{ duration: 0.15 }}
-                                                className="flex items-center gap-2"
-                                            >
-                                                <Badge variant={activeListingType === 'For Sale' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800", activeListingType === 'For Sale' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Sale')}>For Sale ({buyerCounts['For Sale'] || 0})</Badge>
-                                                <Badge variant={activeListingType === 'For Rent' ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800", activeListingType === 'For Rent' && "ring-2 ring-primary ring-offset-2")} onClick={() => setActiveListingType('For Rent')}>For Rent ({buyerCounts['For Rent'] || 0})</Badge>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-                                </div>
-                                <div className="flex items-center gap-2 pr-4 border-r border-border/50">
-                                    <Badge 
-                                        variant={activeStatus === 'All' ? 'default' : 'outline'} 
-                                        className={cn("cursor-pointer px-4 py-1.5 rounded-full flex items-center gap-1", activeStatus === 'All' ? "bg-primary" : "hover:bg-accent")} 
-                                        onClick={() => {
-                                            setActiveStatus('All');
-                                            setIsStatusExpanded(!isStatusExpanded);
-                                        }}
+                                    <Badge
+                                        variant={activeListingType === 'For Sale' ? 'default' : 'outline'}
+                                        className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800", activeListingType === 'For Sale' && "ring-2 ring-primary ring-offset-2")}
+                                        onClick={() => { setActiveListingType('For Sale'); setActiveStatus('All'); }}
                                     >
-                                        All Status {isStatusExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                                        For Sale ({buyerCounts['For Sale'] || 0})
                                     </Badge>
-                                    <AnimatePresence>
-                                        {isStatusExpanded && (
-                                            <motion.div 
-                                                initial={{ opacity: 0, x: -10 }} 
-                                                animate={{ opacity: 1, x: 0 }} 
-                                                exit={{ opacity: 0, x: -10 }}
-                                                transition={{ duration: 0.15 }}
-                                                className="flex items-center gap-2"
-                                            >
-                                                {buyerStatuses.map(status => (
-                                                    <Badge 
-                                                        key={status} 
-                                                        variant={activeStatus === status ? 'default' : 'outline'} 
-                                                        className={cn(
-                                                            "cursor-pointer px-4 py-1.5 rounded-full transition-all", 
-                                                            (statusVariant as any)[status],
-                                                            activeStatus === status && "ring-2 ring-primary ring-offset-2"
-                                                        )} 
-                                                        onClick={() => setActiveStatus(status)}
-                                                    >
-                                                        {status} ({buyerCounts[status] || 0})
-                                                    </Badge>
-                                                ))}
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
+                                    <Badge
+                                        variant={activeListingType === 'For Rent' ? 'default' : 'outline'}
+                                        className={cn("cursor-pointer px-4 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800", activeListingType === 'For Rent' && "ring-2 ring-primary ring-offset-2")}
+                                        onClick={() => { setActiveListingType('For Rent'); setActiveStatus('All'); }}
+                                    >
+                                        For Rent ({buyerCounts['For Rent'] || 0})
+                                    </Badge>
                                 </div>
+                                {/* Status + Custom Tags in one line */}
                                 <div className="flex items-center gap-2">
-                                    <Badge 
-                                        variant={activeCustomTags.length === 0 ? 'default' : 'outline'} 
-                                        className={cn("cursor-pointer px-4 py-1.5 rounded-full flex items-center gap-1", activeCustomTags.length === 0 ? "bg-primary" : "hover:bg-accent")} 
-                                        onClick={() => {
-                                            setActiveCustomTags([]);
-                                            setIsTagsExpanded(!isTagsExpanded);
-                                        }}
-                                    >
-                                        All Tags {isTagsExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                                    </Badge>
-                                    <AnimatePresence>
-                                        {isTagsExpanded && (
-                                            <motion.div 
-                                                initial={{ opacity: 0, x: -10 }} 
-                                                animate={{ opacity: 1, x: 0 }} 
-                                                exit={{ opacity: 0, x: -10 }}
-                                                transition={{ duration: 0.15 }}
-                                                className="flex items-center gap-2"
-                                            >
-                                                {agencyTags?.map(tag => (
-                                                    <Badge key={tag.id} variant={activeCustomTags.includes(tag.name) ? 'default' : 'outline'} className={cn("cursor-pointer px-4 py-1.5 rounded-full transition-all", tag.color, activeCustomTags.includes(tag.name) && "ring-2 ring-primary ring-offset-2")} onClick={() => handleToggleCustomTag(tag.name)}>{tag.name} ({buyerCounts[tag.name] || 0})</Badge>
-                                                ))}
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
+                                    {buyerStatuses.map(status => (
+                                        <Badge
+                                            key={status}
+                                            variant={activeStatus === status ? 'default' : 'outline'}
+                                            className={cn(
+                                                "cursor-pointer px-4 py-1.5 rounded-full transition-all",
+                                                (statusVariant as any)[status],
+                                                activeStatus === status && "ring-2 ring-primary ring-offset-2"
+                                            )}
+                                            onClick={() => setActiveStatus(status)}
+                                        >
+                                            {status} ({buyerCounts[status] || 0})
+                                        </Badge>
+                                    ))}
+                                    {agencyTags?.map(tag => (
+                                        <Badge
+                                            key={tag.id}
+                                            variant={activeCustomTags.includes(tag.name) ? 'default' : 'outline'}
+                                            className={cn("cursor-pointer px-4 py-1.5 rounded-full transition-all", tag.color, activeCustomTags.includes(tag.name) && "ring-2 ring-primary ring-offset-2")}
+                                            onClick={() => handleToggleCustomTag(tag.name)}
+                                        >
+                                            {tag.name} ({buyerCounts[tag.name] || 0})
+                                        </Badge>
+                                    ))}
                                 </div>
                             </div>
                             <ScrollBar orientation="horizontal" />
@@ -1069,45 +1037,7 @@ function BuyersPageContent() {
                             </Button>
                         </div>
                     </div>
-
-                    {/* --- Agent Selection Filter --- */}
-                    {profile.role === 'Admin' && (
-                        <div className="flex items-center gap-3 pb-2">
-                            <div className="flex items-center gap-2 bg-card/60 backdrop-blur-sm border border-primary/10 rounded-full px-4 py-1.5 shadow-sm">
-                                <Users className="h-4 w-4 text-primary" />
-                                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Assigned Agent:</span>
-                                <Select value={activeAgentFilter} onValueChange={setActiveAgentFilter}>
-                                    <SelectTrigger className="h-7 border-none bg-transparent focus:ring-0 text-xs font-bold w-[180px] p-0 shadow-none">
-                                        <SelectValue placeholder="All Agency Inventory" />
-                                    </SelectTrigger>
-                                    <SelectContent className="rounded-xl shadow-2xl border-none">
-                                        <SelectItem value="All" className="font-bold">All Agency Leads</SelectItem>
-                                        {activeAgents.map((agent: any) => (
-                                            <SelectItem key={agent.id} value={agent.user_id || agent.id}>
-                                                {agent.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            {activeAgentFilter !== 'All' && (
-                                <Button variant="ghost" size="sm" onClick={() => setActiveAgentFilter('All')} className="h-8 rounded-full text-[10px] font-black uppercase tracking-tighter hover:bg-destructive/10 hover:text-destructive">
-                                    <X className="h-3 w-3 mr-1" /> Clear Filter
-                                </Button>
-                            )}
-                        </div>
-                    )}
                 </div>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-muted-foreground">Buyer Leads Usage</span>
-                  <span className="text-sm font-bold">{currentCount} / {limit === Infinity ? 'Unlimited' : limit}</span>
-                </div>
-                <Progress value={progress} />
-              </CardContent>
             </Card>
 
             <div className="mt-4">{isMobile ? renderCards(paginatedBuyers) : <Card className="p-0 overflow-hidden bg-background">{renderTable(paginatedBuyers)}</Card>}</div>
