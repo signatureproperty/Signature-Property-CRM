@@ -191,21 +191,33 @@ export function BuyerDetailsDialog({
   }, [isReturnDialogOpen, buyer]);
 
   const formatBudget = (minAmount?: number, minUnit?: PriceUnit, maxAmount?: number, maxUnit?: PriceUnit) => {
-    if (!minAmount || !minUnit) return 'N/A';
-    const minVal = formatUnit(minAmount, minUnit);
-    if (!maxAmount || !maxUnit || (minAmount === maxAmount && minUnit === maxUnit)) {
-      return formatCurrency(minVal, currency);
+    if (!minAmount && !maxAmount) return 'N/A';
+    if (minAmount && minUnit) {
+      const minVal = formatUnit(minAmount, minUnit);
+      if (!maxAmount || !maxUnit || (minAmount === maxAmount && minUnit === maxUnit)) {
+        return formatCurrency(minVal, currency);
+      }
+      const maxVal = formatUnit(maxAmount, maxUnit);
+      return `${formatCurrency(minVal, currency)} - ${formatCurrency(maxVal, currency)}`;
     }
-    const maxVal = formatUnit(maxAmount, maxUnit);
-    return `${formatCurrency(minVal, currency)} - ${formatCurrency(maxVal, currency)}`;
+    if (maxAmount && maxUnit) {
+      return formatCurrency(formatUnit(maxAmount, maxUnit), currency);
+    }
+    return 'N/A';
   };
 
   const formatSize = (minAmount?: number, minUnit?: SizeUnit, maxAmount?: number, maxUnit?: SizeUnit) => {
-    if (!minAmount || !minUnit) return 'N/A';
-    if (!maxAmount || !maxUnit || (minAmount === maxAmount && minUnit === maxUnit)) {
+    if (!minAmount && !maxAmount) return 'N/A';
+    if (minAmount && minUnit) {
+      if (!maxAmount || !maxUnit || (minAmount === maxAmount && minUnit === maxUnit)) {
         return `${minAmount} ${minUnit}`;
+      }
+      return `${minAmount} - ${maxAmount} ${maxUnit}`;
     }
-    return `${minAmount} - ${maxAmount} ${maxUnit}`;
+    if (maxAmount && maxUnit) {
+      return `${maxAmount} ${maxUnit}`;
+    }
+    return 'N/A';
   };
 
   const handleClearHistory = async () => {
