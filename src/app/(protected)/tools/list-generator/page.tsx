@@ -4,7 +4,7 @@
 import { ListGeneratorTool } from '@/components/list-generator-tool';
 import { useFirestore } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, where, or } from 'firebase/firestore';
+import { collection } from 'firebase/firestore';
 import { useProfile } from '@/context/profile-context';
 import { useMemoFirebase } from '@/firebase/hooks';
 import type { Property } from '@/lib/types';
@@ -16,19 +16,8 @@ export default function ListGeneratorPage() {
 
   const agencyPropertiesQuery = useMemoFirebase(() => {
       if (!profile.agency_id) return null;
-      const ref = collection(firestore, 'agencies', profile.agency_id, 'properties');
-      
-      // If Agent, restrict to assigned or created properties
-      if (profile.role === 'Agent') {
-          return query(ref, 
-            or(
-                where('assignedTo', 'array-contains', profile.user_id),
-                where('created_by', '==', profile.user_id)
-            )
-          );
-      }
-      return ref;
-  }, [profile.agency_id, profile.role, profile.user_id, firestore]);
+      return collection(firestore, 'agencies', profile.agency_id, 'properties');
+  }, [profile.agency_id, firestore]);
 
   const agentPropertiesQuery = useMemoFirebase(() => profile.user_id ? collection(firestore, 'agents', profile.user_id, 'properties') : null, [profile.user_id, firestore]);
   

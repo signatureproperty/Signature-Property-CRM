@@ -90,18 +90,8 @@ export default function FindByBudgetPage() {
 
   const propertiesQuery = useMemoFirebase(() => {
       if (!profile.agency_id || !user) return null;
-      const ref = collection(firestore, 'agencies', profile.agency_id, 'properties');
-      
-      if (profile.role === 'Agent') {
-          return query(ref, 
-            or(
-                where('assignedTo', 'array-contains', user.uid),
-                where('created_by', '==', user.uid)
-            )
-          );
-      }
-      return ref;
-  }, [profile.agency_id, profile.role, user, firestore]);
+      return collection(firestore, 'agencies', profile.agency_id, 'properties');
+  }, [profile.agency_id, firestore]);
   const { data: allProperties } = useCollection<Property>(propertiesQuery);
 
   const buyersQuery = useMemoFirebase(() => {

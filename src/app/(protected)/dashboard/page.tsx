@@ -36,7 +36,7 @@ import {
                                             import { Property, Buyer, Appointment, User, PriceUnit } from '@/lib/types';
                                             import { useFirestore } from '@/firebase/provider';
                                             import { useCollection } from '@/firebase/firestore/use-collection';
-                                            import { collection, query, where } from 'firebase/firestore';
+                                            import { collection } from 'firebase/firestore';
                                             import { useMemoFirebase } from '@/firebase/hooks';
                                             import { useProfile } from '@/context/profile-context';
                                             import { Skeleton } from '@/components/ui/skeleton';
@@ -215,14 +215,14 @@ export default function DashboardPage() {
 
     const canFetchData = !isProfileLoading && profile.agency_id && profile.agency_id.trim() !== '';
 
-    // Data for Agents: Fetch only their own data
-    const agentPropertiesQuery = useMemoFirebase(() => canFetchData && profile.role === 'Agent' ? query(collection(firestore, 'agencies', profile.agency_id, 'properties'), where('assignedTo', 'array-contains', profile.user_id)) : null, [canFetchData, profile, firestore]);
+    // Data for Agents: Fetch all agency data (same as Admin)
+    const agentPropertiesQuery = useMemoFirebase(() => canFetchData && profile.role === 'Agent' ? collection(firestore, 'agencies', profile.agency_id, 'properties') : null, [canFetchData, profile, firestore]);
     const { data: agentProperties, isLoading: agentPLoading } = useCollection<Property>(agentPropertiesQuery);
     
-    const agentBuyersQuery = useMemoFirebase(() => canFetchData && profile.role === 'Agent' ? query(collection(firestore, 'agencies', profile.agency_id, 'buyers'), where('assignedTo', '==', profile.user_id)) : null, [canFetchData, profile, firestore]);
+    const agentBuyersQuery = useMemoFirebase(() => canFetchData && profile.role === 'Agent' ? collection(firestore, 'agencies', profile.agency_id, 'buyers') : null, [canFetchData, profile, firestore]);
     const { data: agentBuyers, isLoading: agentBLoading } = useCollection<Buyer>(agentBuyersQuery);
 
-    const agentAppointmentsQuery = useMemoFirebase(() => canFetchData && profile.role === 'Agent' ? query(collection(firestore, 'agencies', profile.agency_id, 'appointments'), where('agentName', '==', profile.name)) : null, [canFetchData, profile, firestore]);
+    const agentAppointmentsQuery = useMemoFirebase(() => canFetchData && profile.role === 'Agent' ? collection(firestore, 'agencies', profile.agency_id, 'appointments') : null, [canFetchData, profile, firestore]);
     const { data: agentAppointments, isLoading: agentAptLoading } = useCollection<Appointment>(agentAppointmentsQuery);
     
     // Data for Admins: Fetch all agency data
