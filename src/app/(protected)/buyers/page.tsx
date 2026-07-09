@@ -883,6 +883,7 @@ function BuyersPageContent() {
                 <div className="flex w-full md:w-auto items-center gap-2 flex-wrap justify-end ml-auto">
                     {isMobile && (
                         <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-muted-foreground whitespace-nowrap">{filteredBuyers.length} leads</span>
                             <div className="flex items-center space-x-2">
                                 <Checkbox
                                     id="select-all-mobile"

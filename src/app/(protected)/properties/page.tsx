@@ -1241,9 +1241,11 @@ export default function PropertiesPage() {
     <>
       <TooltipProvider>
         <div className="space-y-6">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 md:gap-4">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 md:gap-4">
+            <div className="hidden md:block">
               <h1 className="text-lg md:text-3xl font-bold tracking-tight font-headline">Properties</h1>
+            </div>
+            <div className="hidden md:block ml-4">
               <span className="text-xs md:text-base text-muted-foreground whitespace-nowrap">
                 — {filteredProperties.length} lead{filteredProperties.length !== 1 ? 's' : ''} found
               </span>
@@ -1251,6 +1253,7 @@ export default function PropertiesPage() {
             <div className="flex w-full md:w-auto items-center gap-2 flex-wrap justify-end ml-auto">
               {isMobile && (
                 <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold text-muted-foreground whitespace-nowrap">{filteredProperties.length} leads</span>
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="select-all-mobile"
