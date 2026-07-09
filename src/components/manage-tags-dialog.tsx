@@ -17,7 +17,7 @@ import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from './ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase/provider';
-import { collection, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, doc, updateDoc, writeBatch, query, where, getDocs } from 'firebase/firestore';
 import { useProfile } from '@/context/profile-context';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useMemoFirebase } from '@/firebase/hooks';
@@ -137,8 +137,28 @@ export function ManageTagsDialog({ isOpen, setIsOpen }: ManageTagsDialogProps) {
   const handleDeleteTag = async (tagId: string) => {
     if (!profile.agency_id) return;
     try {
+        const tagDoc = tags?.find((t: Tag) => t.id === tagId);
+        const tagName = tagDoc?.name;
+        
         await deleteDoc(doc(firestore, 'agencies', profile.agency_id, 'tags', tagId));
-        toast({ title: "Tag Deleted" });
+        
+        if (tagName) {
+            const buyersRef = collection(firestore, 'agencies', profile.agency_id, 'buyers');
+            const q = query(buyersRef, where('tags', 'array-contains', tagName));
+            const snapshot = await getDocs(q);
+            
+            if (!snapshot.empty) {
+                const batch = writeBatch(firestore);
+                snapshot.docs.forEach(buyerDoc => {
+                    const buyerData = buyerDoc.data();
+                    const updatedTags = (buyerData.tags || []).filter((t: string) => t !== tagName);
+                    batch.update(buyerDoc.ref, { tags: updatedTags });
+                });
+                await batch.commit();
+            }
+        }
+        
+        toast({ title: "Tag Deleted", description: tagName ? `"${tagName}" removed from all leads` : "Tag deleted" });
         if (editingTag?.id === tagId) cancelEdit();
     } catch (error) {
         toast({ title: "Error", description: "Could not delete tag.", variant: 'destructive' });

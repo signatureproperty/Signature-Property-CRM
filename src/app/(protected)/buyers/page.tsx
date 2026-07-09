@@ -292,7 +292,8 @@ function BuyersPageContent() {
         if (!profile.agency_id) return;
         try {
             const buyerRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', buyer.id);
-            await updateDoc(buyerRef, { assignedTo: null });
+            const updatedTags = (buyer.tags || []).filter(t => t !== 'Returned');
+            await updateDoc(buyerRef, { assignedTo: null, tags: updatedTags });
             
             await logActivity('unassigned agent from lead', buyer.name, 'Buyer');
             toast({ title: "Agent Unassigned", description: `Lead ${buyer.name} is now back in the pool.` });
@@ -482,7 +483,7 @@ function BuyersPageContent() {
             buyers = buyers.filter(b => (b.listing_type || 'For Sale') === activeListingType);
         }
         if (activeStatus !== 'All') {
-            buyers = buyers.filter(b => b.status === activeStatus || b.tags?.includes(activeStatus));
+            buyers = buyers.filter(b => b.status === activeStatus);
         }
         if (activeCustomTags.length > 0) {
             buyers = buyers.filter(b => activeCustomTags.every(tag => b.tags?.includes(tag)));
