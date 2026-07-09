@@ -875,6 +875,11 @@ function BuyersPageContent() {
                     <h1 className="text-3xl font-bold font-headline tracking-tight">Buyers</h1>
                     <p className="text-muted-foreground">Manage and track your agency leads.</p>
                 </div>
+                <div className="hidden md:block ml-4">
+                    <span className="text-xs md:text-base text-muted-foreground whitespace-nowrap">
+                        \u2014 {filteredBuyers.length} lead{filteredBuyers.length !== 1 ? 's' : ''} found
+                    </span>
+                </div>
                 <div className="flex w-full md:w-auto items-center gap-2 flex-wrap justify-end ml-auto">
                     {isMobile && (
                         <div className="flex items-center gap-2">
@@ -1143,6 +1148,32 @@ function BuyersPageContent() {
                     </div>
                 </div>
             </Card>
+            {profile.role === 'Admin' && (
+              <div className="flex items-center gap-3 pb-2">
+                <div className="flex items-center gap-2 bg-card/60 backdrop-blur-sm border border-primary/10 rounded-full px-4 py-1.5 shadow-sm">
+                  <Users className="h-4 w-4 text-primary" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Assigned Agent:</span>
+                  <Select value={activeAgentFilter} onValueChange={setActiveAgentFilter}>
+                    <SelectTrigger className="h-7 border-none bg-transparent focus:ring-0 text-xs font-bold w-[180px] p-0 shadow-none">
+                      <SelectValue placeholder="All Agency Leads" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl shadow-2xl border-none">
+                      <SelectItem value="All" className="font-bold">All Agency Leads</SelectItem>
+                      {activeAgents.map((agent: any) => (
+                        <SelectItem key={agent.id} value={agent.user_id || agent.id}>
+                          {agent.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {activeAgentFilter !== 'All' && (
+                  <Button variant="ghost" size="sm" onClick={() => setActiveAgentFilter('All')} className="h-8 rounded-full text-[10px] font-black uppercase tracking-tighter hover:bg-destructive/10 hover:text-destructive">
+                    <X className="h-3 w-3 mr-1" /> Clear Filter
+                  </Button>
+                )}
+              </div>
+            )}
 
             <div className="mt-4">{isMobile ? renderCards(paginatedBuyers) : <Card className="p-0 overflow-hidden bg-background">{renderTable(paginatedBuyers)}</Card>}</div>
             
