@@ -32,7 +32,7 @@ import { punjabCities, countryCodes } from '@/lib/data';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command';
 import { cn } from '@/lib/utils';
-import { Check, ChevronsUpDown, Hash, Calendar, MapPin, Building, Ruler, Wallet, UtilityPole } from 'lucide-react';
+import { Check, ChevronsUpDown, Hash, Calendar, MapPin, Building, Ruler, Wallet, UtilityPole, User } from 'lucide-react';
 
 const propertyTypeValues = [
     'House', 'Flat', 'Farm House', 'Penthouse', 'Plot', 'Residential Plot', 'Commercial Plot', 'Agricultural Land', 'Industrial Land', 'Office', 'Shop', 'Warehouse', 'Factory', 'Building', 'Residential Property', 'Commercial Property', 'Semi Commercial', 'Other'
@@ -45,6 +45,8 @@ const formSchema = z.object({
   id: z.string().optional(),
   serial_no: z.string().optional(),
   auto_title: z.string().optional(),
+  customer_name: z.string().optional(),
+  about: z.string().optional(),
   country_code: z.string().default('+92'),
   owner_number: z.string().min(1, 'Owner number is required'),
   city: z.string().default('Lahore'),
@@ -92,6 +94,8 @@ export function AddRentPropertyForm({
       id: propertyToEdit?.id || '',
       serial_no: propertyToEdit?.serial_no || `RP-${totalProperties + 1}`,
       auto_title: propertyToEdit?.auto_title || '',
+      customer_name: propertyToEdit?.customer_name || '',
+      about: propertyToEdit?.about || '',
       country_code: propertyToEdit?.country_code || '+92',
       owner_number: propertyToEdit?.owner_number ? (propertyToEdit.owner_number.startsWith('+') ? propertyToEdit.owner_number : propertyToEdit.owner_number.replace(propertyToEdit.country_code || '+92', '')) : '',
       city: propertyToEdit?.city || 'Lahore',
@@ -149,6 +153,8 @@ export function AddRentPropertyForm({
       is_for_rent: true,
       serial_no: values.serial_no || `RP-${totalProperties + 1}`,
       status: values.status as PropertyStatus,
+      customer_name: values.customer_name?.trim() || propertyToEdit?.customer_name || '',
+      about: values.about?.trim() || propertyToEdit?.about || '',
       created_at: propertyToEdit?.created_at || new Date().toISOString(),
       created_by: propertyToEdit?.created_by || user?.uid || '',
       agency_id: propertyToEdit?.agency_id || profile.agency_id || '',
@@ -205,6 +211,38 @@ export function AddRentPropertyForm({
                 </FormItem>
               )}
             />
+
+            <Separator />
+
+            <div className="space-y-4">
+                <h4 className="text-sm font-bold flex items-center gap-2 uppercase tracking-wider"><User className="h-4 w-4" /> Customer Info</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="customer_name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Customer Name (Optional)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g. Usman Mughal" {...field} className="h-9" />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <FormField
+                  control={form.control}
+                  name="about"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-bold uppercase tracking-wider text-[10px] text-muted-foreground">About Customer (Optional)</FormLabel>
+                      <FormControl>
+                        <Textarea placeholder="Write about the customer so other agents can know them..." {...field} value={field.value ?? ''} rows={2} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+            </div>
 
             <Separator />
             

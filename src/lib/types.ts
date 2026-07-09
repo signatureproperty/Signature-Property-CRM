@@ -87,6 +87,8 @@ export type Property = {
   length_ft?: number;
   demand_amount: number;
   demand_unit: 'Lacs' | 'Crore' | 'Thousand';
+  customer_name?: string;
+  about?: string;
   documents?: string;
   message?: string; // General notes for any property type
   status: PropertyStatus;
@@ -205,6 +207,7 @@ export type Buyer = {
     size_max_value?: number;
     size_max_unit?: SizeUnit;
     notes?: string;
+    about?: string;
     timeline_notes?: LeadNote[];
     last_remark_at?: string;
     created_at: string;

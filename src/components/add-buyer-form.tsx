@@ -47,6 +47,7 @@ const formSchema = z.object({
   serial_no: z.string().optional(),
   listing_type: z.enum(['For Sale', 'For Rent']),
   name: z.string().optional(),
+  about: z.string().optional(),
   country_code: z.string().default('+92'),
   phone: z.string().min(1, 'Phone number is required'),
   email: z.string().optional().or(z.literal('')),
@@ -95,6 +96,7 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
         area_preference: buyerToEdit?.area_preference || '',
         property_type_preference: buyerToEdit?.property_type_preference || 'House',
         property_type_other: '',
+        about: buyerToEdit?.about || '',
         notes: buyerToEdit?.notes || '',
         status: buyerToEdit?.status || 'New',
         is_investor: buyerToEdit?.is_investor || false,
@@ -133,8 +135,9 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
 
      const formattedPhone = formatPhoneNumber(values.phone, values.country_code);
 
-     const buyerData = {
+      const buyerData = {
         ...values,
+        about: values.about?.trim() || buyerToEdit?.about || '',
         id: buyerToEdit?.id || values.id || '',
         name: values.name?.trim() || values.serial_no || 'Unnamed Lead',
         property_type_preference: finalPropertyType,
@@ -408,6 +411,17 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
                   )}
                 />
             </div>
+
+            <FormField
+            control={form.control}
+            name="about"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel className="text-xs font-bold uppercase text-muted-foreground">About Customer (Optional)</FormLabel>
+                <FormControl><Textarea {...field} value={field.value ?? ''} placeholder="Write about the customer so other agents can know them..." rows={2} /></FormControl>
+                </FormItem>
+            )}
+            />
 
             <FormField
             control={form.control}

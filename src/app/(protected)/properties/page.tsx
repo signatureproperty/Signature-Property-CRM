@@ -1064,9 +1064,9 @@ export default function PropertiesPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: index * 0.05 }}
             >
-              <Card className="overflow-hidden border-l-4 border-l-primary/40 bg-background">
-                <CardHeader className="p-4 pb-2 flex flex-row items-start justify-between space-y-0">
-                  <div className="flex gap-3">
+              <Card className="overflow-hidden border-l-2 border-l-primary/40 bg-background">
+                <CardHeader className="p-3 pb-1 flex flex-row items-start justify-between space-y-0">
+                  <div className="flex gap-2">
                     <Checkbox
                       checked={selectedProperties.includes(prop.id)}
                       onClick={e => e.stopPropagation()}
@@ -1074,7 +1074,7 @@ export default function PropertiesPage() {
                     />
                     <div onClick={() => handleRowClick(prop)} className="cursor-pointer">
                       <div className="flex items-center gap-2">
-                        <CardTitle className="text-base font-bold font-headline">{prop.auto_title}</CardTitle>
+                        <CardTitle className="text-sm font-bold font-headline">{prop.auto_title}</CardTitle>
                         {hasUnreadNotes && (
                           <span className="relative flex h-2 w-2">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
@@ -1082,11 +1082,11 @@ export default function PropertiesPage() {
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 mt-1">
+                      <div className="flex items-center gap-2 mt-0.5">
                         <Badge
                           variant="default"
                           className={cn(
-                            'font-mono text-[10px] bg-background',
+                            'font-mono text-[9px] bg-background h-4',
                             prop.serial_no.startsWith('RP')
                               ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300'
                               : 'bg-primary/20 text-primary'
@@ -1102,29 +1102,23 @@ export default function PropertiesPage() {
                     {prop.status}
                   </Badge>
                 </CardHeader>
-                <CardContent className="p-4 pt-0 cursor-pointer" onClick={() => handleRowClick(prop)}>
-                  <div className="grid grid-cols-2 gap-y-2 gap-x-4 mt-2">
+                <CardContent className="p-3 pt-0 cursor-pointer" onClick={() => handleRowClick(prop)}>
+                  <div className="grid grid-cols-2 gap-y-1 gap-x-4 mt-1">
                     <div className="flex items-center gap-1.5 text-xs">
-                      <Tag className="h-3.5 w-3.5 text-muted-foreground" />
+                      <Tag className="h-3 w-3 text-muted-foreground" />
                       <span className="font-medium">{prop.property_type}</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-xs">
-                      <Ruler className="h-3.5 w-3.5 text-muted-foreground" />
+                      <Ruler className="h-3 w-3 text-muted-foreground" />
                       <span className="font-medium">{formatSize(prop.size_value, prop.size_unit)}</span>
                     </div>
-                    <div className="flex items-center gap-1.5 text-xs col-span-2 mt-1">
-                      <Wallet className="h-3.5 w-3.5 text-muted-foreground" />
+                    <div className="flex items-center gap-1.5 text-xs col-span-2">
+                      <Wallet className="h-3 w-3 text-muted-foreground" />
                       <span className="font-bold text-primary">{formatDemand(prop.demand_amount, prop.demand_unit)}</span>
                     </div>
                   </div>
 
-                  <div className="mt-4 pt-3 border-t border-dashed flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <UserIcon className="h-3.5 w-3.5 text-primary/60" />
-                      <span className="text-[10px] font-black uppercase tracking-widest text-foreground">
-                        {prop.assignedTo ? (activeTeamMembers?.find(m => (m.user_id || m.id) === prop.assignedTo)?.name || 'Assigned') : 'Agency Pool'}
-                      </span>
-                    </div>
+                  <div className="mt-2 pt-2 border-t border-dashed flex items-center justify-between">
                     <Popover>
                       <PopoverTrigger asChild>
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground italic cursor-pointer hover:text-primary transition-colors" onClick={e => e.stopPropagation()}>
@@ -1247,12 +1241,12 @@ export default function PropertiesPage() {
     <>
       <TooltipProvider>
         <div className="space-y-6">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div className="hidden md:block">
-              <h1 className="text-3xl font-bold tracking-tight font-headline">Properties</h1>
-              <p className="text-muted-foreground">
-                {profile.role === 'Agent' ? 'View your assigned properties.' : 'Manage your agency and personal properties.'}
-              </p>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 md:gap-4">
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg md:text-3xl font-bold tracking-tight font-headline">Properties</h1>
+              <span className="text-xs md:text-base text-muted-foreground whitespace-nowrap">
+                — {filteredProperties.length} lead{filteredProperties.length !== 1 ? 's' : ''} found
+              </span>
             </div>
             <div className="flex w-full md:w-auto items-center gap-2 flex-wrap justify-end ml-auto">
               {isMobile && (
@@ -1617,16 +1611,6 @@ export default function PropertiesPage() {
               )}
             </div>
           )}
-
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-medium text-muted-foreground">{isAgent ? "My Property Leads Usage" : "Property Leads Usage"}</span>
-                <span className="text-sm font-bold">{currentCount} / {limit === Infinity ? 'Unlimited' : limit}</span>
-              </div>
-              <Progress value={progress} />
-            </CardContent>
-          </Card>
 
           {isAgent && profile.agencies && profile.agencies.length > 1 ? (
             <Tabs value={activeAgencyTab} onValueChange={setActiveAgencyTab}>
