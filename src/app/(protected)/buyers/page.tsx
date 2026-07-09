@@ -874,11 +874,10 @@ function BuyersPageContent() {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div className="hidden md:block">
                     <h1 className="text-3xl font-bold font-headline tracking-tight">Buyers</h1>
-                    <p className="text-muted-foreground">Manage and track your agency leads.</p>
                 </div>
                 <div className="hidden md:block ml-4">
                     <span className="text-xs md:text-base text-muted-foreground whitespace-nowrap">
-                        \u2014 {filteredBuyers.length} lead{filteredBuyers.length !== 1 ? 's' : ''} found
+                        — {filteredBuyers.length} lead{filteredBuyers.length !== 1 ? 's' : ''} found
                     </span>
                 </div>
                 <div className="flex w-full md:w-auto items-center gap-2 flex-wrap justify-end ml-auto">
