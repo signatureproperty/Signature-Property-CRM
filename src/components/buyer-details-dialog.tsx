@@ -191,23 +191,23 @@ export function BuyerDetailsDialog({
   }, [isReturnDialogOpen, buyer]);
 
   const formatBudget = (minAmount?: number, minUnit?: PriceUnit, maxAmount?: number, maxUnit?: PriceUnit) => {
-    const hasMin = minAmount && minAmount > 0 && minUnit;
-    const hasMax = maxAmount && maxAmount > 0 && maxUnit;
+    const hasMin = minAmount && minAmount > 0 && (minUnit || 'Lacs');
+    const hasMax = maxAmount && maxAmount > 0 && (maxUnit || 'Lacs');
     
     if (!hasMin && !hasMax) return 'N/A';
     if (hasMin && hasMax) {
-      const minVal = formatUnit(minAmount!, minUnit!);
+      const minVal = formatUnit(minAmount!, (minUnit || 'Lacs') as PriceUnit);
       if (minAmount === maxAmount && minUnit === maxUnit) {
         return formatCurrency(minVal, currency);
       }
-      const maxVal = formatUnit(maxAmount!, maxUnit!);
+      const maxVal = formatUnit(maxAmount!, (maxUnit || 'Lacs') as PriceUnit);
       return `${formatCurrency(minVal, currency)} - ${formatCurrency(maxVal, currency)}`;
     }
     if (hasMax) {
-      return formatCurrency(formatUnit(maxAmount!, maxUnit!), currency);
+      return formatCurrency(formatUnit(maxAmount!, (maxUnit || 'Lacs') as PriceUnit), currency);
     }
     if (hasMin) {
-      return formatCurrency(formatUnit(minAmount!, minUnit!), currency);
+      return formatCurrency(formatUnit(minAmount!, (minUnit || 'Lacs') as PriceUnit), currency);
     }
     return 'N/A';
   };
