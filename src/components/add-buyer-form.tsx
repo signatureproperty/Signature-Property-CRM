@@ -61,6 +61,8 @@ const formSchema = z.object({
   size_min_unit: z.enum(['Marla', 'SqFt', 'Kanal', 'Acre', 'Maraba']).optional(),
   size_max_value: z.coerce.number().optional().nullable(),
   size_max_unit: z.enum(['Marla', 'SqFt', 'Kanal', 'Acre', 'Maraba']).optional(),
+  budget_min_amount: z.coerce.number().optional().nullable(),
+  budget_min_unit: z.enum(['Thousand', 'Lacs', 'Crore']).optional(),
   budget_max_amount: z.coerce.number().optional().nullable(),
   budget_max_unit: z.enum(['Thousand', 'Lacs', 'Crore']).optional(),
   notes: z.string().optional(),
@@ -103,10 +105,12 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
         serial_no: buyerToEdit?.serial_no || (listingType === 'For Rent' ? `RB-${totalRentBuyers + 1}` : `B-${totalSaleBuyers + 1}`),
         size_min_unit: buyerToEdit?.size_min_unit || 'Marla',
         size_max_unit: buyerToEdit?.size_max_unit || 'Marla',
+        budget_min_amount: buyerToEdit?.budget_min_amount ?? 0,
+        budget_min_unit: buyerToEdit?.budget_min_unit || 'Lacs',
+        budget_max_amount: buyerToEdit?.budget_max_amount ?? 0,
         budget_max_unit: buyerToEdit?.budget_max_unit || 'Lacs',
         size_min_value: buyerToEdit?.size_min_value ?? 0,
         size_max_value: buyerToEdit?.size_max_value ?? 0,
-        budget_max_amount: buyerToEdit?.budget_max_amount ?? 0,
         tags: buyerToEdit?.tags?.join(', ') || 'New',
     }
   });
@@ -345,6 +349,24 @@ export function AddBuyerForm({ setDialogOpen, totalSaleBuyers, totalRentBuyers, 
                                     <Select onValueChange={field.onChange} value={field.value}>
                                         <FormControl><SelectTrigger className="h-9"><SelectValue/></SelectTrigger></FormControl>
                                         <SelectContent>{sizeUnits.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                </FormItem>
+                            )} />
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <FormLabel className="flex items-center gap-2 text-xs font-bold uppercase"><Wallet className="h-3.5 w-3.5" /> Min Budget</FormLabel>
+                        <div className="grid grid-cols-2 gap-2">
+                            <FormField control={form.control} name="budget_min_amount" render={({field}) => (
+                                <FormItem className="col-span-1">
+                                    <FormControl><Input type="number" {...field} value={field.value ?? 0} placeholder="Amount" className="h-9" /></FormControl>
+                                </FormItem>
+                            )} />
+                            <FormField control={form.control} name="budget_min_unit" render={({field}) => (
+                                <FormItem>
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                        <FormControl><SelectTrigger className="h-9"><SelectValue/></SelectTrigger></FormControl>
+                                        <SelectContent>{priceUnits.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
                                     </Select>
                                 </FormItem>
                             )} />

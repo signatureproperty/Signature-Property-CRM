@@ -191,17 +191,23 @@ export function BuyerDetailsDialog({
   }, [isReturnDialogOpen, buyer]);
 
   const formatBudget = (minAmount?: number, minUnit?: PriceUnit, maxAmount?: number, maxUnit?: PriceUnit) => {
-    if (!minAmount && !maxAmount) return 'N/A';
-    if (minAmount && minUnit) {
-      const minVal = formatUnit(minAmount, minUnit);
-      if (!maxAmount || !maxUnit || (minAmount === maxAmount && minUnit === maxUnit)) {
+    const hasMin = minAmount && minAmount > 0 && minUnit;
+    const hasMax = maxAmount && maxAmount > 0 && maxUnit;
+    
+    if (!hasMin && !hasMax) return 'N/A';
+    if (hasMin && hasMax) {
+      const minVal = formatUnit(minAmount!, minUnit!);
+      if (minAmount === maxAmount && minUnit === maxUnit) {
         return formatCurrency(minVal, currency);
       }
-      const maxVal = formatUnit(maxAmount, maxUnit);
+      const maxVal = formatUnit(maxAmount!, maxUnit!);
       return `${formatCurrency(minVal, currency)} - ${formatCurrency(maxVal, currency)}`;
     }
-    if (maxAmount && maxUnit) {
-      return formatCurrency(formatUnit(maxAmount, maxUnit), currency);
+    if (hasMax) {
+      return formatCurrency(formatUnit(maxAmount!, maxUnit!), currency);
+    }
+    if (hasMin) {
+      return formatCurrency(formatUnit(minAmount!, minUnit!), currency);
     }
     return 'N/A';
   };
@@ -322,10 +328,19 @@ export function BuyerDetailsDialog({
 
                 <div className="flex items-center gap-4 py-2 px-4 bg-primary/5 rounded-xl border border-primary/10 w-fit">
                     <div className="flex flex-col">
-                        <span className="text-[10px] font-bold uppercase text-primary/60 tracking-wider">Budget Range</span>
-                        <span className="text-xl font-black text-primary">
-                            {formatBudget(buyer.budget_min_amount, buyer.budget_min_unit, buyer.budget_max_amount, buyer.budget_max_unit)}
-                        </span>
+                        {(() => {
+                            const hasMin = buyer.budget_min_amount && buyer.budget_min_unit;
+                            const hasMax = buyer.budget_max_amount && buyer.budget_max_unit;
+                            const isRange = hasMin && hasMax && !(buyer.budget_min_amount === buyer.budget_max_amount && buyer.budget_min_unit === buyer.budget_max_unit);
+                            return (
+                                <>
+                                    <span className="text-[10px] font-bold uppercase text-primary/60 tracking-wider">{isRange ? 'Budget Range' : 'Budget'}</span>
+                                    <span className="text-xl font-black text-primary">
+                                        {formatBudget(buyer.budget_min_amount, buyer.budget_min_unit, buyer.budget_max_amount, buyer.budget_max_unit)}
+                                    </span>
+                                </>
+                            );
+                        })()}
                     </div>
                 </div>
             </div>
