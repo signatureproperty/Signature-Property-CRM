@@ -134,7 +134,7 @@ function BuyersPageContent() {
 
     const agencyTags = useMemo(() => {
         if (!allAgencyTags) return [];
-        let tags = allAgencyTags;
+        let tags = allAgencyTags.filter(t => !t.page || t.page === 'buyers');
         if (profile.role === 'Agent') {
             tags = tags.filter(t => t.createdBy === profile.user_id);
         }
@@ -150,6 +150,11 @@ function BuyersPageContent() {
     const [activeStatus, setActiveStatus] = useState<string>('All');
     const [activeCustomTags, setActiveCustomTags] = useState<string[]>([]);
     const [activeAgentFilter, setActiveAgentFilter] = useState<string>('All');
+
+    const displayedTags = useMemo(() => {
+        if (activeAgentFilter === 'All') return agencyTags;
+        return agencyTags.filter(t => t.createdBy === activeAgentFilter);
+    }, [agencyTags, activeAgentFilter]);
 
     const [isAddBuyerOpen, setIsAddBuyerOpen] = useState(false);
     const [isManageTagsOpen, setIsManageTagsOpen] = useState(false);
@@ -1133,7 +1138,7 @@ function BuyersPageContent() {
                                             {status} ({buyerCounts[status] || 0})
                                         </Badge>
                                     ))}
-                                    {agencyTags?.map(tag => (
+                                    {displayedTags?.map(tag => (
                                         <Badge
                                             key={tag.id}
                                             variant={activeCustomTags.includes(tag.name) ? 'default' : 'outline'}
@@ -1197,7 +1202,7 @@ function BuyersPageContent() {
             )}
             
             {isManageTagsOpen && (
-                <ManageTagsDialog isOpen={isManageTagsOpen} setIsOpen={setIsManageTagsOpen} />
+                <ManageTagsDialog isOpen={isManageTagsOpen} setIsOpen={setIsManageTagsOpen} page="buyers" />
             )}
             
             {selectedBuyerForDetails && (

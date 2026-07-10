@@ -42,6 +42,7 @@ import {
 interface ManageTagsDialogProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
+  page?: 'properties' | 'buyers';
 }
 
 const tagColors = [
@@ -60,7 +61,7 @@ const formSchema = z.object({
   name: z.string().min(1, 'Tag name is required').max(20, 'Tag name too long'),
 });
 
-export function ManageTagsDialog({ isOpen, setIsOpen }: ManageTagsDialogProps) {
+export function ManageTagsDialog({ isOpen, setIsOpen, page }: ManageTagsDialogProps) {
   const { profile } = useProfile();
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -75,11 +76,12 @@ export function ManageTagsDialog({ isOpen, setIsOpen }: ManageTagsDialogProps) {
 
   const tags = useMemo(() => {
     if (!allTags) return [];
+    let filtered = allTags.filter(t => !t.page || t.page === page);
     if (profile.role === 'Agent') {
-      return allTags.filter(t => t.createdBy === profile.user_id);
+      filtered = filtered.filter(t => t.createdBy === profile.user_id);
     }
-    return allTags;
-  }, [allTags, profile.role, profile.user_id]);
+    return filtered;
+  }, [allTags, profile.role, profile.user_id, page]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -109,6 +111,7 @@ export function ManageTagsDialog({ isOpen, setIsOpen }: ManageTagsDialogProps) {
                 color: selectedColor,
                 agency_id: profile.agency_id,
                 createdAt: new Date().toISOString(),
+                page: page || 'buyers',
             };
             if (profile.role === 'Agent') {
                 tagData.createdBy = profile.user_id;

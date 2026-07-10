@@ -42,6 +42,7 @@ export type Tag = {
   createdAt: string;
   listingType?: ListingType | 'All';
   createdBy?: string;
+  page?: 'properties' | 'buyers';
 };
 
 
