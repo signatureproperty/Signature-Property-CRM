@@ -91,7 +91,7 @@ export function ManageTagsDialog({ isOpen, setIsOpen, page }: ManageTagsDialogPr
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!profile.agency_id) return;
     
-    if (!editingTag && tags?.some(t => t.name.toLowerCase() === values.name.toLowerCase())) {
+    if (!editingTag && allTags?.some(t => t.name.toLowerCase() === values.name.toLowerCase())) {
         toast({ title: "Tag already exists", variant: 'destructive' });
         return;
     }
@@ -254,18 +254,20 @@ export function ManageTagsDialog({ isOpen, setIsOpen, page }: ManageTagsDialogPr
                                 >
                                     <span className="font-bold text-sm">{tag.name}</span>
                                     <div className="flex items-center gap-1 ml-2 border-l border-current/20 pl-2">
-                                        <button 
-                                            onClick={() => handleEditClick(tag)}
-                                            className="h-6 w-6 flex items-center justify-center rounded-lg hover:bg-black/10 transition-colors"
-                                        >
-                                            <Edit2 className="h-3.5 w-3.5" />
-                                        </button>
-                                        <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                                <button className="h-6 w-6 flex items-center justify-center rounded-lg hover:bg-red-500/20 text-red-600 transition-colors">
-                                                    <X className="h-4 w-4" />
+                                        {(!tag.createdBy || tag.createdBy === profile.user_id || profile.role === 'Admin') && (
+                                            <>
+                                                <button 
+                                                    onClick={() => handleEditClick(tag)}
+                                                    className="h-6 w-6 flex items-center justify-center rounded-lg hover:bg-black/10 transition-colors"
+                                                >
+                                                    <Edit2 className="h-3.5 w-3.5" />
                                                 </button>
-                                            </AlertDialogTrigger>
+                                                <AlertDialog>
+                                                    <AlertDialogTrigger asChild>
+                                                        <button className="h-6 w-6 flex items-center justify-center rounded-lg hover:bg-red-500/20 text-red-600 transition-colors">
+                                                            <X className="h-4 w-4" />
+                                                        </button>
+                                                    </AlertDialogTrigger>
                                             <AlertDialogContent className="rounded-3xl border-none shadow-2xl">
                                                 <AlertDialogHeader>
                                                     <AlertDialogTitle className="font-headline text-2xl font-black tracking-tight">Delete Agency Tag?</AlertDialogTitle>
@@ -277,8 +279,10 @@ export function ManageTagsDialog({ isOpen, setIsOpen, page }: ManageTagsDialogPr
                                                     <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
                                                     <AlertDialogAction onClick={() => handleDeleteTag(tag.id)} className="bg-destructive text-white hover:bg-destructive/90 rounded-xl font-bold px-8">Delete Permanently</AlertDialogAction>
                                                 </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
+                                            </>
+                                        )}
                                     </div>
                                 </Badge>
                             ))}
