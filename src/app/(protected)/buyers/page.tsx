@@ -134,10 +134,16 @@ function BuyersPageContent() {
 
     const agencyTags = useMemo(() => {
         if (!allAgencyTags) return [];
+        let tags = allAgencyTags;
         if (profile.role === 'Agent') {
-            return allAgencyTags.filter(t => t.createdBy === profile.user_id);
+            tags = tags.filter(t => t.createdBy === profile.user_id);
         }
-        return allAgencyTags;
+        const seen = new Set<string>();
+        return tags.filter(t => {
+            if (seen.has(t.name)) return false;
+            seen.add(t.name);
+            return true;
+        });
     }, [allAgencyTags, profile.role, profile.user_id]);
 
     const [activeListingType, setActiveListingType] = useState<ListingType | 'All'>('All');
