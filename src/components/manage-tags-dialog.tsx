@@ -205,7 +205,7 @@ export function ManageTagsDialog({ isOpen, setIsOpen, page }: ManageTagsDialogPr
                                 </div>
                             ) : (
                                 <Button type="submit" className="h-11 px-6 rounded-xl font-bold glowing-btn">
-                                    <Plus className="h-4 w-4 mr-2" /> Add Tag
+                                    <Plus className="h-4 w-4 mr-2" /> <span className="hidden sm:inline">Add Tag</span><span className="sm:hidden">+</span>
                                 </Button>
                             )}
                         </div>
