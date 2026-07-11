@@ -52,10 +52,10 @@ export function EditServiceLabelsDialog({ isOpen, setIsOpen, log, availableTags 
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   useEffect(() => {
-    if (log) {
+    if (isOpen && log) {
       setSelectedTags(log.tags || []);
     }
-  }, [log]);
+  }, [isOpen, log]);
 
   if (!log || !profile.agency_id) return null;
 
