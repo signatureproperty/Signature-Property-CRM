@@ -174,10 +174,10 @@ export function ManageTagsDialog({ isOpen, setIsOpen, page }: ManageTagsDialogPr
         <div className="p-6 pb-0">
             <DialogHeader>
               <DialogTitle className="font-headline flex items-center gap-2 text-2xl font-black">
-                <TagIcon className="h-6 w-6 text-primary" /> {profile.role === 'Agent' ? 'My Tags' : 'Manage Agency Tags'}
+                <TagIcon className="h-6 w-6 text-primary" /> {profile.role === 'Agent' ? 'My Tags' : 'Manage Tags'}
               </DialogTitle>
               <DialogDescription className="font-medium text-muted-foreground flex items-center gap-1.5">
-                <Users2 className="h-4 w-4" /> {profile.role === 'Agent' ? 'These tags are visible to you and the agency.' : 'Agency tags are shared with the entire team.'}
+                <Users2 className="h-4 w-4" /> {profile.role === 'Agent' ? 'Tags visible to you and the agency.' : 'Tags shared with the entire team.'}
               </DialogDescription>
             </DialogHeader>
 
@@ -190,7 +190,7 @@ export function ManageTagsDialog({ isOpen, setIsOpen, page }: ManageTagsDialogPr
                                 name="name"
                                 render={({ field }) => (
                                     <FormItem className="flex-1">
-                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60">{editingTag ? 'Update Tag Name' : profile.role === 'Agent' ? 'Create New Tag' : 'Create New Agency Tag'}</FormLabel>
+                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60">{editingTag ? 'Update Tag Name' : 'Create New Tag'}</FormLabel>
                                         <FormControl>
                                             <Input placeholder="e.g. Hot Lead, Urgent, Follow Up" {...field} className="h-11 rounded-xl bg-background border-border/60" />
                                         </FormControl>
@@ -236,7 +236,7 @@ export function ManageTagsDialog({ isOpen, setIsOpen, page }: ManageTagsDialogPr
         <div className="flex-1 overflow-y-auto px-6 py-6">
             <div className="space-y-4">
                 <h4 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center justify-between">
-                    {profile.role === 'Agent' ? 'My Tags' : 'Agency Tags'}
+                    {profile.role === 'Agent' ? 'My Tags' : 'All Tags'}
                     <span className="text-[10px] bg-muted px-2 py-0.5 rounded-full lowercase font-bold">{tags?.length || 0} active tags</span>
                 </h4>
                 <div className="rounded-2xl border border-dashed p-6 bg-muted/5 min-h-[200px]">
@@ -270,9 +270,9 @@ export function ManageTagsDialog({ isOpen, setIsOpen, page }: ManageTagsDialogPr
                                                     </AlertDialogTrigger>
                                             <AlertDialogContent className="rounded-3xl border-none shadow-2xl">
                                                 <AlertDialogHeader>
-                                                    <AlertDialogTitle className="font-headline text-2xl font-black tracking-tight">Delete Agency Tag?</AlertDialogTitle>
+                                                    <AlertDialogTitle className="font-headline text-2xl font-black tracking-tight">Delete Tag?</AlertDialogTitle>
                                                     <AlertDialogDescription className="text-base">
-                                                        The tag <strong className="text-foreground">"{tag.name}"</strong> will be removed from all Leads across the entire agency. This cannot be undone.
+                                                        The tag <strong className="text-foreground">"{tag.name}"</strong> will be removed from all leads. This cannot be undone.
                                                     </AlertDialogDescription>
                                                 </AlertDialogHeader>
                                                 <AlertDialogFooter className="mt-6">
@@ -290,7 +290,7 @@ export function ManageTagsDialog({ isOpen, setIsOpen, page }: ManageTagsDialogPr
                     ) : (
                         <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
                             <TagIcon className="h-12 w-12 mb-3 opacity-10" />
-                            <p className="text-sm font-bold opacity-60">{profile.role === 'Agent' ? 'You have not created any tags yet.' : 'No custom tags found for this agency.'}</p>
+                            <p className="text-sm font-bold opacity-60">{profile.role === 'Agent' ? 'You have not created any tags yet.' : 'No tags created yet.'}</p>
                         </div>
                     )}
                 </div>
