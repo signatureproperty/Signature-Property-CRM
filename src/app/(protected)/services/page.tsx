@@ -97,6 +97,7 @@ export default function ServicesPage() {
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [isAssignOpen, setIsAssignOpen] = useState(false);
     const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+    const [isServicePickerOpen, setIsServicePickerOpen] = useState(false);
     const [selectedService, setSelectedService] = useState<Service | null>(null);
     const [selectedLog, setSelectedLog] = useState<ProvidedService | null>(null);
     const [serviceSearch, setServiceSearch] = useState('');
@@ -270,63 +271,27 @@ export default function ServicesPage() {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-black tracking-tight font-headline flex items-center gap-3">
-                        <Sparkles className="h-8 w-8 text-primary" /> Agency Services
+                        <Sparkles className="h-8 w-8 text-primary" /> Services
                     </h1>
-                    <p className="text-muted-foreground font-medium">Create custom offerings and track delivery progress.</p>
+                    <p className="text-muted-foreground font-medium">Sell services and track delivery progress.</p>
                 </div>
-                <Button className="rounded-full glowing-btn px-6 font-bold w-full md:w-auto" onClick={() => { setSelectedService(null); setIsAddOpen(true); }}>
-                    <Plus className="mr-2 h-4 w-4" /> New Service
-                </Button>
+                <div className="flex items-center gap-2 w-full md:w-auto">
+                    <Button variant="ghost" size="sm" className="text-muted-foreground font-bold text-xs rounded-full px-4" onClick={() => { setSelectedService(null); setIsAddOpen(true); }}>
+                        <Plus className="h-3 w-3 mr-1" /> Add Service
+                    </Button>
+                    <Button className="rounded-full glowing-btn px-6 font-bold flex-1 md:flex-none" onClick={() => setIsServicePickerOpen(true)}>
+                        <Zap className="mr-2 h-4 w-4" /> Sell Service
+                    </Button>
+                </div>
             </div>
 
-            <Tabs defaultValue="directory" className="w-full">
+            <Tabs defaultValue="leads" className="w-full">
                 <TabsList className="bg-muted/50 p-1 rounded-full grid grid-cols-2 max-w-sm mb-8 shadow-inner ring-1 ring-border/50">
-                    <TabsTrigger value="directory" className="rounded-full font-bold">Service Directory</TabsTrigger>
-                    <TabsTrigger value="logs" className="rounded-full font-bold">Service Pipeline</TabsTrigger>
+                    <TabsTrigger value="leads" className="rounded-full font-bold">Leads</TabsTrigger>
+                    <TabsTrigger value="directory" className="rounded-full font-bold">Service Catalog</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="directory" className="space-y-6">
-                    <div className="relative max-w-md">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input placeholder="Search catalog..." className="pl-10 rounded-full h-11 bg-card border-none shadow-sm ring-1 ring-border/50" value={serviceSearch} onChange={e => setServiceSearch(e.target.value)} />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {isServicesLoading ? [1, 2, 3].map(i => <Card key={i} className="h-48 animate-pulse bg-muted/20 border-none" />) : 
-                        filteredServices.length > 0 ? filteredServices.map(service => (
-                            <Card key={service.id} className="border-none shadow-xl bg-card/60 backdrop-blur-sm overflow-hidden group hover:scale-[1.01] transition-all border-l-4 border-l-primary/40">
-                                <CardHeader className="pb-2">
-                                    <div className="flex justify-between items-start">
-                                        <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 uppercase text-[8px] font-black tracking-widest">{service.category}</Badge>
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 opacity-0 group-hover:opacity-100"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end"><DropdownMenuItem onClick={() => { setSelectedService(service); setIsAddOpen(true); }}><Edit className="mr-2 h-4 w-4" /> Edit Definition</DropdownMenuItem><DropdownMenuItem className="text-destructive font-bold" onClick={() => handleDeleteService(service.id)}><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem></DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </div>
-                                    <CardTitle className="text-lg font-black font-headline pt-1">{service.name}</CardTitle>
-                                    <Badge variant="secondary" className="w-fit text-[9px] h-4 py-0 font-bold opacity-60 flex items-center gap-1">
-                                        <Users className="h-2 w-2" /> FOR: {service.applicableTo || 'Both'}
-                                    </Badge>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <div className="text-2xl font-black text-primary">{formatCurrency(service.price, currency)}</div>
-                                    {service.tags && service.tags.length > 0 && (
-                                        <div className="flex flex-wrap gap-1">
-                                            {service.tags.map(t => <Badge key={t} variant="secondary" className="text-[8px] h-4 py-0 font-bold opacity-60">{t}</Badge>)}
-                                        </div>
-                                    )}
-                                </CardContent>
-                                <CardFooter className="bg-muted/5 p-4 border-t border-dashed">
-                                    <Button className="w-full rounded-xl h-11 font-black bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all shadow-none gap-2" onClick={() => { setSelectedService(service); setIsAssignOpen(true); }}>
-                                        <Zap className="h-4 w-4" /> SELL SERVICE
-                                    </Button>
-                                </CardFooter>
-                            </Card>
-                        )) : <div className="col-span-full py-20 text-center border-2 border-dashed rounded-[2rem] opacity-30 bg-muted/5"><Sparkles className="h-10 w-10 mx-auto mb-2" /><p className="font-bold uppercase tracking-widest text-xs">Catalog is empty</p></div>}
-                    </div>
-                </TabsContent>
-
-                <TabsContent value="logs">
+                <TabsContent value="leads">
                     {isProvidedLoading ? <div className="p-20 text-center opacity-40"><RefreshCw className="animate-spin h-8 w-8 mx-auto mb-2" /> Loading records...</div> : 
                     providedServices && providedServices.length > 0 ? (
                         isMobile ? renderMobileLogs() : (
@@ -376,13 +341,90 @@ export default function ServicesPage() {
                                 </Table>
                             </Card>
                         )
-                    ) : <div className="py-40 text-center opacity-30"><History className="h-12 w-12 mx-auto mb-2" /><p className="font-black uppercase text-xs tracking-widest">No service history yet</p></div>}
+                    ) : <div className="py-40 text-center opacity-30"><History className="h-12 w-12 mx-auto mb-2" /><p className="font-black uppercase text-xs tracking-widest">No leads yet. Sell a service to get started.</p></div>}
+                </TabsContent>
+
+                <TabsContent value="directory" className="space-y-6">
+                    <div className="relative max-w-md">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input placeholder="Search services..." className="pl-10 rounded-full h-11 bg-card border-none shadow-sm ring-1 ring-border/50" value={serviceSearch} onChange={e => setServiceSearch(e.target.value)} />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {isServicesLoading ? [1, 2, 3].map(i => <Card key={i} className="h-48 animate-pulse bg-muted/20 border-none" />) : 
+                        filteredServices.length > 0 ? filteredServices.map(service => (
+                            <Card key={service.id} className="border-none shadow-xl bg-card/60 backdrop-blur-sm overflow-hidden group hover:scale-[1.01] transition-all border-l-4 border-l-primary/40">
+                                <CardHeader className="pb-2">
+                                    <div className="flex justify-between items-start">
+                                        <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 uppercase text-[8px] font-black tracking-widest">{service.category}</Badge>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 opacity-0 group-hover:opacity-100"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end"><DropdownMenuItem onClick={() => { setSelectedService(service); setIsAddOpen(true); }}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem><DropdownMenuItem className="text-destructive font-bold" onClick={() => handleDeleteService(service.id)}><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem></DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
+                                    <CardTitle className="text-lg font-black font-headline pt-1">{service.name}</CardTitle>
+                                    <Badge variant="secondary" className="w-fit text-[9px] h-4 py-0 font-bold opacity-60 flex items-center gap-1">
+                                        <Users className="h-2 w-2" /> FOR: {service.applicableTo || 'Both'}
+                                    </Badge>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="text-2xl font-black text-primary">{formatCurrency(service.price, currency)}</div>
+                                    {service.tags && service.tags.length > 0 && (
+                                        <div className="flex flex-wrap gap-1">
+                                            {service.tags.map(t => <Badge key={t} variant="secondary" className="text-[8px] h-4 py-0 font-bold opacity-60">{t}</Badge>)}
+                                        </div>
+                                    )}
+                                </CardContent>
+                                <CardFooter className="bg-muted/5 p-4 border-t border-dashed">
+                                    <Button className="w-full rounded-xl h-11 font-black bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all shadow-none gap-2" onClick={() => { setSelectedService(service); setIsAssignOpen(true); }}>
+                                        <Zap className="h-4 w-4" /> Sell
+                                    </Button>
+                                </CardFooter>
+                            </Card>
+                        )) : <div className="col-span-full py-20 text-center border-2 border-dashed rounded-[2rem] opacity-30 bg-muted/5"><Sparkles className="h-10 w-10 mx-auto mb-2" /><p className="font-bold uppercase tracking-widest text-xs">No services yet</p></div>}
+                    </div>
                 </TabsContent>
             </Tabs>
 
             <AddServiceDialog isOpen={isAddOpen} setIsOpen={setIsAddOpen} serviceToEdit={selectedService} />
-            {selectedService && <AssignServiceDialog isOpen={isAssignOpen} setIsOpen={setIsAssignOpen} service={selectedService} />}
+            {selectedService && <AssignServiceDialog isOpen={isAssignOpen} setIsOpen={(open) => { setIsAssignOpen(open); if (!open) setSelectedService(null); }} service={selectedService} />}
             {selectedLog && <UpdateServicePaymentDialog isOpen={isPaymentOpen} setIsOpen={setIsPaymentOpen} log={selectedLog} />}
+
+            {/* Service Picker for Sell Service button */}
+            <Dialog open={isServicePickerOpen} onOpenChange={setIsServicePickerOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="font-headline flex items-center gap-2">
+                            <Zap className="h-5 w-5 text-primary" /> Select a Service to Sell
+                        </DialogTitle>
+                        <DialogDescription>Choose which service you want to sell.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-2 py-2 max-h-[400px] overflow-y-auto">
+                        {filteredServices.length > 0 ? filteredServices.map(service => (
+                            <button
+                                key={service.id}
+                                className="w-full flex items-center justify-between p-3 rounded-xl border border-border/50 hover:bg-primary/5 hover:border-primary/20 transition-all text-left"
+                                onClick={() => {
+                                    setIsServicePickerOpen(false);
+                                    setSelectedService(service);
+                                    setIsAssignOpen(true);
+                                }}
+                            >
+                                <div>
+                                    <div className="font-bold text-sm">{service.name}</div>
+                                    <div className="text-xs text-muted-foreground">{service.category} • {service.applicableTo || 'Both'}</div>
+                                </div>
+                                <div className="font-black text-primary text-sm">{formatCurrency(service.price, currency)}</div>
+                            </button>
+                        )) : (
+                            <div className="py-10 text-center text-muted-foreground">
+                                <p className="text-sm font-bold">No services found.</p>
+                                <p className="text-xs">Add a service first to sell it.</p>
+                            </div>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
             
             {viewingBuyer && <BuyerDetailsDialog buyer={viewingBuyer} isOpen={isBuyerOpen} setIsOpen={setIsBuyerOpen} />}
             {viewingProperty && <PropertyDetailsDialog property={viewingProperty} isOpen={isPropertyOpen} setIsOpen={setIsPropertyOpen} />}
