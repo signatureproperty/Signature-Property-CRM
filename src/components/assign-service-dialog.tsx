@@ -144,23 +144,24 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service, logToEdit }: A
 
   const parsePhone = (fullPhone: string | null | undefined) => {
     if (!fullPhone) return { countryCode: '+92', localNumber: '' };
-    const cleaned = fullPhone.replace(/[\s\-()]/g, '');
-    const match = cleaned.match(/^\+(\d{2,3})(\d{7,})$/);
-    if (match) return { countryCode: '+' + match[1], localNumber: match[2] };
-    return { countryCode: '+92', localNumber: cleaned.replace(/^\+?\d{1,3}/, '') };
+    const digits = fullPhone.replace(/\D/g, '');
+    if (digits.startsWith('92') && digits.length > 10) {
+      return { countryCode: '+92', localNumber: digits.substring(2) };
+    }
+    return { countryCode: '+92', localNumber: digits };
   };
 
   useEffect(() => {
     if (isOpen) {
         if (logToEdit) {
-            const { countryCode, localNumber } = parsePhone(logToEdit.externalPhone);
+            const parsed = parsePhone(logToEdit.externalPhone);
             form.reset({
                 priceCharged: logToEdit.priceCharged,
                 assignedToType: logToEdit.assignedToType,
                 leadId: logToEdit.leadId || '',
                 externalName: logToEdit.externalName || '',
-                country_code: countryCode,
-                externalPhone: localNumber,
+                country_code: parsed.countryCode,
+                externalPhone: parsed.localNumber,
                 externalClientDetails: logToEdit.externalClientDetails || '',
             });
         } else {
