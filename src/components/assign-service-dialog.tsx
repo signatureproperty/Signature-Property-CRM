@@ -144,9 +144,10 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service, logToEdit }: A
 
   const parsePhone = (fullPhone: string | null | undefined) => {
     if (!fullPhone) return { countryCode: '+92', localNumber: '' };
-    const match = fullPhone.match(/^\+(\d{1,3})(\d+)$/);
+    const cleaned = fullPhone.replace(/[\s\-()]/g, '');
+    const match = cleaned.match(/^\+(\d{2,3})(\d{7,})$/);
     if (match) return { countryCode: '+' + match[1], localNumber: match[2] };
-    return { countryCode: '+92', localNumber: fullPhone };
+    return { countryCode: '+92', localNumber: cleaned.replace(/^\+?\d{1,3}/, '') };
   };
 
   useEffect(() => {

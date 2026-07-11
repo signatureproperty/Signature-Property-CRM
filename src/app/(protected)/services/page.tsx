@@ -324,7 +324,7 @@ export default function ServicesPage() {
                                     </TableHeader>
                                     <TableBody>
                                         {providedServices.map(log => (
-                                            <TableRow key={log.id} className="group hover:bg-primary/5 transition-colors border-border/30 border-l-4 border-l-primary/40">
+                                            <TableRow key={log.id} className="group hover:bg-primary/5 transition-colors border-none border-l-4 border-l-primary/40">
                                                 <TableCell className="pl-6">
                                                     <Badge className={cn("rounded-lg border font-black gap-1.5 px-2 py-0.5 text-[9px] uppercase", getStatusColor(log.status))}>
                                                         {getStatusIcon(log.status)} {log.status}
