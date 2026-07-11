@@ -100,6 +100,7 @@ export default function ServicesPage() {
     const [isServicePickerOpen, setIsServicePickerOpen] = useState(false);
     const [selectedService, setSelectedService] = useState<Service | null>(null);
     const [selectedLog, setSelectedLog] = useState<ProvidedService | null>(null);
+    const [logToEdit, setLogToEdit] = useState<ProvidedService | null>(null);
     const [serviceSearch, setServiceSearch] = useState('');
 
     const [viewingBuyer, setViewingBuyer] = useState<Buyer | null>(null);
@@ -262,7 +263,14 @@ export default function ServicesPage() {
                     )}
                     <DropdownMenuSeparator />
                     <DropdownMenuLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest flex items-center gap-1.5"><DollarSign className="h-3 w-3"/> Financials</DropdownMenuLabel>
-                    <DropdownMenuItem className="gap-2 font-bold" onClick={() => { setSelectedLog(log); setIsPaymentOpen(true); }}><Edit className="h-4 w-4" /> Edit Price / Payment</DropdownMenuItem>
+                    <DropdownMenuItem className="gap-2 font-bold" onClick={() => {
+                        const parentService = services?.find(s => s.id === log.serviceId);
+                        if (parentService) {
+                            setSelectedService(parentService);
+                            setLogToEdit(log);
+                            setIsAssignOpen(true);
+                        }
+                    }}><Edit className="h-4 w-4" /> Edit Lead</DropdownMenuItem>
                     <DropdownMenuItem className="gap-2 font-bold text-emerald-600" onClick={() => { setSelectedLog(log); setIsPaymentOpen(true); }}><DollarSign className="h-4 w-4" /> Record Payment</DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem className="text-destructive font-bold" onClick={() => handleDeleteLog(log.id)}>
@@ -399,7 +407,7 @@ export default function ServicesPage() {
             </Tabs>
 
             <AddServiceDialog isOpen={isAddOpen} setIsOpen={setIsAddOpen} serviceToEdit={selectedService} />
-            {selectedService && <AssignServiceDialog isOpen={isAssignOpen} setIsOpen={(open) => { setIsAssignOpen(open); if (!open) setSelectedService(null); }} service={selectedService} />}
+            {selectedService && <AssignServiceDialog isOpen={isAssignOpen} setIsOpen={(open) => { setIsAssignOpen(open); if (!open) { setSelectedService(null); setLogToEdit(null); } }} service={selectedService} logToEdit={logToEdit} />}
             {selectedLog && <UpdateServicePaymentDialog isOpen={isPaymentOpen} setIsOpen={setIsPaymentOpen} log={selectedLog} />}
 
             {/* Service Picker for Sell Service button */}

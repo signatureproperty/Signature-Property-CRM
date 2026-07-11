@@ -19,13 +19,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from './ui/form';
 import { useFirestore } from '@/firebase/provider';
-import { doc, addDoc, collection } from 'firebase/firestore';
+import { doc, addDoc, updateDoc, collection } from 'firebase/firestore';
 import { useProfile } from '@/context/profile-context';
 import { useToast } from '@/hooks/use-toast';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useMemoFirebase } from '@/firebase/hooks';
 import { Loader2, Zap, User, UserPlus, Phone, Check, ChevronsUpDown, Building2, Search, Filter, Hash } from 'lucide-react';
-import type { Service, Buyer, Property } from '@/lib/types';
+import type { Service, Buyer, Property, ProvidedService } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -56,9 +56,10 @@ interface AssignServiceDialogProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   service: Service;
+  logToEdit?: ProvidedService | null;
 }
 
-export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServiceDialogProps) {
+export function AssignServiceDialog({ isOpen, setIsOpen, service, logToEdit }: AssignServiceDialogProps) {
   const { profile } = useProfile();
   const { currency } = useCurrency();
   const firestore = useFirestore();
@@ -143,18 +144,30 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
 
   useEffect(() => {
     if (isOpen) {
-        form.reset({
-            priceCharged: service.price,
-            assignedToType: 'Lead',
-            leadId: '',
-            externalName: '',
-            country_code: '+92',
-            externalPhone: '',
-            externalClientDetails: '',
-        });
+        if (logToEdit) {
+            form.reset({
+                priceCharged: logToEdit.priceCharged,
+                assignedToType: logToEdit.assignedToType,
+                leadId: logToEdit.leadId || '',
+                externalName: logToEdit.externalName || '',
+                country_code: '+92',
+                externalPhone: '',
+                externalClientDetails: logToEdit.externalClientDetails || '',
+            });
+        } else {
+            form.reset({
+                priceCharged: service.price,
+                assignedToType: 'Lead',
+                leadId: '',
+                externalName: '',
+                country_code: '+92',
+                externalPhone: '',
+                externalClientDetails: '',
+            });
+        }
         setActivePrefixTab('All');
     }
-  }, [isOpen, service, form]);
+  }, [isOpen, service, logToEdit, form]);
 
   const onSubmit = async (values: FormValues) => {
     if (!profile.agency_id) return;
@@ -175,8 +188,7 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
     const clientName = lead ? lead.name : (values.externalName || 'Client');
     const formattedPhone = values.externalPhone ? formatPhoneNumber(values.externalPhone, values.country_code) : null;
 
-    const colRef = collection(firestore, 'agencies', profile.agency_id, 'providedServices');
-    const providedData = {
+    const updateData: any = {
         serviceId: service.id,
         serviceName: service.name,
         priceCharged: values.priceCharged,
@@ -187,21 +199,34 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
         externalName: values.externalName || null,
         externalPhone: formattedPhone,
         externalClientDetails: values.externalClientDetails || null,
-        status: 'Pending',
-        agency_id: profile.agency_id,
-        created_at: new Date().toISOString(),
-        paymentStatus: 'Pending',
-        amountPaid: 0,
     };
 
-    addDoc(colRef, providedData).catch(async () => {
-        const permissionError = new FirestorePermissionError({
-            path: colRef.path,
-            operation: 'create',
-            requestResourceData: providedData,
-        } satisfies SecurityRuleContext);
-        errorEmitter.emit('permission-error', permissionError);
-    });
+    if (logToEdit) {
+        const docRef = doc(firestore, 'agencies', profile.agency_id, 'providedServices', logToEdit.id);
+        updateDoc(docRef, updateData).catch(async () => {
+            const permissionError = new FirestorePermissionError({
+                path: docRef.path,
+                operation: 'update',
+                requestResourceData: updateData,
+            } satisfies SecurityRuleContext);
+            errorEmitter.emit('permission-error', permissionError);
+        });
+    } else {
+        updateData.status = 'Pending';
+        updateData.agency_id = profile.agency_id;
+        updateData.created_at = new Date().toISOString();
+        updateData.paymentStatus = 'Pending';
+        updateData.amountPaid = 0;
+        const colRef = collection(firestore, 'agencies', profile.agency_id, 'providedServices');
+        addDoc(colRef, updateData).catch(async () => {
+            const permissionError = new FirestorePermissionError({
+                path: colRef.path,
+                operation: 'create',
+                requestResourceData: updateData,
+            } satisfies SecurityRuleContext);
+            errorEmitter.emit('permission-error', permissionError);
+        });
+    }
 
     const activityColRef = collection(firestore, 'agencies', profile.agency_id, 'activityLogs');
     addDoc(activityColRef, {
@@ -233,14 +258,14 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
                         <Zap className="h-6 w-6" />
                     </div>
                     <div>
-                        <DialogTitle className="font-headline text-xl font-black">Sell Service</DialogTitle>
-                        <DialogDescription className="text-xs font-medium">Assign <strong>{service.name}</strong> to a client.</DialogDescription>
+                        <DialogTitle className="font-headline text-xl font-black">{logToEdit ? 'Edit Service' : 'Sell Service'}</DialogTitle>
+                        <DialogDescription className="text-xs font-medium">{logToEdit ? `Editing ${service.name}` : `Assign ${service.name} to a client.`}</DialogDescription>
                     </div>
                 </div>
             </DialogHeader>
         </div>
 
-        <ScrollArea className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 overflow-y-auto touch-pan-y">
             <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-6 pt-2">
                 <div className="space-y-6">
@@ -498,13 +523,13 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
                 </div>
             </form>
             </Form>
-        </ScrollArea>
+        </div>
         <div className="p-6 pt-0 shrink-0 border-t bg-background">
             <DialogFooter className="pt-4 flex gap-2">
                 <Button type="button" variant="ghost" onClick={() => setIsOpen(false)} className="rounded-xl h-11 px-6 font-bold flex-1 sm:flex-none">Cancel</Button>
                 <Button type="submit" disabled={isLoading} className="rounded-xl h-11 px-8 glowing-btn font-black flex-1 sm:flex-none" onClick={form.handleSubmit(onSubmit)}>
                     {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4 mr-2" />}
-                    Confirm Sale
+                    {logToEdit ? 'Update' : 'Confirm Sale'}
                 </Button>
             </DialogFooter>
         </div>
