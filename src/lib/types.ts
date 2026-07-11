@@ -275,6 +275,7 @@ export type Activity = {
     action: string;
     target: string;
     targetType: 'Property' | 'Buyer' | 'Appointment' | 'User' | 'FollowUp' | 'Invitation' | 'Service';
+    targetId?: string;
     details: { from: string; to: string } | null;
     timestamp: string;
     agency_id: string;

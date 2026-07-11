@@ -242,6 +242,7 @@ export function BuyerDetailsDialog({
             action: `returned lead ${buyer.serial_no} back to agency pool`,
             target: buyer.name,
             targetType: 'Buyer',
+            targetId: buyer.id,
             timestamp: new Date().toISOString(),
             agency_id: profile.agency_id,
         });

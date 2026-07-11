@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { buyerStatuses } from '@/lib/data';
 import { Badge } from '@/components/ui/badge';
 import { Edit, MoreHorizontal, PlusCircle, Trash2, Wallet, Ruler, Eye, MessageSquare, ChevronLeft, ChevronRight, ArrowUpDown, Tag as TagIcon, MapPin, ChevronDown, UserPlus, UserMinus, CalendarPlus, Sparkles, MessageSquareText, Filter, User as UserIcon, Users, X, Upload, Search } from 'lucide-react';
-import { useState, useMemo, Suspense, useRef } from 'react';
+import { useState, useMemo, useEffect, Suspense, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { useIsMobile } from '@/hooks/use-is-mobile';
@@ -165,6 +165,18 @@ function BuyersPageContent() {
     const [isAppointmentOpen, setIsAppointmentOpen] = useState(false);
     const [isRecommenderOpen, setIsRecommenderOpen] = useState(false);
     const [isNotesOpen, setIsNotesOpen] = useState(false);
+
+    // Auto-open remarks dialog when coming from notification
+    const openRemarkId = searchParams.get('openRemark');
+    useEffect(() => {
+        if (openRemarkId && allBuyers && !isAgencyLoading) {
+            const buyer = allBuyers.find(b => b.id === openRemarkId);
+            if (buyer) {
+                setSelectedBuyerForDetails(buyer);
+                setIsNotesOpen(true);
+            }
+        }
+    }, [openRemarkId, allBuyers, isAgencyLoading]);
 
 
     const [isAssignOpen, setIsAssignOpen] = useState(false);

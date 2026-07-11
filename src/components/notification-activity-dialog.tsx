@@ -51,6 +51,18 @@ export function NotificationActivityDialog({
     router.push(path);
   }
 
+  const handleViewRemark = () => {
+    setIsOpen(false);
+    if (activity.targetType === 'Buyer' && activity.targetId) {
+        router.push(`/buyers?openRemark=${activity.targetId}`);
+    } else if (activity.targetType === 'Property' && activity.targetId) {
+        router.push(`/properties?openRemark=${activity.targetId}`);
+    } else {
+        const path = activity.targetType === 'Buyer' ? '/buyers' : '/properties';
+        router.push(path);
+    }
+  }
+
   const getButtonText = () => {
     if (activity.action.includes('assigned')) {
         return "Go to Recording";
@@ -90,6 +102,11 @@ export function NotificationActivityDialog({
         </div>
         <DialogFooter className="sm:justify-between">
             <Button variant="outline" onClick={handleGoToPage}>{getButtonText()}</Button>
+            {activity.targetType === 'Buyer' && activity.targetId && (
+                <Button variant="default" onClick={handleViewRemark} className="bg-primary text-white">
+                    View Remark
+                </Button>
+            )}
             <Button onClick={() => setIsOpen(false)}>Close</Button>
         </DialogFooter>
       </DialogContent>
