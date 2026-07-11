@@ -69,7 +69,7 @@ export function SimpleAssignAgentDialog({ buyer, isOpen, setIsOpen, teamMembers 
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-md border-none shadow-3xl rounded-[2rem]">
+      <DialogContent className="sm:max-w-md max-h-[70vh] sm:max-h-[90vh] border-none shadow-3xl rounded-[2rem] overflow-hidden">
         <DialogHeader>
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 bg-primary/10 rounded-xl text-primary">

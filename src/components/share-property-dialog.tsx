@@ -202,7 +202,7 @@ export function SharePropertyDialog({
       open={isOpen}
       onOpenChange={setIsOpen}
     >
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg max-h-[70vh] sm:max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle className="font-headline">
             Share Property: {property.auto_title}

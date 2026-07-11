@@ -351,7 +351,7 @@ export function PropertyRecommenderDialog({
     return (
         <>
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                <DialogContent className="sm:max-w-3xl">
+                <DialogContent className="sm:max-w-3xl max-h-[70vh] sm:max-h-[90vh] overflow-hidden">
                     <DialogHeader>
                         <div className="flex justify-between items-center">
                             <DialogTitle className="font-headline flex items-center gap-2 text-2xl">

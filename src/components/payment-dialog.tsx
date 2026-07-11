@@ -257,7 +257,7 @@ export function PaymentDialog({ isOpen, setIsOpen, plan, billingCycle }: Payment
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[70vh] sm:max-h-[90vh] overflow-hidden">
         {isSubmitted ? renderSuccessScreen() : selectedMethod ? renderDetailsScreen() : renderInitialScreen()}
       </DialogContent>
     </Dialog>

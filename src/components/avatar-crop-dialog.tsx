@@ -133,7 +133,7 @@ export function AvatarCropDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent className="sm:max-w-xl max-h-[70vh] sm:max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle>Update Profile Picture</DialogTitle>
           <DialogDescription>

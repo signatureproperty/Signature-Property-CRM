@@ -225,7 +225,7 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-md border-none shadow-3xl rounded-[2rem] p-0 overflow-hidden max-h-[95vh] flex flex-col">
+      <DialogContent className="sm:max-w-md border-none shadow-3xl rounded-[2rem] p-0 overflow-hidden max-h-[80vh] sm:max-h-[95vh] flex flex-col">
         <div className="p-6 pb-2 shrink-0">
             <DialogHeader>
                 <div className="flex items-center gap-3 mb-2">

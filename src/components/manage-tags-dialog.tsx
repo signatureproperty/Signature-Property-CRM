@@ -170,7 +170,7 @@ export function ManageTagsDialog({ isOpen, setIsOpen, page }: ManageTagsDialogPr
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+      <DialogContent className="sm:max-w-2xl max-h-[70vh] sm:max-h-[90vh] overflow-hidden flex flex-col p-0">
         <div className="p-6 pb-0">
             <DialogHeader>
               <DialogTitle className="font-headline flex items-center gap-2 text-2xl font-black">

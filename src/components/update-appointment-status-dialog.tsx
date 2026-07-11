@@ -55,7 +55,7 @@ export function UpdateAppointmentStatusDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-md bg-background">
+      <DialogContent className="sm:max-w-md max-h-[70vh] sm:max-h-[90vh] bg-background overflow-hidden">
         <DialogHeader>
           <DialogTitle className="font-headline text-foreground">Update Appointment Status</DialogTitle>
           <DialogDescription>

@@ -32,7 +32,7 @@ export function ImportPreviewDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open && importStatus !== 'importing') onClose(); }}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-2xl max-h-[70vh] sm:max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5 text-primary" />

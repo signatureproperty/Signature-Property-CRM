@@ -827,7 +827,7 @@ ${utilities || 'N/A'}
 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogContent className="sm:max-w-xl border-none shadow-2xl rounded-3xl overflow-hidden bg-background">
+            <DialogContent className="sm:max-w-xl max-h-[70vh] sm:max-h-[90vh] border-none shadow-2xl rounded-3xl overflow-hidden bg-background">
                 <DialogHeader>
                     <DialogTitle className="font-headline text-2xl font-black tracking-tight">Share Property Details</DialogTitle>
                     <DialogDescription className="font-medium">Create a message to share with matching buyer leads.</DialogDescription>

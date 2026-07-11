@@ -64,7 +64,7 @@ export function ImageUploadDialog({
         }
         setIsOpen(open);
     }}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[70vh] sm:max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle>Update Profile Picture</DialogTitle>
           <DialogDescription>

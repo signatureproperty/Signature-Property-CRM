@@ -69,7 +69,7 @@ export function AddPropertyDialog({ isOpen, setIsOpen, onSave, propertyToEdit, a
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-4xl max-h-[95vh] overflow-hidden flex flex-col p-0">
+      <DialogContent className="sm:max-w-4xl max-h-[80vh] sm:max-h-[95vh] overflow-hidden flex flex-col p-0">
         <div className="p-6 pb-2">
             <DialogHeader>
             <DialogTitle className="font-headline text-2xl">

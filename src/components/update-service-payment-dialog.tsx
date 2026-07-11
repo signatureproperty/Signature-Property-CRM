@@ -111,7 +111,7 @@ export function UpdateServicePaymentDialog({ isOpen, setIsOpen, log }: UpdateSer
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-md border-none shadow-3xl rounded-[2rem] p-0 overflow-hidden">
+      <DialogContent className="sm:max-w-md max-h-[70vh] sm:max-h-[90vh] border-none shadow-3xl rounded-[2rem] p-0 overflow-hidden">
         <div className="p-8 pb-2">
             <DialogHeader>
                 <div className="flex items-center gap-3 mb-2">

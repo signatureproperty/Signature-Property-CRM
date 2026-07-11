@@ -79,7 +79,7 @@ export function AllEventsDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent className="sm:max-w-xl max-h-[70vh] sm:max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle className="font-headline">All Events & Appointments</DialogTitle>
           <DialogDescription>

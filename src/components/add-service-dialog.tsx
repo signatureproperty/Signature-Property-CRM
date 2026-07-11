@@ -165,7 +165,7 @@ export function AddServiceDialog({ isOpen, setIsOpen, serviceToEdit }: AddServic
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-2xl border-none shadow-3xl rounded-[2rem] p-0 overflow-hidden">
+      <DialogContent className="sm:max-w-2xl max-h-[70vh] sm:max-h-[90vh] border-none shadow-3xl rounded-[2rem] p-0 overflow-hidden">
         <div className="p-8 pb-2">
             <DialogHeader>
               <div className="flex items-center gap-3 mb-2">

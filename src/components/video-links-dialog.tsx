@@ -60,7 +60,7 @@ export function VideoLinksDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[70vh] sm:max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle className="font-headline">Video Links</DialogTitle>
           <DialogDescription>

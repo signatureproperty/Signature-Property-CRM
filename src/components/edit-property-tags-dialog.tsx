@@ -120,7 +120,7 @@ export function EditPropertyTagsDialog({ property, isOpen, setIsOpen }: EditProp
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-md rounded-3xl p-0 overflow-hidden">
+      <DialogContent className="sm:max-w-md max-h-[70vh] sm:max-h-[90vh] rounded-3xl p-0 overflow-hidden">
         <div className="p-6 pb-2">
             <DialogHeader>
               <DialogTitle className="font-headline text-2xl font-black tracking-tight flex items-center gap-2">

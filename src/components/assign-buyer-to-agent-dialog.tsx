@@ -148,7 +148,7 @@ export function AssignBuyerToAgentDialog({ buyer, isOpen, setIsOpen }: AssignBuy
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0 border-none shadow-3xl">
+      <DialogContent className="sm:max-w-2xl max-h-[70vh] sm:max-h-[90vh] flex flex-col p-0 border-none shadow-3xl">
         <div className="p-6 pb-2">
             <DialogHeader>
                 <div className="flex items-center gap-4">

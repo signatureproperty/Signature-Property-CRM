@@ -145,7 +145,7 @@ export function BuyerNotesDialog({
   return (
     <>
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
+      <DialogContent className="sm:max-w-2xl max-h-[70vh] sm:max-h-[90vh] flex flex-col p-0 overflow-hidden">
         <div className="p-6 pb-2">
             <DialogHeader>
                 <div className="flex items-center justify-between">

@@ -125,7 +125,7 @@ export function AssignPropertyToAgentDialog({ property, isOpen, setIsOpen }: Ass
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0 border-none shadow-3xl overflow-hidden rounded-[2rem]">
+      <DialogContent className="sm:max-w-2xl max-h-[70vh] sm:max-h-[90vh] flex flex-col p-0 border-none shadow-3xl overflow-hidden rounded-[2rem]">
         <div className="p-6 pb-2">
             <DialogHeader>
                 <div className="flex items-center gap-3">
