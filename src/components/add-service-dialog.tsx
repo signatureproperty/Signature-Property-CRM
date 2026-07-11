@@ -28,12 +28,22 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
+const serviceCategories = [
+  'Photography', 'Videography', 'Drone / Aerial', '3D Virtual Tour', 'Floor Plans',
+  'Walkthrough', 'Social Media Marketing', 'SEO', 'PPC / Ads', 'Content Writing',
+  'Interior Design', 'Home Staging', 'Legal Services', 'Financial Services',
+  'Insurance', 'Renovation', 'Maintenance', 'Cleaning', 'Landscaping',
+  'Architecture', 'Construction', 'Consultation', 'Property Management',
+  'Tenant Screening', 'Lease Management', 'Relocation', 'Moving Services',
+  'Pest Control', 'Security Systems', 'Smart Home', 'Other'
+];
+
 const formSchema = z.object({
   name: z.string().min(1, 'Service name is required'),
   price: z.coerce.number().min(0, 'Price must be positive'),
   category: z.string().min(1, 'Category is required'),
+  customCategory: z.string().optional(),
   description: z.string().optional(),
-  applicableTo: z.enum(['Buyers', 'Properties', 'Both']).default('Both'),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -58,25 +68,30 @@ export function AddServiceDialog({ isOpen, setIsOpen, serviceToEdit }: AddServic
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>([]);
 
+  const [customCategory, setCustomCategory] = useState('');
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
       price: 0,
-      category: 'Marketing',
+      category: 'Photography',
+      customCategory: '',
       description: '',
-      applicableTo: 'Both',
     },
   });
 
+  const watchedCategory = form.watch('category');
+
   useEffect(() => {
     if (isOpen && serviceToEdit) {
+      const isPredefined = serviceCategories.includes(serviceToEdit.category);
       form.reset({
         name: serviceToEdit.name,
         price: serviceToEdit.price,
-        category: serviceToEdit.category,
+        category: isPredefined ? serviceToEdit.category : 'Other',
+        customCategory: isPredefined ? '' : serviceToEdit.category,
         description: serviceToEdit.description,
-        applicableTo: serviceToEdit.applicableTo || 'Both',
       });
       setCustomStatuses(serviceToEdit.customStatuses || []);
       setTags(serviceToEdit.tags || []);
@@ -84,9 +99,9 @@ export function AddServiceDialog({ isOpen, setIsOpen, serviceToEdit }: AddServic
       form.reset({
         name: '',
         price: 0,
-        category: 'Marketing',
+        category: 'Photography',
+        customCategory: '',
         description: '',
-        applicableTo: 'Both',
       });
       setCustomStatuses([]);
       setTags([]);
@@ -124,8 +139,13 @@ export function AddServiceDialog({ isOpen, setIsOpen, serviceToEdit }: AddServic
     if (!profile.agency_id) return;
     setIsLoading(true);
 
+    const finalCategory = values.category === 'Other' ? (values.customCategory || 'Other') : values.category;
+
     const payload = {
-        ...values,
+        name: values.name,
+        price: values.price,
+        category: finalCategory,
+        description: values.description,
         customStatuses,
         tags,
         agency_id: profile.agency_id,
@@ -186,32 +206,41 @@ export function AddServiceDialog({ isOpen, setIsOpen, serviceToEdit }: AddServic
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 min-h-0">
             <div className="flex-1 overflow-y-auto px-5 space-y-5">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                        control={form.control}
-                        name="name"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60">Service Name</FormLabel>
-                            <FormControl><Input placeholder="e.g. Drone Video Pack" {...field} className="h-11 rounded-xl" /></FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                        <FormField
-                        control={form.control}
-                        name="category"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60">Category</FormLabel>
-                            <FormControl><Input placeholder="e.g. Media" {...field} className="h-11 rounded-xl" /></FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                    </div>
+                    <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60">Service Name</FormLabel>
+                        <FormControl><Input placeholder="e.g. Drone Video Pack" {...field} className="h-11 rounded-xl" /></FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                            control={form.control}
+                            name="category"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60">Category</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl>
+                                        <SelectTrigger className="h-11 rounded-xl">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent className="rounded-xl border-none shadow-xl max-h-[300px] overflow-y-auto">
+                                        {serviceCategories.map(cat => (
+                                            <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
                         <FormField
                             control={form.control}
                             name="price"
@@ -223,28 +252,21 @@ export function AddServiceDialog({ isOpen, setIsOpen, serviceToEdit }: AddServic
                                 </FormItem>
                             )}
                         />
+                    </div>
+
+                    {watchedCategory === 'Other' && (
                         <FormField
                             control={form.control}
-                            name="applicableTo"
+                            name="customCategory"
                             render={({ field }) => (
                                 <FormItem>
-                                <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60">Target Audience</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                    <FormControl>
-                                        <SelectTrigger className="h-11 rounded-xl">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent className="rounded-xl border-none shadow-xl">
-                                        <SelectItem value="Buyers">Buyers Only</SelectItem>
-                                        <SelectItem value="Properties">Properties/Owners Only</SelectItem>
-                                        <SelectItem value="Both">Both Leads & Owners</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <FormLabel className="text-[10px] font-black uppercase tracking-widest opacity-60">Category Name</FormLabel>
+                                <FormControl><Input placeholder="e.g. Web Development" {...field} className="h-11 rounded-xl" /></FormControl>
+                                <FormMessage />
                                 </FormItem>
                             )}
                         />
-                    </div>
+                    )}
 
                     {/* STATUSES SECTION */}
                     <div className="space-y-4 pt-2">
