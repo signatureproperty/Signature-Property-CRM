@@ -72,7 +72,7 @@ export function EditServiceLabelsDialog({ isOpen, setIsOpen, log, availableTags 
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-md rounded-2xl p-0 gap-0 overflow-hidden max-h-[85vh] flex flex-col">
+      <DialogContent className="sm:max-w-md rounded-2xl p-0 gap-0 overflow-hidden max-h-[80vh] sm:max-h-[95vh] flex flex-col">
         <DialogHeader className="p-5 pb-3 shrink-0">
           <DialogTitle className="font-headline text-xl font-black flex items-center gap-2">
             <Tag className="h-5 w-5 text-primary" /> Edit Labels

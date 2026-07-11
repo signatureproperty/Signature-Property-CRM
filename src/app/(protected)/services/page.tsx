@@ -446,14 +446,14 @@ export default function ServicesPage() {
 
             {/* Service Picker for Sell Service button */}
             <Dialog open={isServicePickerOpen} onOpenChange={setIsServicePickerOpen}>
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
+                <DialogContent className="sm:max-w-md max-h-[80vh] sm:max-h-[95vh] flex flex-col p-0 overflow-hidden rounded-2xl">
+                    <DialogHeader className="p-5 pb-3 shrink-0">
                         <DialogTitle className="font-headline flex items-center gap-2">
                             <Zap className="h-5 w-5 text-primary" /> Select a Service to Sell
                         </DialogTitle>
                         <DialogDescription>Choose which service you want to sell.</DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-2 py-2 max-h-[400px] overflow-y-auto">
+                    <div className="flex-1 overflow-y-auto px-5 pb-5 space-y-2">
                         {filteredServices.length > 0 ? filteredServices.map(service => (
                             <button
                                 key={service.id}
@@ -484,10 +484,36 @@ export default function ServicesPage() {
             {viewingProperty && <PropertyDetailsDialog property={viewingProperty} isOpen={isPropertyOpen} setIsOpen={setIsPropertyOpen} />}
 
             <Dialog open={isExternalOpen} onOpenChange={setIsExternalOpen}>
-                <DialogContent className="sm:max-w-md border-none shadow-3xl rounded-[2rem] p-0 overflow-hidden">
-                    <div className="p-8 pb-2"><DialogHeader><div className="flex items-center gap-3 mb-2"><div className="p-3 bg-orange-500/10 rounded-2xl text-orange-600"><User className="h-6 w-6" /></div><div><DialogTitle className="font-headline text-xl font-black">External Client Profile</DialogTitle></div></div></DialogHeader></div>
-                    {viewingExternal && <div className="px-8 py-6 space-y-6"><div className="grid grid-cols-2 gap-4"><div className="p-4 rounded-2xl bg-muted/20 border border-border/40"><Label className="text-[9px] font-black uppercase tracking-widest opacity-60 flex items-center gap-1.5 mb-1"><User className="h-3 w-3" /> Client Name</Label><p className="font-bold text-sm">{viewingExternal.externalName}</p></div><div className="p-4 rounded-2xl bg-muted/20 border border-border/40"><Label className="text-[9px] font-black uppercase tracking-widest opacity-60 flex items-center gap-1.5 mb-1"><Phone className="h-3 w-3" /> Contact No</Label><p className="font-bold text-sm">{viewingExternal.externalPhone || 'N/A'}</p></div></div><div className="p-5 rounded-2xl bg-primary/5 border border-primary/10"><Label className="text-[9px] font-black uppercase tracking-widest text-primary opacity-70 flex items-center gap-1.5 mb-2"><FileText className="h-3 w-3" /> Requirements & Notes</Label><p className="text-sm font-bold leading-relaxed italic">"{viewingExternal.externalClientDetails || 'No additional details.'}"</p></div></div>}
-                    <DialogFooter className="p-8 border-t bg-muted/5 mt-4"><Button variant="secondary" className="rounded-xl px-10 h-11 font-black w-full" onClick={() => setIsExternalOpen(false)}>Close Record</Button></DialogFooter>
+                <DialogContent className="sm:max-w-md max-h-[80vh] sm:max-h-[95vh] flex flex-col p-0 overflow-hidden rounded-2xl">
+                    <div className="p-5 pb-3 shrink-0">
+                        <DialogHeader>
+                            <div className="flex items-center gap-3">
+                                <div className="p-3 bg-orange-500/10 rounded-2xl text-orange-600"><User className="h-6 w-6" /></div>
+                                <DialogTitle className="font-headline text-xl font-black">External Client Profile</DialogTitle>
+                            </div>
+                        </DialogHeader>
+                    </div>
+                    {viewingExternal && (
+                        <div className="flex-1 overflow-y-auto px-5 pb-5 space-y-4">
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="p-3 rounded-xl bg-muted/20 border border-border/40">
+                                    <Label className="text-[9px] font-black uppercase tracking-widest opacity-60 flex items-center gap-1.5 mb-1"><User className="h-3 w-3" /> Client Name</Label>
+                                    <p className="font-bold text-sm">{viewingExternal.externalName}</p>
+                                </div>
+                                <div className="p-3 rounded-xl bg-muted/20 border border-border/40">
+                                    <Label className="text-[9px] font-black uppercase tracking-widest opacity-60 flex items-center gap-1.5 mb-1"><Phone className="h-3 w-3" /> Contact No</Label>
+                                    <p className="font-bold text-sm">{viewingExternal.externalPhone || 'N/A'}</p>
+                                </div>
+                            </div>
+                            <div className="p-4 rounded-xl bg-primary/5 border border-primary/10">
+                                <Label className="text-[9px] font-black uppercase tracking-widest text-primary opacity-70 flex items-center gap-1.5 mb-2"><FileText className="h-3 w-3" /> Requirements & Notes</Label>
+                                <p className="text-sm font-bold leading-relaxed italic">"{viewingExternal.externalClientDetails || 'No additional details.'}"</p>
+                            </div>
+                        </div>
+                    )}
+                    <div className="p-4 shrink-0 border-t bg-muted/5">
+                        <Button variant="secondary" className="rounded-xl px-10 h-11 font-black w-full" onClick={() => setIsExternalOpen(false)}>Close Record</Button>
+                    </div>
                 </DialogContent>
             </Dialog>
 
