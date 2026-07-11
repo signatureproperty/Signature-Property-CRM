@@ -142,16 +142,24 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service, logToEdit }: A
 
   const watchedType = form.watch('assignedToType');
 
+  const parsePhone = (fullPhone: string | null | undefined) => {
+    if (!fullPhone) return { countryCode: '+92', localNumber: '' };
+    const match = fullPhone.match(/^\+(\d{1,3})(\d+)$/);
+    if (match) return { countryCode: '+' + match[1], localNumber: match[2] };
+    return { countryCode: '+92', localNumber: fullPhone };
+  };
+
   useEffect(() => {
     if (isOpen) {
         if (logToEdit) {
+            const { countryCode, localNumber } = parsePhone(logToEdit.externalPhone);
             form.reset({
                 priceCharged: logToEdit.priceCharged,
                 assignedToType: logToEdit.assignedToType,
                 leadId: logToEdit.leadId || '',
                 externalName: logToEdit.externalName || '',
-                country_code: '+92',
-                externalPhone: '',
+                country_code: countryCode,
+                externalPhone: localNumber,
                 externalClientDetails: logToEdit.externalClientDetails || '',
             });
         } else {
