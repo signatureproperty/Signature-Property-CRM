@@ -163,7 +163,7 @@ export function SetAppointmentDialog({
   
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-md max-h-[70vh] sm:max-h-[90vh] overflow-hidden">
+      <DialogContent className="sm:max-w-md max-h-[80vh] sm:max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-headline">{appointmentToEdit ? 'Reschedule Appointment' : 'Set New Appointment'}</DialogTitle>
           <DialogDescription>

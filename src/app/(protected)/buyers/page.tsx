@@ -1180,8 +1180,8 @@ function BuyersPageContent() {
                   </Select>
                 </div>
                 {activeAgentFilter !== 'All' && (
-                  <Button variant="ghost" size="sm" onClick={() => setActiveAgentFilter('All')} className="h-8 rounded-full text-[10px] font-black uppercase tracking-tighter hover:bg-destructive/10 hover:text-destructive">
-                    <X className="h-3 w-3 mr-1" /> Clear Filter
+                  <Button variant="ghost" size="icon" onClick={() => setActiveAgentFilter('All')} className="h-7 w-7 rounded-full hover:bg-destructive/10 hover:text-destructive">
+                    <X className="h-3.5 w-3.5" />
                   </Button>
                 )}
               </div>
