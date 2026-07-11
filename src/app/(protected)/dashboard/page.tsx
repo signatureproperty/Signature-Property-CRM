@@ -324,7 +324,7 @@ export default function OverviewPage() {
             change: "From Agents",
             icon: <Undo2 className="h-5 w-5" />,
             color: "bg-red-500/10 text-red-600",
-            href: "/buyers",
+            href: "/buyers?status=Returned",
             isLoading
         });
     }

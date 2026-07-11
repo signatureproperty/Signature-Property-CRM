@@ -19,7 +19,7 @@ import { Buyer, PriceUnit, SizeUnit, PropertyType, Activity, ListingType, Tag, A
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useSearch } from '@/context/layout-context';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency, formatUnit, formatPhoneNumberForWhatsApp } from '@/lib/formatters';
@@ -68,7 +68,8 @@ const statusVariant = {
     'Follow Up': 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800',
     'Visited Property': 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800',
     'Deal Closed': 'bg-slate-800 text-white border-slate-700 dark:bg-slate-700 dark:border-slate-600',
-    'Deal Lost': 'bg-gray-400 text-white border-gray-300 dark:bg-gray-600 dark:border-gray-500'
+    'Deal Lost': 'bg-gray-400 text-white border-gray-300 dark:bg-gray-600 dark:border-gray-500',
+    'Returned': 'bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-900/30 dark:text-rose-400 dark:border-rose-800'
 } as const;
 
 const propertyTypesForFilter: (PropertyType | 'All')[] = [
@@ -97,6 +98,7 @@ function formatSize(minAmount?: number, minUnit?: SizeUnit, maxAmount?: number, 
 function BuyersPageContent() {
     const isMobile = useIsMobile();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { user } = useUser();
     const { profile } = useProfile();
     const { searchQuery } = useSearch();
@@ -147,7 +149,7 @@ function BuyersPageContent() {
     }, [allAgencyTags, profile.role, profile.user_id]);
 
     const [activeListingType, setActiveListingType] = useState<ListingType | 'All'>('All');
-    const [activeStatus, setActiveStatus] = useState<string>('All');
+    const [activeStatus, setActiveStatus] = useState<string>(searchParams.get('status') || 'All');
     const [activeCustomTags, setActiveCustomTags] = useState<string[]>([]);
     const [activeAgentFilter, setActiveAgentFilter] = useState<string>('All');
 
@@ -214,7 +216,11 @@ function BuyersPageContent() {
         };
 
         buyerStatuses.forEach(status => {
-            counts[status] = filteredByType.filter(b => b.status === status).length;
+            if (status === 'Returned') {
+                counts[status] = filteredByType.filter(b => b.tags?.includes('Returned') || b.status === 'Returned').length;
+            } else {
+                counts[status] = filteredByType.filter(b => b.status === status).length;
+            }
         });
 
         agencyTags?.forEach(tag => {
@@ -304,7 +310,14 @@ function BuyersPageContent() {
         try {
             const buyerRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', buyer.id);
             const updatedTags = (buyer.tags || []).filter(t => t !== 'Returned');
-            await updateDoc(buyerRef, { assignedTo: null, tags: updatedTags });
+            await updateDoc(buyerRef, { 
+                assignedTo: null, 
+                status: 'Returned' as BuyerStatus,
+                tags: updatedTags,
+                returned_by_id: profile.user_id,
+                returned_by_name: profile.name,
+                returned_at: new Date().toISOString()
+            });
             
             await logActivity('unassigned agent from lead', buyer.name, 'Buyer');
             toast({ title: "Agent Unassigned", description: `Lead ${buyer.name} is now back in the pool.` });
@@ -494,7 +507,11 @@ function BuyersPageContent() {
             buyers = buyers.filter(b => (b.listing_type || 'For Sale') === activeListingType);
         }
         if (activeStatus !== 'All') {
-            buyers = buyers.filter(b => b.status === activeStatus);
+            if (activeStatus === 'Returned') {
+                buyers = buyers.filter(b => b.tags?.includes('Returned') || b.status === 'Returned');
+            } else {
+                buyers = buyers.filter(b => b.status === activeStatus);
+            }
         }
         if (activeCustomTags.length > 0) {
             buyers = buyers.filter(b => activeCustomTags.every(tag => b.tags?.includes(tag)));
@@ -706,7 +723,10 @@ function BuyersPageContent() {
                                 <TableCell>
                                     <div className="flex flex-wrap gap-1 items-center">
                                         <Badge className={cn("text-[10px] font-bold", getTagColor(buyer.status))}>{buyer.status}</Badge>
-                                        {buyer.tags?.filter(t => t !== buyer.status).map(tagName => (
+                                        {buyer.status === 'Returned' && buyer.returned_by_name && (
+                                            <span className="text-[9px] text-muted-foreground italic">by {buyer.returned_by_name}</span>
+                                        )}
+                                        {buyer.tags?.filter(t => t !== buyer.status && t !== 'Returned').map(tagName => (
                                             <Badge key={tagName} className={cn("text-[10px] font-bold", getTagColor(tagName))}>{tagName}</Badge>
                                         ))}
                                     </div>
@@ -1124,7 +1144,7 @@ function BuyersPageContent() {
                                 </div>
                                 {/* Status + Custom Tags in one line */}
                                 <div className="flex items-center gap-2">
-                                    {buyerStatuses.map(status => (
+                                    {buyerStatuses.filter(status => status !== 'Returned' || profile.role === 'Admin').map(status => (
                                         <Badge
                                             key={status}
                                             variant={activeStatus === status ? 'default' : 'outline'}

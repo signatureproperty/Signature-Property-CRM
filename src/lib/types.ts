@@ -174,7 +174,8 @@ export type BuyerStatus =
   | 'Follow Up'
   | 'Visited Property'
   | 'Deal Closed'
-  | 'Deal Lost';
+  | 'Deal Lost'
+  | 'Returned';
 
 export type LeadNote = {
     id: string;
