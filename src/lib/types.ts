@@ -230,6 +230,7 @@ export type Buyer = {
     returned_by_id?: string;
     returned_by_name?: string;
     returned_at?: string;
+    returned_reason?: string;
 };
 
 export type FollowUpStatus = 'Scheduled' | 'Completed';

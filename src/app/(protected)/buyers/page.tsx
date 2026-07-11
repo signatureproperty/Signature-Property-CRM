@@ -15,7 +15,7 @@ import { useState, useMemo, Suspense, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { useIsMobile } from '@/hooks/use-is-mobile';
-import { Buyer, PriceUnit, SizeUnit, PropertyType, Activity, ListingType, Tag, Appointment, Property, PlanName } from '@/lib/types';
+import { Buyer, PriceUnit, SizeUnit, PropertyType, Activity, ListingType, Tag, Appointment, Property, PlanName, BuyerStatus } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -38,6 +38,7 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import dynamic from 'next/dynamic';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
@@ -168,6 +169,9 @@ function BuyersPageContent() {
 
     const [isAssignOpen, setIsAssignOpen] = useState(false);
     const [isSimpleAssignOpen, setIsSimpleAssignOpen] = useState(false);
+    const [isUnassignOpen, setIsUnassignOpen] = useState(false);
+    const [buyerToUnassign, setBuyerToUnassign] = useState<Buyer | null>(null);
+    const [unassignReason, setUnassignReason] = useState('');
 
     const [buyerToEdit, setBuyerToEdit] = useState<Buyer | null>(null);
     const [selectedBuyers, setSelectedBuyers] = useState<string[]>([]);
@@ -305,7 +309,7 @@ function BuyersPageContent() {
         setIsSimpleAssignOpen(true);
     };
 
-    const handleUnassignAgent = async (buyer: Buyer) => {
+    const handleUnassignAgent = async (buyer: Buyer, reason?: string) => {
         if (!profile.agency_id) return;
         try {
             const buyerRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', buyer.id);
@@ -316,7 +320,8 @@ function BuyersPageContent() {
                 tags: updatedTags,
                 returned_by_id: profile.user_id,
                 returned_by_name: profile.name,
-                returned_at: new Date().toISOString()
+                returned_at: new Date().toISOString(),
+                returned_reason: reason || ''
             });
             
             await logActivity('unassigned agent from lead', buyer.name, 'Buyer');
@@ -724,7 +729,9 @@ function BuyersPageContent() {
                                     <div className="flex flex-wrap gap-1 items-center">
                                         <Badge className={cn("text-[10px] font-bold", getTagColor(buyer.status))}>{buyer.status}</Badge>
                                         {buyer.status === 'Returned' && buyer.returned_by_name && (
-                                            <span className="text-[9px] text-muted-foreground italic">by {buyer.returned_by_name}</span>
+                                            <Badge variant="outline" className="text-[9px] font-bold text-rose-600 border-rose-300 bg-rose-50 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-800 flex items-center gap-1">
+                                                <UserMinus className="h-2.5 w-2.5" /> {buyer.returned_by_name}
+                                            </Badge>
                                         )}
                                         {buyer.tags?.filter(t => t !== buyer.status && t !== 'Returned').map(tagName => (
                                             <Badge key={tagName} className={cn("text-[10px] font-bold", getTagColor(tagName))}>{tagName}</Badge>
@@ -754,9 +761,9 @@ function BuyersPageContent() {
                                                         <Sparkles className="mr-2 h-4 w-4" /> Smart Assign (Inventory)
                                                     </DropdownMenuItem>
                                                     {buyer.assignedTo && (
-                                                        <DropdownMenuItem onSelect={() => handleUnassignAgent(buyer)} className="text-destructive font-bold">
-                                                            <UserMinus className="mr-2 h-4 w-4" /> Unassign Agent
-                                                        </DropdownMenuItem>
+                                                    <DropdownMenuItem onSelect={() => { setBuyerToUnassign(buyer); setUnassignReason(''); setIsUnassignOpen(true); }} className="text-destructive font-bold">
+                                                        <UserMinus className="mr-2 h-4 w-4" /> Unassign Agent
+                                                    </DropdownMenuItem>
                                                     )}
                                                     <DropdownMenuItem onSelect={() => handleDelete(buyer) as any} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete Buyer</DropdownMenuItem>
                                                 </>
@@ -884,7 +891,7 @@ function BuyersPageContent() {
                                             <Sparkles className="mr-2 h-4 w-4" /> Smart Assign (Inventory)
                                         </DropdownMenuItem>
                                         {buyer.assignedTo && (
-                                            <DropdownMenuItem onSelect={() => handleUnassignAgent(buyer)} className="text-destructive font-bold">
+                                            <DropdownMenuItem onSelect={() => { setBuyerToUnassign(buyer); setUnassignReason(''); setIsUnassignOpen(true); }} className="text-destructive font-bold">
                                                 <UserMinus className="mr-2 h-4 w-4" /> Unassign Agent
                                             </DropdownMenuItem>
                                         )}
@@ -1232,6 +1239,40 @@ function BuyersPageContent() {
                     {isEditTagsOpen && <EditBuyerTagsDialog buyer={selectedBuyerForDetails} isOpen={isEditTagsOpen} setIsOpen={setIsEditTagsOpen} />}
                     {isAssignOpen && <AssignBuyerToAgentDialog buyer={selectedBuyerForDetails} isOpen={isAssignOpen} setIsOpen={setIsAssignOpen} />}
                     {isSimpleAssignOpen && <SimpleAssignAgentDialog buyer={selectedBuyerForDetails} isOpen={isSimpleAssignOpen} setIsOpen={setIsSimpleAssignOpen} teamMembers={teamMembers || []} />}
+                    {isUnassignOpen && buyerToUnassign && (
+                        <Dialog open={isUnassignOpen} onOpenChange={setIsUnassignOpen}>
+                            <DialogContent className="sm:max-w-md">
+                                <DialogHeader>
+                                    <DialogTitle className="flex items-center gap-2 text-destructive">
+                                        <UserMinus className="h-5 w-5" /> Unassign Agent
+                                    </DialogTitle>
+                                    <DialogDescription>
+                                        Remove agent from <strong>{buyerToUnassign.name}</strong> ({buyerToUnassign.serial_no})
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-4 py-2">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold">Return Reason (optional)</label>
+                                        <textarea
+                                            value={unassignReason}
+                                            onChange={(e) => setUnassignReason(e.target.value)}
+                                            placeholder="e.g. Not responding, wrong area, budget mismatch..."
+                                            className="w-full min-h-[80px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
+                                        />
+                                    </div>
+                                    <div className="flex gap-2 justify-end">
+                                        <Button variant="outline" onClick={() => setIsUnassignOpen(false)}>Cancel</Button>
+                                        <Button variant="destructive" onClick={async () => {
+                                            await handleUnassignAgent(buyerToUnassign, unassignReason);
+                                            setIsUnassignOpen(false);
+                                            setBuyerToUnassign(null);
+                                            setUnassignReason('');
+                                        }}>Unassign</Button>
+                                    </div>
+                                </div>
+                            </DialogContent>
+                        </Dialog>
+                    )}
                     {isAppointmentOpen && (
                         <SetAppointmentDialog 
                             isOpen={isAppointmentOpen}
