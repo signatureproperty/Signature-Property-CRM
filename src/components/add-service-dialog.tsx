@@ -283,7 +283,7 @@ export function AddServiceDialog({ isOpen, setIsOpen, serviceToEdit }: AddServic
                                 onKeyDown={e => { if(e.key === 'Enter') { e.preventDefault(); handleAddStatus(); } }}
                                 className="h-11 rounded-xl bg-muted/30"
                             />
-                            <Button type="button" onClick={handleAddStatus} variant="secondary" className="h-11 px-6 rounded-xl font-bold">
+                            <Button type="button" onClick={handleAddStatus} variant="default" className="h-11 px-6 rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/90">
                                 <Plus className="h-4 w-4" />
                             </Button>
                         </div>
@@ -319,7 +319,7 @@ export function AddServiceDialog({ isOpen, setIsOpen, serviceToEdit }: AddServic
                                 onKeyDown={e => { if(e.key === 'Enter') { e.preventDefault(); handleAddTag(); } }}
                                 className="h-11 rounded-xl bg-muted/30"
                             />
-                            <Button type="button" onClick={handleAddTag} variant="secondary" className="h-11 px-6 rounded-xl font-bold">
+                            <Button type="button" onClick={handleAddTag} variant="default" className="h-11 px-6 rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/90">
                                 <Plus className="h-4 w-4" />
                             </Button>
                         </div>
