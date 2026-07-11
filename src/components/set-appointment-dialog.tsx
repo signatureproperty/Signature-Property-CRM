@@ -163,15 +163,17 @@ export function SetAppointmentDialog({
   
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-md max-h-[80vh] sm:max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="font-headline">{appointmentToEdit ? 'Reschedule Appointment' : 'Set New Appointment'}</DialogTitle>
-          <DialogDescription>
-            {appointmentToEdit ? 'Update the details for this appointment.' : 'Fill in the details to schedule a new appointment.'}
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-md max-h-[80vh] sm:max-h-[90vh] flex flex-col p-0 overflow-hidden">
+        <div className="p-6 pb-2 shrink-0">
+          <DialogHeader>
+            <DialogTitle className="font-headline">{appointmentToEdit ? 'Reschedule Appointment' : 'Set New Appointment'}</DialogTitle>
+            <DialogDescription>
+              {appointmentToEdit ? 'Update the details for this appointment.' : 'Fill in the details to schedule a new appointment.'}
+            </DialogDescription>
+          </DialogHeader>
+        </div>
         <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 py-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 overflow-y-auto px-6 pb-4 grid gap-4">
                 <div className="grid grid-cols-2 gap-4">
                     <FormField
                         control={form.control}
@@ -317,7 +319,7 @@ export function SetAppointmentDialog({
                         )}
                     />
                 </div>
-                 <DialogFooter className="pt-4">
+                 <DialogFooter className="pt-4 shrink-0 border-t">
                  <Button
                     type="button"
                     variant="ghost"
