@@ -33,9 +33,7 @@ import {
     DollarSign,
     ListChecks,
     Check,
-    Building2,
-    ChevronDown,
-    Minus
+    Building2
 } from 'lucide-react';
 import { 
     DropdownMenu, 
@@ -49,6 +47,7 @@ import {
 import { AddServiceDialog } from '@/components/add-service-dialog';
 import { AssignServiceDialog } from '@/components/assign-service-dialog';
 import { UpdateServicePaymentDialog } from '@/components/update-service-payment-dialog';
+import { EditServiceLabelsDialog } from '@/components/edit-service-labels-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
 import { useCurrency } from '@/context/currency-context';
@@ -113,7 +112,8 @@ export default function ServicesPage() {
 
     const [viewingExternal, setViewingExternal] = useState<ProvidedService | null>(null);
     const [isExternalOpen, setIsExternalOpen] = useState(false);
-    const [expandedLabels, setExpandedLabels] = useState<string[]>([]);
+    const [isLabelsOpen, setIsLabelsOpen] = useState(false);
+    const [selectedLabelsLog, setSelectedLabelsLog] = useState<ProvidedService | null>(null);
 
     // --- Data Fetching ---
     const servicesQuery = useMemoFirebase(() => 
@@ -241,7 +241,6 @@ export default function ServicesPage() {
         const parentService = services?.find(s => s.id === log.serviceId);
         const statusOptions = ['Pending', ...(parentService?.customStatuses || []), 'Completed'];
         const tagOptions = parentService?.tags || [];
-        const isLabelsExpanded = expandedLabels.includes(log.id);
 
         return (
             <DropdownMenu>
@@ -259,32 +258,12 @@ export default function ServicesPage() {
                     {tagOptions.length > 0 && (
                         <>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                                className="gap-2 font-bold text-xs"
-                                onClick={() => setExpandedLabels(prev => prev.includes(log.id) ? prev.filter(id => id !== log.id) : [...prev, log.id])}
-                            >
+                            <DropdownMenuItem className="gap-2 font-bold" onClick={() => { setSelectedLabelsLog(log); setIsLabelsOpen(true); }}>
                                 <Tag className="h-3 w-3" /> Labels
-                                <ChevronDown className={cn("h-3 w-3 ml-auto transition-transform", isLabelsExpanded && "rotate-180")} />
+                                {log.tags && log.tags.length > 0 && (
+                                    <Badge variant="secondary" className="ml-auto text-[9px] h-4 px-1.5 font-black">{log.tags.length}</Badge>
+                                )}
                             </DropdownMenuItem>
-                            {isLabelsExpanded && (
-                                <div className="px-2 py-1 space-y-0.5">
-                                    {tagOptions.map(tag => (
-                                        <div 
-                                            key={tag} 
-                                            onClick={() => handleToggleTag(log, tag)}
-                                            className={cn(
-                                                "flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all",
-                                                log.tags?.includes(tag) 
-                                                    ? "bg-primary/10 text-primary" 
-                                                    : "hover:bg-muted/50 text-muted-foreground"
-                                            )}
-                                        >
-                                            {log.tags?.includes(tag) ? <Check className="h-3 w-3" /> : <Minus className="h-3 w-3 opacity-30" />}
-                                            {tag}
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
                         </>
                     )}
                     <DropdownMenuSeparator />
@@ -434,6 +413,14 @@ export default function ServicesPage() {
             <AddServiceDialog isOpen={isAddOpen} setIsOpen={setIsAddOpen} serviceToEdit={selectedService} />
             {selectedService && <AssignServiceDialog isOpen={isAssignOpen} setIsOpen={(open) => { setIsAssignOpen(open); if (!open) { setSelectedService(null); setLogToEdit(null); } }} service={selectedService} logToEdit={logToEdit} />}
             {selectedLog && <UpdateServicePaymentDialog isOpen={isPaymentOpen} setIsOpen={setIsPaymentOpen} log={selectedLog} />}
+            {selectedLabelsLog && (
+                <EditServiceLabelsDialog 
+                    isOpen={isLabelsOpen} 
+                    setIsOpen={setIsLabelsOpen} 
+                    log={selectedLabelsLog} 
+                    availableTags={services?.find(s => s.id === selectedLabelsLog.serviceId)?.tags || []} 
+                />
+            )}
 
             {/* Service Picker for Sell Service button */}
             <Dialog open={isServicePickerOpen} onOpenChange={setIsServicePickerOpen}>
