@@ -48,7 +48,7 @@ export function MobileNav() {
   const mainNavItems = [
     { href: '/tools', label: 'Tools', icon: <Rocket className="h-5 w-5" /> },
     { href: '/properties', label: 'Properties', icon: <Building2 className="h-5 w-5" /> },
-    { href: '/overview', label: 'Dashboard', icon: <LayoutDashboard className="h-6 w-6" />, isCenter: true },
+    { href: '/dashboard', label: 'Dashboard', icon: <LayoutDashboard className="h-6 w-6" />, isCenter: true },
     { href: '/buyers', label: 'Buyers', icon: <Users className="h-5 w-5" /> },
   ];
 

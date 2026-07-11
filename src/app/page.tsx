@@ -17,7 +17,7 @@ export default function HomePage() {
     if (!isUserLoading) {
       if (user) {
         if (user.emailVerified) {
-          router.replace('/overview');
+          router.replace('/dashboard');
         } else {
           router.replace('/login');
         }

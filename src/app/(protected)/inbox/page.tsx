@@ -10,7 +10,7 @@ export default function InboxPage() {
 
     useEffect(() => {
         // Inbox is deprecated, moving users back to dashboard
-        router.replace('/overview');
+        router.replace('/dashboard');
     }, [router]);
 
     return (

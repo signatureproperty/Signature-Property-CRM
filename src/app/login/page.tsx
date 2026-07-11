@@ -71,11 +71,11 @@ export default function LoginPage() {
       if (userData.role === 'Super Admin') {
         router.push('/super-admin');
       } else {
-        router.push('/overview');
+        router.push('/dashboard');
       }
     } else {
       // Default fallback
-      router.push('/overview');
+      router.push('/dashboard');
     }
   };
 

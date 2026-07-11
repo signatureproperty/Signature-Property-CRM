@@ -107,7 +107,7 @@ function SignupPageContent() {
           }
 
           toast({ title: 'Welcome to Signature CRM!' });
-          router.push('/overview');
+          router.push('/dashboard');
       } catch (error) {
           toast({ variant: 'destructive', title: 'Sign-Up Failed' });
       } finally {

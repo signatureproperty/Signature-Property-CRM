@@ -43,7 +43,7 @@ import {
 import { useProfile } from '@/context/profile-context';
 
 const allMenuItems = [
-  { href: '/overview', label: 'Dashboard', roles: ['Admin', 'Agent', 'Video Recorder', 'Super Admin'], icon: <LayoutDashboard /> },
+  { href: '/dashboard', label: 'Dashboard', roles: ['Admin', 'Agent', 'Video Recorder', 'Super Admin'], icon: <LayoutDashboard /> },
   { href: '/super-admin', label: 'Admin Control', roles: ['Super Admin'], icon: <ShieldAlert /> },
   { href: '/super-admin/branding', label: 'App Branding', roles: ['Super Admin'], icon: <Palette /> },
   { href: '/properties', label: 'Properties', roles: ['Admin', 'Agent'], icon: <Building2 /> },

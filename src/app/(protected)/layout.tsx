@@ -101,7 +101,7 @@ function AuthGuard({ children }: { children: ReactNode }) {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="text-center pt-4">
-                    <Button variant="outline" className="rounded-full px-8" onClick={() => router.push('/overview')}>
+                    <Button variant="outline" className="rounded-full px-8" onClick={() => router.push('/dashboard')}>
                         Return to Dashboard
                     </Button>
                 </CardContent>
