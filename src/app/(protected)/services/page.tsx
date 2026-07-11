@@ -63,6 +63,16 @@ import { Buyer, ProvidedService, Service, Property } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const getStatusColor = (status: string) => {
     switch (status) {
@@ -114,6 +124,7 @@ export default function ServicesPage() {
     const [isExternalOpen, setIsExternalOpen] = useState(false);
     const [isLabelsOpen, setIsLabelsOpen] = useState(false);
     const [selectedLabelsLog, setSelectedLabelsLog] = useState<ProvidedService | null>(null);
+    const [deleteServiceId, setDeleteServiceId] = useState<string | null>(null);
 
     // --- Data Fetching ---
     const servicesQuery = useMemoFirebase(() => 
@@ -382,8 +393,19 @@ export default function ServicesPage() {
                                     <div className="flex justify-between items-start">
                                         <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 uppercase text-[8px] font-black tracking-widest">{service.category}</Badge>
                                         <DropdownMenu>
-                                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 opacity-0 group-hover:opacity-100"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end"><DropdownMenuItem onClick={() => { setSelectedService(service); setIsAddOpen(true); }}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem><DropdownMenuItem className="text-destructive font-bold" onClick={() => handleDeleteService(service.id)}><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem></DropdownMenuContent>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full shadow-sm border border-transparent group-hover:border-border">
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="bg-background w-48">
+                                                <DropdownMenuItem className="gap-2 font-bold" onClick={() => { setSelectedService(service); setIsAddOpen(true); }}>
+                                                    <Edit className="h-4 w-4" /> Edit
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem className="text-destructive font-bold gap-2" onClick={() => setDeleteServiceId(service.id)}>
+                                                    <Trash2 className="h-4 w-4" /> Delete
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
                                         </DropdownMenu>
                                     </div>
                                     <CardTitle className="text-lg font-black font-headline pt-1">{service.name}</CardTitle>
@@ -468,6 +490,23 @@ export default function ServicesPage() {
                     <DialogFooter className="p-8 border-t bg-muted/5 mt-4"><Button variant="secondary" className="rounded-xl px-10 h-11 font-black w-full" onClick={() => setIsExternalOpen(false)}>Close Record</Button></DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <AlertDialog open={!!deleteServiceId} onOpenChange={(open) => { if (!open) setDeleteServiceId(null); }}>
+                <AlertDialogContent className="rounded-2xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="font-headline font-black">Delete Service?</AlertDialogTitle>
+                        <AlertDialogDescription className="font-medium">
+                            This will permanently remove this service from your catalog. Leads already sold under this service will not be affected.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
+                        <AlertDialogAction className="rounded-xl font-bold bg-destructive text-destructive-foreground" onClick={() => { if (deleteServiceId) handleDeleteService(deleteServiceId); setDeleteServiceId(null); }}>
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
