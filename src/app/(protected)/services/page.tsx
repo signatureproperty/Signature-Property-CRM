@@ -54,7 +54,7 @@ import { format } from 'date-fns';
 import { useCurrency } from '@/context/currency-context';
 import { formatCurrency } from '@/lib/formatters';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-is-mobile';
 import { BuyerDetailsDialog } from '@/components/buyer-details-dialog';
@@ -423,51 +423,54 @@ export default function ServicesPage() {
                 <TabsContent value="leads" className="space-y-4">
                     {/* Filter Bar */}
                     {providedServices && providedServices.length > 0 && (
-                        <div className="space-y-3">
-                            {/* Categories */}
-                            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                                <Badge
-                                    variant={activeCategory === 'All' ? 'default' : 'outline'}
-                                    className={cn("cursor-pointer px-4 py-1.5 rounded-full shrink-0 transition-all", activeCategory === 'All' && "ring-2 ring-primary ring-offset-2")}
-                                    onClick={() => { setActiveCategory('All'); setActiveStatus('All'); setActiveLabels([]); }}
-                                >
-                                    All ({categoryCounts['All'] || 0})
-                                </Badge>
-                                {availableCategories.map(cat => (
-                                    <Badge
-                                        key={cat}
-                                        variant={activeCategory === cat ? 'default' : 'outline'}
-                                        className={cn("cursor-pointer px-4 py-1.5 rounded-full shrink-0 transition-all", activeCategory === cat && "ring-2 ring-primary ring-offset-2")}
-                                        onClick={() => { setActiveCategory(cat); setActiveStatus('All'); setActiveLabels([]); }}
-                                    >
-                                        {cat} ({categoryCounts[cat] || 0})
-                                    </Badge>
-                                ))}
-                            </div>
-
-                            {/* Status + Labels */}
-                            {activeCategory !== 'All' && (
-                                <div className="space-y-2">
-                                    <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                                        {availableStatuses.map(status => (
+                        <div className="flex items-center gap-2">
+                            <ScrollArea className="flex-1 whitespace-nowrap pb-2">
+                                <div className="flex items-center gap-2">
+                                    {/* Categories */}
+                                    <div className="flex items-center gap-2 pr-3 border-r border-border/50">
+                                        <Badge
+                                            variant={activeCategory === 'All' ? 'default' : 'outline'}
+                                            className={cn("cursor-pointer px-4 py-1.5 rounded-full shrink-0 transition-all", activeCategory === 'All' && "ring-2 ring-primary ring-offset-2")}
+                                            onClick={() => { setActiveCategory('All'); setActiveStatus('All'); setActiveLabels([]); }}
+                                        >
+                                            All ({categoryCounts['All'] || 0})
+                                        </Badge>
+                                        {availableCategories.map(cat => (
                                             <Badge
-                                                key={status}
-                                                variant={activeStatus === status ? 'default' : 'outline'}
-                                                className={cn("cursor-pointer px-3 py-1 rounded-full text-[10px] shrink-0 transition-all", getStatusColor(status), activeStatus === status && "ring-2 ring-primary ring-offset-2")}
-                                                onClick={() => setActiveStatus(activeStatus === status ? 'All' : status)}
+                                                key={cat}
+                                                variant={activeCategory === cat ? 'default' : 'outline'}
+                                                className={cn("cursor-pointer px-4 py-1.5 rounded-full shrink-0 transition-all", activeCategory === cat && "ring-2 ring-primary ring-offset-2")}
+                                                onClick={() => { setActiveCategory(cat); setActiveStatus('All'); setActiveLabels([]); }}
                                             >
-                                                {status} ({leadStatusCounts[status] || 0})
+                                                {cat} ({categoryCounts[cat] || 0})
                                             </Badge>
                                         ))}
                                     </div>
-                                    {availableLabels.length > 0 && (
-                                        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                                            <Tag className="h-3 w-3 text-muted-foreground shrink-0" />
+
+                                    {/* Statuses */}
+                                    {activeCategory !== 'All' && (
+                                        <div className="flex items-center gap-2 pr-3 border-r border-border/50">
+                                            {availableStatuses.map(status => (
+                                                <Badge
+                                                    key={status}
+                                                    variant={activeStatus === status ? 'default' : 'outline'}
+                                                    className={cn("cursor-pointer px-3 py-1.5 rounded-full shrink-0 transition-all text-[10px]", getStatusColor(status), activeStatus === status && "ring-2 ring-primary ring-offset-2")}
+                                                    onClick={() => setActiveStatus(activeStatus === status ? 'All' : status)}
+                                                >
+                                                    {status} ({leadStatusCounts[status] || 0})
+                                                </Badge>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Labels */}
+                                    {activeCategory !== 'All' && availableLabels.length > 0 && (
+                                        <div className="flex items-center gap-2">
                                             {availableLabels.map(label => (
                                                 <Badge
                                                     key={label}
                                                     variant={activeLabels.includes(label) ? 'default' : 'outline'}
-                                                    className={cn("cursor-pointer px-3 py-1 rounded-full text-[10px] shrink-0 transition-all border-indigo-200 text-indigo-600 dark:border-indigo-800 dark:text-indigo-400", activeLabels.includes(label) && "bg-indigo-100 dark:bg-indigo-900/30 ring-2 ring-primary ring-offset-2")}
+                                                    className={cn("cursor-pointer px-3 py-1.5 rounded-full shrink-0 transition-all text-[10px] border-indigo-200 text-indigo-600 dark:border-indigo-800 dark:text-indigo-400", activeLabels.includes(label) && "bg-indigo-100 dark:bg-indigo-900/30 ring-2 ring-primary ring-offset-2")}
                                                     onClick={() => handleToggleLabel(label)}
                                                 >
                                                     {label} ({leadLabelCounts[label] || 0})
@@ -476,16 +479,17 @@ export default function ServicesPage() {
                                         </div>
                                     )}
                                 </div>
-                            )}
+                                <ScrollBar orientation="horizontal" />
+                            </ScrollArea>
 
-                            {/* Active filters count + clear */}
+                            {/* Active filters clear */}
                             {(activeCategory !== 'All' || activeStatus !== 'All' || activeLabels.length > 0) && (
-                                <div className="flex items-center gap-2">
-                                    <span className="text-[10px] font-bold text-muted-foreground">
-                                        {filteredLeads.length} lead{filteredLeads.length !== 1 ? 's' : ''} found
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <span className="text-[10px] font-bold text-muted-foreground whitespace-nowrap">
+                                        {filteredLeads.length} lead{filteredLeads.length !== 1 ? 's' : ''}
                                     </span>
-                                    <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] font-bold text-destructive hover:text-destructive" onClick={clearLeadsFilters}>
-                                        <X className="h-3 w-3 mr-1" /> Clear
+                                    <Button variant="ghost" size="icon" onClick={clearLeadsFilters} className="h-7 w-7 rounded-full hover:bg-destructive/10 hover:text-destructive">
+                                        <X className="h-3.5 w-3.5" />
                                     </Button>
                                 </div>
                             )}
