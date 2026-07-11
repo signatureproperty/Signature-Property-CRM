@@ -484,14 +484,9 @@ export default function ServicesPage() {
 
                             {/* Active filters clear */}
                             {(activeCategory !== 'All' || activeStatus !== 'All' || activeLabels.length > 0) && (
-                                <div className="flex items-center gap-2 shrink-0">
-                                    <span className="text-[10px] font-bold text-muted-foreground whitespace-nowrap">
-                                        {filteredLeads.length} lead{filteredLeads.length !== 1 ? 's' : ''}
-                                    </span>
-                                    <Button variant="ghost" size="icon" onClick={clearLeadsFilters} className="h-7 w-7 rounded-full hover:bg-destructive/10 hover:text-destructive">
-                                        <X className="h-3.5 w-3.5" />
-                                    </Button>
-                                </div>
+                                <Button variant="ghost" size="icon" onClick={clearLeadsFilters} className="h-7 w-7 rounded-full hover:bg-destructive/10 hover:text-destructive shrink-0">
+                                    <X className="h-3.5 w-3.5" />
+                                </Button>
                             )}
                         </div>
                     )}
