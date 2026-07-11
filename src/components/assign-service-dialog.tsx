@@ -425,7 +425,7 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
                                             control={form.control}
                                             name="country_code"
                                             render={({ field }) => (
-                                                <FormItem className="w-24">
+                                                <FormItem className="w-20">
                                                     <Popover open={countryCodePopoverOpen} onOpenChange={setCountryCodePopoverOpen}>
                                                         <PopoverTrigger asChild>
                                                             <FormControl>
