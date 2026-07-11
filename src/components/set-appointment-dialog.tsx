@@ -214,7 +214,7 @@ export function SetAppointmentDialog({
                                             onValueChange={(newPrefix) => field.onChange(`${newPrefix}-${num}`)}
                                         >
                                             <FormControl>
-                                                <SelectTrigger className="w-[85px] h-10 px-2 font-bold bg-muted/30">
+                                                <SelectTrigger className="w-[55px] h-10 px-1 font-bold bg-muted/30 text-center">
                                                     <SelectValue />
                                                 </SelectTrigger>
                                             </FormControl>
