@@ -33,7 +33,8 @@ import {
     DollarSign,
     ListChecks,
     Check,
-    Building2
+    Building2,
+    X
 } from 'lucide-react';
 import { 
     DropdownMenu, 
@@ -126,6 +127,11 @@ export default function ServicesPage() {
     const [selectedLabelsLog, setSelectedLabelsLog] = useState<ProvidedService | null>(null);
     const [deleteServiceId, setDeleteServiceId] = useState<string | null>(null);
 
+    // Filters for Leads tab
+    const [activeCategory, setActiveCategory] = useState<string>('All');
+    const [activeStatus, setActiveStatus] = useState<string>('All');
+    const [activeLabels, setActiveLabels] = useState<string[]>([]);
+
     // --- Data Fetching ---
     const servicesQuery = useMemoFirebase(() => 
         profile.agency_id ? query(collection(firestore, 'agencies', profile.agency_id, 'services'), orderBy('created_at', 'desc')) : null,
@@ -200,6 +206,99 @@ export default function ServicesPage() {
         }
     };
 
+    // --- Filter Logic for Leads Tab ---
+    const categoryCounts = useMemo(() => {
+        const counts: Record<string, number> = { 'All': providedServices?.length || 0 };
+        if (!services || !providedServices) return counts;
+        for (const log of providedServices) {
+            const svc = services.find(s => s.id === log.serviceId);
+            const cat = svc?.category || 'Uncategorized';
+            counts[cat] = (counts[cat] || 0) + 1;
+        }
+        return counts;
+    }, [services, providedServices]);
+
+    const availableCategories = useMemo(() => {
+        if (!services) return [];
+        const cats = new Set(services.map(s => s.category).filter(Boolean));
+        return Array.from(cats).sort();
+    }, [services]);
+
+    const filteredLeads = useMemo(() => {
+        if (!providedServices) return [];
+        let leads = providedServices;
+
+        if (activeCategory !== 'All') {
+            const catServiceIds = services?.filter(s => s.category === activeCategory).map(s => s.id) || [];
+            leads = leads.filter(l => catServiceIds.includes(l.serviceId));
+        }
+
+        if (activeStatus !== 'All') {
+            leads = leads.filter(l => l.status === activeStatus);
+        }
+
+        if (activeLabels.length > 0) {
+            leads = leads.filter(l => activeLabels.every(label => l.tags?.includes(label)));
+        }
+
+        return leads;
+    }, [providedServices, services, activeCategory, activeStatus, activeLabels]);
+
+    const leadStatusCounts = useMemo(() => {
+        const counts: Record<string, number> = { 'All': filteredLeads.length };
+        for (const log of filteredLeads) {
+            counts[log.status] = (counts[log.status] || 0) + 1;
+        }
+        return counts;
+    }, [filteredLeads]);
+
+    const leadLabelCounts = useMemo(() => {
+        const counts: Record<string, number> = {};
+        const catServiceIds = activeCategory === 'All' 
+            ? services?.map(s => s.id) || []
+            : services?.filter(s => s.category === activeCategory).map(s => s.id) || [];
+        const relevantLeads = providedServices?.filter(l => catServiceIds.includes(l.serviceId)) || [];
+        for (const log of relevantLeads) {
+            for (const tag of log.tags || []) {
+                counts[tag] = (counts[tag] || 0) + 1;
+            }
+        }
+        return counts;
+    }, [providedServices, services, activeCategory]);
+
+    const availableStatuses = useMemo(() => {
+        if (activeCategory === 'All') {
+            return ['Pending', 'Completed', ...new Set(providedServices?.map(l => l.status).filter(s => s && s !== 'Pending' && s !== 'Completed') || [])];
+        }
+        const catServiceIds = services?.filter(s => s.category === activeCategory).map(s => s.id) || [];
+        const relevantLeads = providedServices?.filter(l => catServiceIds.includes(l.serviceId)) || [];
+        const statuses = new Set(relevantLeads.map(l => l.status).filter(Boolean));
+        return Array.from(statuses);
+    }, [providedServices, services, activeCategory]);
+
+    const availableLabels = useMemo(() => {
+        if (activeCategory === 'All') {
+            const labelSet = new Set<string>();
+            providedServices?.forEach(l => (l.tags || []).forEach(t => labelSet.add(t)));
+            return Array.from(labelSet).sort();
+        }
+        const catServiceIds = services?.filter(s => s.category === activeCategory).map(s => s.id) || [];
+        const relevantLeads = providedServices?.filter(l => catServiceIds.includes(l.serviceId)) || [];
+        const labelSet = new Set<string>();
+        relevantLeads.forEach(l => (l.tags || []).forEach(t => labelSet.add(t)));
+        return Array.from(labelSet).sort();
+    }, [providedServices, services, activeCategory]);
+
+    const handleToggleLabel = (label: string) => {
+        setActiveLabels(prev => prev.includes(label) ? prev.filter(l => l !== label) : [...prev, label]);
+    };
+
+    const clearLeadsFilters = () => {
+        setActiveCategory('All');
+        setActiveStatus('All');
+        setActiveLabels([]);
+    };
+
     const filteredServices = useMemo(() => {
         if (!services) return [];
         if (!serviceSearch) return services;
@@ -208,7 +307,7 @@ export default function ServicesPage() {
 
     const renderMobileLogs = () => (
         <div className="space-y-4">
-            {providedServices?.map(log => (
+            {filteredLeads?.map(log => (
                 <Card key={log.id} className="border-none shadow-xl bg-card/60 backdrop-blur-sm overflow-hidden border-l-4 border-l-primary/40">
                     <CardContent className="p-5">
                         <div className="flex justify-between items-start mb-4">
@@ -321,7 +420,78 @@ export default function ServicesPage() {
                     <TabsTrigger value="directory" className="rounded-full font-bold">Service Catalog</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="leads">
+                <TabsContent value="leads" className="space-y-4">
+                    {/* Filter Bar */}
+                    {providedServices && providedServices.length > 0 && (
+                        <div className="space-y-3">
+                            {/* Categories */}
+                            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                                <Badge
+                                    variant={activeCategory === 'All' ? 'default' : 'outline'}
+                                    className={cn("cursor-pointer px-4 py-1.5 rounded-full shrink-0 transition-all", activeCategory === 'All' && "ring-2 ring-primary ring-offset-2")}
+                                    onClick={() => { setActiveCategory('All'); setActiveStatus('All'); setActiveLabels([]); }}
+                                >
+                                    All ({categoryCounts['All'] || 0})
+                                </Badge>
+                                {availableCategories.map(cat => (
+                                    <Badge
+                                        key={cat}
+                                        variant={activeCategory === cat ? 'default' : 'outline'}
+                                        className={cn("cursor-pointer px-4 py-1.5 rounded-full shrink-0 transition-all", activeCategory === cat && "ring-2 ring-primary ring-offset-2")}
+                                        onClick={() => { setActiveCategory(cat); setActiveStatus('All'); setActiveLabels([]); }}
+                                    >
+                                        {cat} ({categoryCounts[cat] || 0})
+                                    </Badge>
+                                ))}
+                            </div>
+
+                            {/* Status + Labels */}
+                            {activeCategory !== 'All' && (
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                                        {availableStatuses.map(status => (
+                                            <Badge
+                                                key={status}
+                                                variant={activeStatus === status ? 'default' : 'outline'}
+                                                className={cn("cursor-pointer px-3 py-1 rounded-full text-[10px] shrink-0 transition-all", getStatusColor(status), activeStatus === status && "ring-2 ring-primary ring-offset-2")}
+                                                onClick={() => setActiveStatus(activeStatus === status ? 'All' : status)}
+                                            >
+                                                {status} ({leadStatusCounts[status] || 0})
+                                            </Badge>
+                                        ))}
+                                    </div>
+                                    {availableLabels.length > 0 && (
+                                        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                                            <Tag className="h-3 w-3 text-muted-foreground shrink-0" />
+                                            {availableLabels.map(label => (
+                                                <Badge
+                                                    key={label}
+                                                    variant={activeLabels.includes(label) ? 'default' : 'outline'}
+                                                    className={cn("cursor-pointer px-3 py-1 rounded-full text-[10px] shrink-0 transition-all border-indigo-200 text-indigo-600 dark:border-indigo-800 dark:text-indigo-400", activeLabels.includes(label) && "bg-indigo-100 dark:bg-indigo-900/30 ring-2 ring-primary ring-offset-2")}
+                                                    onClick={() => handleToggleLabel(label)}
+                                                >
+                                                    {label} ({leadLabelCounts[label] || 0})
+                                                </Badge>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Active filters count + clear */}
+                            {(activeCategory !== 'All' || activeStatus !== 'All' || activeLabels.length > 0) && (
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-bold text-muted-foreground">
+                                        {filteredLeads.length} lead{filteredLeads.length !== 1 ? 's' : ''} found
+                                    </span>
+                                    <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] font-bold text-destructive hover:text-destructive" onClick={clearLeadsFilters}>
+                                        <X className="h-3 w-3 mr-1" /> Clear
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {isProvidedLoading ? <div className="p-20 text-center opacity-40"><RefreshCw className="animate-spin h-8 w-8 mx-auto mb-2" /> Loading records...</div> : 
                     providedServices && providedServices.length > 0 ? (
                         isMobile ? renderMobileLogs() : (
@@ -338,7 +508,7 @@ export default function ServicesPage() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {providedServices.map(log => (
+                                        {filteredLeads.map(log => (
                                             <TableRow key={log.id} className="group hover:bg-primary/5 transition-colors border-none border-l-4 border-l-primary/40">
                                                 <TableCell className="pl-6">
                                                     <Badge className={cn("rounded-lg border font-black gap-1.5 px-2 py-0.5 text-[9px] uppercase", getStatusColor(log.status))}>
@@ -376,7 +546,7 @@ export default function ServicesPage() {
                                 </Table>
                             </Card>
                         )
-                    ) : <div className="py-40 text-center opacity-30"><History className="h-12 w-12 mx-auto mb-2" /><p className="font-black uppercase text-xs tracking-widest">No leads yet. Sell a service to get started.</p></div>}
+                    ) : <div className="py-40 text-center opacity-30"><History className="h-12 w-12 mx-auto mb-2" /><p className="font-black uppercase text-xs tracking-widest">{(activeCategory !== 'All' || activeStatus !== 'All' || activeLabels.length > 0) ? 'No leads match your filters.' : 'No leads yet. Sell a service to get started.'}</p></div>}
                 </TabsContent>
 
                 <TabsContent value="directory" className="space-y-6">
