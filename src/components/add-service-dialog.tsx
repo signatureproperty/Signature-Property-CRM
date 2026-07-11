@@ -26,7 +26,6 @@ import type { Service, ServiceTargetAudience } from '@/lib/types';
 import { Badge } from './ui/badge';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
-import { ScrollArea } from './ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 const formSchema = z.object({
@@ -165,10 +164,10 @@ export function AddServiceDialog({ isOpen, setIsOpen, serviceToEdit }: AddServic
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-2xl max-h-[70vh] sm:max-h-[90vh] border-none shadow-3xl rounded-[2rem] p-0 overflow-hidden">
-        <div className="p-8 pb-2">
+      <DialogContent className="sm:max-w-2xl max-h-[80vh] sm:max-h-[95vh] flex flex-col p-0 overflow-hidden rounded-2xl">
+        <div className="p-5 pb-3 shrink-0">
             <DialogHeader>
-              <div className="flex items-center gap-3 mb-2">
+              <div className="flex items-center gap-3">
                 <div className="p-2 bg-primary/10 rounded-xl text-primary">
                     <Sparkles className="h-6 w-6" />
                 </div>
@@ -185,9 +184,8 @@ export function AddServiceDialog({ isOpen, setIsOpen, serviceToEdit }: AddServic
         </div>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <ScrollArea className="px-8 max-h-[65vh]">
-                <div className="space-y-6 pb-6 pr-2">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 min-h-0">
+            <div className="flex-1 overflow-y-auto px-5 space-y-5">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <FormField
                         control={form.control}
@@ -325,16 +323,15 @@ export function AddServiceDialog({ isOpen, setIsOpen, serviceToEdit }: AddServic
                         </FormItem>
                     )}
                     />
-                </div>
-            </ScrollArea>
+            </div>
 
-            <DialogFooter className="p-8 border-t bg-muted/5 mt-0">
+            <div className="p-4 shrink-0 border-t bg-muted/5 flex gap-2">
               <Button type="button" variant="ghost" onClick={() => setIsOpen(false)} className="rounded-xl h-11 px-6 font-bold">Cancel</Button>
               <Button type="submit" disabled={isLoading} className="rounded-xl h-11 px-10 glowing-btn font-black flex-1 sm:flex-none">
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {serviceToEdit ? 'Update Service' : 'Create Service'}
               </Button>
-            </DialogFooter>
+            </div>
           </form>
         </Form>
       </DialogContent>
