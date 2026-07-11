@@ -33,7 +33,9 @@ import {
     DollarSign,
     ListChecks,
     Check,
-    Building2
+    Building2,
+    ChevronDown,
+    Minus
 } from 'lucide-react';
 import { 
     DropdownMenu, 
@@ -111,6 +113,7 @@ export default function ServicesPage() {
 
     const [viewingExternal, setViewingExternal] = useState<ProvidedService | null>(null);
     const [isExternalOpen, setIsExternalOpen] = useState(false);
+    const [expandedLabels, setExpandedLabels] = useState<string[]>([]);
 
     // --- Data Fetching ---
     const servicesQuery = useMemoFirebase(() => 
@@ -238,6 +241,7 @@ export default function ServicesPage() {
         const parentService = services?.find(s => s.id === log.serviceId);
         const statusOptions = ['Pending', ...(parentService?.customStatuses || []), 'Completed'];
         const tagOptions = parentService?.tags || [];
+        const isLabelsExpanded = expandedLabels.includes(log.id);
 
         return (
             <DropdownMenu>
@@ -255,14 +259,35 @@ export default function ServicesPage() {
                     {tagOptions.length > 0 && (
                         <>
                             <DropdownMenuSeparator />
-                            <DropdownMenuLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest flex items-center gap-1.5"><Tag className="h-3 w-3"/> Apply Labels</DropdownMenuLabel>
-                            {tagOptions.map(tag => (
-                                <DropdownMenuCheckboxItem key={tag} checked={log.tags?.includes(tag)} onCheckedChange={() => handleToggleTag(log, tag)} className="font-bold text-xs">{tag}</DropdownMenuCheckboxItem>
-                            ))}
+                            <DropdownMenuItem 
+                                className="gap-2 font-bold text-xs"
+                                onClick={() => setExpandedLabels(prev => prev.includes(log.id) ? prev.filter(id => id !== log.id) : [...prev, log.id])}
+                            >
+                                <Tag className="h-3 w-3" /> Labels
+                                <ChevronDown className={cn("h-3 w-3 ml-auto transition-transform", isLabelsExpanded && "rotate-180")} />
+                            </DropdownMenuItem>
+                            {isLabelsExpanded && (
+                                <div className="px-2 py-1 space-y-0.5">
+                                    {tagOptions.map(tag => (
+                                        <div 
+                                            key={tag} 
+                                            onClick={() => handleToggleTag(log, tag)}
+                                            className={cn(
+                                                "flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all",
+                                                log.tags?.includes(tag) 
+                                                    ? "bg-primary/10 text-primary" 
+                                                    : "hover:bg-muted/50 text-muted-foreground"
+                                            )}
+                                        >
+                                            {log.tags?.includes(tag) ? <Check className="h-3 w-3" /> : <Minus className="h-3 w-3 opacity-30" />}
+                                            {tag}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </>
                     )}
                     <DropdownMenuSeparator />
-                    <DropdownMenuLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest flex items-center gap-1.5"><DollarSign className="h-3 w-3"/> Financials</DropdownMenuLabel>
                     <DropdownMenuItem className="gap-2 font-bold" onClick={() => {
                         const parentService = services?.find(s => s.id === log.serviceId);
                         if (parentService) {
@@ -270,11 +295,11 @@ export default function ServicesPage() {
                             setLogToEdit(log);
                             setIsAssignOpen(true);
                         }
-                    }}><Edit className="h-4 w-4" /> Edit Lead</DropdownMenuItem>
-                    <DropdownMenuItem className="gap-2 font-bold text-emerald-600" onClick={() => { setSelectedLog(log); setIsPaymentOpen(true); }}><DollarSign className="h-4 w-4" /> Record Payment</DropdownMenuItem>
+                    }}><Edit className="h-4 w-4" /> Edit Details</DropdownMenuItem>
+                    <DropdownMenuItem className="gap-2 font-bold text-emerald-600" onClick={() => { setSelectedLog(log); setIsPaymentOpen(true); }}><DollarSign className="h-4 w-4" /> Payment</DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem className="text-destructive font-bold" onClick={() => handleDeleteLog(log.id)}>
-                        <Trash2 className="mr-2 h-4 w-4" /> Remove Entry
+                    <DropdownMenuItem className="text-destructive font-bold gap-2" onClick={() => handleDeleteLog(log.id)}>
+                        <Trash2 className="h-4 w-4" /> Delete
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
