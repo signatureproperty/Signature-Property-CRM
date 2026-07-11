@@ -295,7 +295,7 @@ export function BuyerDetailsDialog({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="sm:max-w-3xl p-0 overflow-hidden rounded-2xl max-h-[95vh] flex flex-col">
+        <DialogContent className="sm:max-w-3xl p-0 overflow-hidden rounded-2xl max-h-[70vh] sm:max-h-[90vh] flex flex-col">
           <div className="p-6 pb-2 shrink-0">
             <DialogHeader>
               <div className="space-y-4">
@@ -498,7 +498,7 @@ export function BuyerDetailsDialog({
 
       {/* Return Lead & A-Z Edit Verification Dialog */}
       <Dialog open={isReturnDialogOpen} onOpenChange={setIsReturnDialogOpen}>
-          <DialogContent className="sm:max-w-2xl w-full h-full sm:h-auto sm:max-h-[90vh] border-none shadow-3xl rounded-none sm:rounded-[2rem] overflow-hidden flex flex-col p-0 bg-background">
+          <DialogContent className="sm:max-w-2xl w-full max-h-[70vh] sm:h-auto sm:max-h-[90vh] border-none shadow-3xl rounded-2xl overflow-hidden flex flex-col p-0 bg-background">
               <div className="p-6 sm:p-8 pb-4 shrink-0 border-b bg-background relative">
                   <DialogHeader>
                     <div className="flex items-center gap-4">

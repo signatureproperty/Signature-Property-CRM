@@ -96,7 +96,7 @@ export function TeamMemberDetailsDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-2xl p-0 overflow-hidden rounded-2xl max-h-[90vh] flex flex-col">
+      <DialogContent className="sm:max-w-2xl p-0 overflow-hidden rounded-2xl max-h-[70vh] sm:max-h-[90vh] flex flex-col">
         <div className="p-8 pb-4 bg-gradient-to-br from-primary/5 via-background to-background shrink-0">
           <DialogHeader className="items-center text-center space-y-4">
              <div className="relative">
