@@ -132,7 +132,7 @@ export function SetAppointmentDialog({
             contactName: appointmentDetails?.contactName || '',
             contactSerialNo: appointmentDetails?.contactSerialNo || 'B-',
             message: appointmentDetails?.message || '',
-            agentName: '',
+            agentName: profile.role === 'Agent' ? profile.name : '',
             date: '',
             time: '',
         });
@@ -256,6 +256,7 @@ export function SetAppointmentDialog({
                         </FormItem>
                     )}
                 />
+                 {profile.role === 'Admin' && (
                  <FormField
                     control={form.control}
                     name="agentName"
@@ -278,6 +279,7 @@ export function SetAppointmentDialog({
                         </FormItem>
                     )}
                 />
+                )}
                 <FormField
                     control={form.control}
                     name="message"
