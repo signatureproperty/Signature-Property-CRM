@@ -136,23 +136,7 @@ export function BuyerDetailsDialog({
   const [isReleasing, setIsReleasing] = useState(false);
   const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
-  const [returnDetails, setReturnDetails] = useState({
-      name: '',
-      email: '',
-      city: '',
-      area_preference: '',
-      property_type_preference: '' as PropertyType,
-      budget_min_amount: 0,
-      budget_min_unit: 'Lacs' as PriceUnit,
-      budget_max_amount: 0,
-      budget_max_unit: 'Lacs' as PriceUnit,
-      size_min_value: 0,
-      size_min_unit: 'Marla' as SizeUnit,
-      size_max_value: 0,
-      size_max_unit: 'Marla' as SizeUnit,
-      is_investor: false,
-      notes: ''
-  });
+  const [returnReason, setReturnReason] = useState('');
 
   useEffect(() => {
     if (isOpen && buyer?.timeline_notes && profile.agency_id) {
@@ -169,26 +153,10 @@ export function BuyerDetailsDialog({
   }, [isOpen, buyer?.timeline_notes, profile.user_id, profile.agency_id, firestore, buyer?.id]);
 
   useEffect(() => {
-      if (isReturnDialogOpen && buyer) {
-          setReturnDetails({
-              name: buyer.name || '',
-              email: buyer.email || '',
-              city: buyer.city || 'Lahore',
-              area_preference: buyer.area_preference || '',
-              property_type_preference: (buyer.property_type_preference || 'House') as PropertyType,
-              budget_min_amount: buyer.budget_min_amount || 0,
-              budget_min_unit: (buyer.budget_min_unit || 'Lacs') as PriceUnit,
-              budget_max_amount: buyer.budget_max_amount || 0,
-              budget_max_unit: (buyer.budget_max_unit || 'Lacs') as PriceUnit,
-              size_min_value: buyer.size_min_value || 0,
-              size_min_unit: (buyer.size_min_unit || 'Marla') as SizeUnit,
-              size_max_value: buyer.size_max_value || 0,
-              size_max_unit: (buyer.size_max_unit || 'Marla') as SizeUnit,
-              is_investor: !!buyer.is_investor,
-              notes: buyer.notes || ''
-          });
+      if (isReturnDialogOpen) {
+          setReturnReason('');
       }
-  }, [isReturnDialogOpen, buyer]);
+  }, [isReturnDialogOpen]);
 
   const formatBudget = (minAmount?: number, minUnit?: PriceUnit, maxAmount?: number, maxUnit?: PriceUnit) => {
     const hasMin = minAmount && minAmount > 0 && (minUnit || 'Lacs');
@@ -243,42 +211,42 @@ export function BuyerDetailsDialog({
     try {
         const buyerRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', buyer.id);
         
-        const hasChanges = 
-            returnDetails.name !== buyer.name ||
-            returnDetails.email !== buyer.email ||
-            returnDetails.city !== buyer.city ||
-            returnDetails.area_preference !== buyer.area_preference ||
-            returnDetails.property_type_preference !== buyer.property_type_preference ||
-            returnDetails.budget_max_amount !== (buyer.budget_max_amount || 0) ||
-            returnDetails.notes !== (buyer.notes || '');
-
         const currentTags = buyer.tags || [];
+        const newNote = {
+            id: `return_${Date.now()}`,
+            text: returnReason || `Lead returned by ${profile.name}`,
+            authorId: profile.user_id,
+            authorName: profile.name,
+            authorRole: profile.role as any,
+            timestamp: new Date().toISOString(),
+            readBy: []
+        };
+        const existingNotes = buyer.timeline_notes || [];
+
         const updateData: any = { 
             assignedTo: null,
-            ...returnDetails,
             returned_by_id: profile.user_id,
             returned_by_name: profile.name,
             returned_at: new Date().toISOString(),
-            tags: Array.from(new Set([...currentTags, 'Returned']))
+            returned_reason: returnReason || '',
+            status: 'Returned',
+            tags: Array.from(new Set([...currentTags, 'Returned'])),
+            timeline_notes: [...existingNotes, newNote]
         };
 
         await updateDoc(buyerRef, updateData);
         
         const activityLogRef = collection(firestore, 'agencies', profile.agency_id, 'activityLogs');
-        const actionText = hasChanges 
-            ? `updated details and returned lead ${buyer.serial_no} back to agency pool` 
-            : `returned lead ${buyer.serial_no} back to agency pool`;
-
         await addDoc(activityLogRef, {
             userName: profile.name,
-            action: actionText,
+            action: `returned lead ${buyer.serial_no} back to agency pool`,
             target: buyer.name,
             targetType: 'Buyer',
             timestamp: new Date().toISOString(),
             agency_id: profile.agency_id,
         });
 
-        toast({ title: hasChanges ? "Lead Details Updated & Returned" : "Lead Returned to Pool" });
+        toast({ title: "Lead Returned" });
         setIsReturnDialogOpen(false);
         setIsOpen(false);
     } catch (error) {
@@ -485,7 +453,7 @@ export function BuyerDetailsDialog({
                         className="rounded-full h-10 gap-2 text-destructive border-destructive/20 hover:bg-destructive/10 font-bold px-6"
                         onClick={() => setIsReturnDialogOpen(true)}
                     >
-                        <Undo2 className="h-4 w-4" /> Return Lead
+                        <Undo2 className="h-4 w-4" /> Return
                     </Button>
                 )}
             </div>
@@ -496,148 +464,35 @@ export function BuyerDetailsDialog({
         </DialogContent>
       </Dialog>
 
-      {/* Return Lead & A-Z Edit Verification Dialog */}
+      {/* Return Dialog - Reason Only */}
       <Dialog open={isReturnDialogOpen} onOpenChange={setIsReturnDialogOpen}>
-          <DialogContent className="sm:max-w-2xl w-full max-h-[70vh] sm:h-auto sm:max-h-[90vh] border-none shadow-3xl rounded-2xl overflow-hidden flex flex-col p-0 bg-background">
-              <div className="p-6 sm:p-8 pb-4 shrink-0 border-b bg-background relative">
-                  <DialogHeader>
-                    <div className="flex items-center gap-4">
-                        <div className="bg-destructive/10 w-12 h-12 rounded-2xl flex items-center justify-center">
-                            <Undo2 className="text-destructive h-6 w-6" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <DialogTitle className="font-headline text-xl sm:text-2xl font-black tracking-tight text-destructive truncate">Return Lead to Pool</DialogTitle>
-                            <DialogDescription className="font-medium text-xs sm:text-sm">
-                                Edit details before releasing. Phone is locked.
-                            </DialogDescription>
-                        </div>
-                    </div>
-                  </DialogHeader>
-              </div>
-
-              <div className="flex-1 overflow-y-auto min-h-0 touch-pan-y">
-                  <div className="px-6 sm:px-8 py-6 space-y-8">
-                      {/* Basic Info */}
-                      <div className="space-y-4">
-                          <h4 className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                              <User className="h-3 w-3" /> Basic Information
-                          </h4>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div className="space-y-1.5">
-                                  <Label className="text-[10px] font-bold uppercase opacity-60">Full Name</Label>
-                                  <Input value={returnDetails.name} onChange={e => setReturnDetails(p => ({...p, name: e.target.value}))} className="h-10 rounded-xl" />
-                              </div>
-                              <div className="space-y-1.5">
-                                  <Label className="text-[10px] font-bold uppercase opacity-60">Email Address</Label>
-                                  <Input value={returnDetails.email} onChange={e => setReturnDetails(p => ({...p, email: e.target.value}))} className="h-10 rounded-xl" />
-                              </div>
-                              <div className="space-y-1.5">
-                                  <Label className="text-[10px] font-bold uppercase opacity-60">Phone (Locked)</Label>
-                                  <Input value={buyer.phone} disabled className="h-10 rounded-xl bg-muted/30 opacity-50 cursor-not-allowed" />
-                              </div>
-                              <div className="space-y-1.5">
-                                  <Label className="text-[10px] font-bold uppercase opacity-60">City</Label>
-                                  <Select value={returnDetails.city} onValueChange={v => setReturnDetails(p => ({...p, city: v}))}>
-                                      <SelectTrigger className="h-10 rounded-xl"><SelectValue /></SelectTrigger>
-                                      <SelectContent className="rounded-xl shadow-2xl border-none">
-                                          {punjabCities.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                                      </SelectContent>
-                                  </Select>
-                              </div>
-                          </div>
-                      </div>
-
-                      <Separator className="opacity-40" />
-
-                      {/* Requirements */}
-                      <div className="space-y-4">
-                          <h4 className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                              <MapPin className="h-3 w-3" /> Area & Property Details
-                          </h4>
-                          <div className="space-y-1.5">
-                              <Label className="text-[10px] font-bold uppercase opacity-60">Preferred Areas</Label>
-                              <Input value={returnDetails.area_preference} onChange={e => setReturnDetails(p => ({...p, area_preference: e.target.value}))} placeholder="e.g. DHA, Gulberg" className="h-10 rounded-xl" />
-                          </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div className="space-y-1.5">
-                                  <Label className="text-[10px] font-bold uppercase opacity-60">Property Type</Label>
-                                  <Select value={returnDetails.property_type_preference} onValueChange={v => setReturnDetails(p => ({...p, property_type_preference: v as any}))}>
-                                      <SelectTrigger className="h-10 rounded-xl"><SelectValue /></SelectTrigger>
-                                      <SelectContent className="rounded-xl shadow-2xl border-none">
-                                          {propertyTypeValues.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                                      </SelectContent>
-                                  </Select>
-                              </div>
-                              <div className="flex items-center space-x-2 pt-6">
-                                  <Checkbox id="investor-check" checked={returnDetails.is_investor} onCheckedChange={v => setReturnDetails(p => ({...p, is_investor: !!v}))} />
-                                  <Label htmlFor="investor-check" className="font-bold cursor-pointer">Buyer is an Investor</Label>
-                              </div>
-                          </div>
-                      </div>
-
-                      <Separator className="opacity-40" />
-
-                      {/* Budget & Size */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                          <div className="space-y-4">
-                              <h4 className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                                  <Wallet className="h-3 w-3" /> Budget Range
-                              </h4>
-                              <div className="grid grid-cols-2 gap-2">
-                                  <Input type="number" value={returnDetails.budget_min_amount} onChange={e => setReturnDetails(p => ({...p, budget_min_amount: Number(e.target.value)}))} placeholder="Min" className="h-10 rounded-xl" />
-                                  <Input type="number" value={returnDetails.budget_max_amount} onChange={e => setReturnDetails(p => ({...p, budget_max_amount: Number(e.target.value)}))} placeholder="Max" className="h-10 rounded-xl" />
-                              </div>
-                              <Select value={returnDetails.budget_max_unit} onValueChange={v => setReturnDetails(p => ({...p, budget_max_unit: v as any, budget_min_unit: v as any}))}>
-                                  <SelectTrigger className="h-10 rounded-xl"><SelectValue /></SelectTrigger>
-                                  <SelectContent className="rounded-xl shadow-2xl border-none">
-                                      {priceUnitValues.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
-                                  </SelectContent>
-                              </Select>
-                          </div>
-
-                          <div className="space-y-4">
-                              <h4 className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                                  <Ruler className="h-3 w-3" /> Size Range
-                              </h4>
-                              <div className="grid grid-cols-2 gap-2">
-                                  <Input type="number" value={returnDetails.size_min_value} onChange={e => setReturnDetails(p => ({...p, size_min_value: Number(e.target.value)}))} placeholder="Min" className="h-10 rounded-xl" />
-                                  <Input type="number" value={returnDetails.size_max_value} onChange={e => setReturnDetails(p => ({...p, size_max_value: Number(e.target.value)}))} placeholder="Max" className="h-10 rounded-xl" />
-                              </div>
-                              <Select value={returnDetails.size_max_unit} onValueChange={v => setReturnDetails(p => ({...p, size_max_unit: v as any, size_min_unit: v as any}))}>
-                                  <SelectTrigger className="h-10 rounded-xl"><SelectValue /></SelectTrigger>
-                                  <SelectContent className="rounded-xl shadow-2xl border-none">
-                                      {sizeUnitValues.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
-                                  </SelectContent>
-                              </Select>
-                          </div>
-                      </div>
-
-                      <Separator className="opacity-40" />
-
-                      {/* Final Notes */}
-                      <div className="space-y-2 pb-10">
-                          <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Final Feedback / Returning Notes</Label>
-                          <Textarea 
-                            value={returnDetails.notes}
-                            onChange={e => setReturnDetails(prev => ({ ...prev, notes: e.target.value }))}
-                            placeholder="Why are you returning this lead? Any special instructions?"
-                            className="rounded-2xl bg-muted/30 min-h-[120px] resize-none p-4 focus-visible:ring-primary/20"
-                          />
-                      </div>
+          <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                  <DialogTitle className="font-headline text-xl font-black tracking-tight text-destructive flex items-center gap-2">
+                      <Undo2 className="h-5 w-5" /> Return Lead
+                  </DialogTitle>
+                  <DialogDescription>
+                      Return <strong>{buyer.name}</strong> ({buyer.serial_no}) to the agency pool.
+                  </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                  <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Reason (optional)</Label>
+                      <Textarea 
+                        value={returnReason}
+                        onChange={e => setReturnReason(e.target.value)}
+                        placeholder="Why are you returning this lead? e.g. Not responding, budget mismatch..."
+                        className="rounded-2xl bg-muted/30 min-h-[100px] resize-none p-4 focus-visible:ring-primary/20"
+                      />
                   </div>
-              </div>
-
-              <DialogFooter className="p-4 sm:p-8 border-t bg-muted/10 shrink-0">
-                  <div className="flex flex-col sm:flex-row w-full gap-3">
-                      <Button variant="ghost" onClick={() => setIsReturnDialogOpen(false)} className="rounded-xl h-12 px-8 font-bold flex-1 order-2 sm:order-1">
-                          Cancel
-                      </Button>
-                      <Button onClick={handleReleaseLead} disabled={isReleasing} className="rounded-xl h-12 px-12 font-black bg-destructive text-white hover:bg-destructive/90 flex-1 sm:flex-[2] glowing-btn order-1 sm:order-2">
+                  <div className="flex gap-2 justify-end">
+                      <Button variant="ghost" onClick={() => setIsReturnDialogOpen(false)} className="rounded-xl h-10 px-6 font-bold">Cancel</Button>
+                      <Button onClick={handleReleaseLead} disabled={isReleasing} className="rounded-xl h-10 px-8 font-black bg-destructive text-white hover:bg-destructive/90">
                           {isReleasing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
-                          Update & Return Lead
+                          Return
                       </Button>
                   </div>
-              </DialogFooter>
+              </div>
           </DialogContent>
       </Dialog>
     </>
