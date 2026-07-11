@@ -440,4 +440,5 @@ export type ProvidedService = {
     paymentMethod?: ServicePaymentMethod;
     amountPaid?: number;
     paymentNote?: string;
+    paymentCompletedAt?: string;
 };

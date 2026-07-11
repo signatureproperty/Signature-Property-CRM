@@ -221,6 +221,12 @@ export default function ServicesPage() {
                                 </div>
                             </div>
                         </div>
+                        <div className="mt-3 pt-3 border-t border-border/30 flex items-center justify-between text-[10px] font-bold text-muted-foreground">
+                            <span>Added: {format(new Date(log.created_at), 'PP')}</span>
+                            {log.paymentCompletedAt && (
+                                <span className="text-emerald-600">Paid: {format(new Date(log.paymentCompletedAt), 'PP')}</span>
+                            )}
+                        </div>
                     </CardContent>
                 </Card>
             ))}
@@ -256,6 +262,7 @@ export default function ServicesPage() {
                     )}
                     <DropdownMenuSeparator />
                     <DropdownMenuLabel className="text-[10px] font-black uppercase text-muted-foreground tracking-widest flex items-center gap-1.5"><DollarSign className="h-3 w-3"/> Financials</DropdownMenuLabel>
+                    <DropdownMenuItem className="gap-2 font-bold" onClick={() => { setSelectedLog(log); setIsPaymentOpen(true); }}><Edit className="h-4 w-4" /> Edit Price / Payment</DropdownMenuItem>
                     <DropdownMenuItem className="gap-2 font-bold text-emerald-600" onClick={() => { setSelectedLog(log); setIsPaymentOpen(true); }}><DollarSign className="h-4 w-4" /> Record Payment</DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem className="text-destructive font-bold" onClick={() => handleDeleteLog(log.id)}>
@@ -303,7 +310,7 @@ export default function ServicesPage() {
                                             <TableHead className="font-black text-[10px] uppercase">Service & Labels</TableHead>
                                             <TableHead className="font-black text-[10px] uppercase">Client Info</TableHead>
                                             <TableHead className="font-black text-[10px] uppercase">Financials</TableHead>
-                                            <TableHead className="font-black text-[10px] uppercase text-right">Provisioned</TableHead>
+                                            <TableHead className="font-black text-[10px] uppercase text-right">Dates</TableHead>
                                             <TableHead className="w-16"></TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -331,7 +338,12 @@ export default function ServicesPage() {
                                                     <div className="font-black text-primary text-xs">{formatCurrency(log.priceCharged, currency)}</div>
                                                     <div className="mt-1">{getPaymentBadge(log.paymentStatus)}</div>
                                                 </TableCell>
-                                                <TableCell className="text-right text-[11px] font-bold text-muted-foreground">{format(new Date(log.created_at), 'PP')}</TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="text-[11px] font-bold text-muted-foreground">{format(new Date(log.created_at), 'PP')}</div>
+                                                    {log.paymentCompletedAt && (
+                                                        <div className="text-[10px] font-bold text-emerald-600 mt-0.5">Paid: {format(new Date(log.paymentCompletedAt), 'PP')}</div>
+                                                    )}
+                                                </TableCell>
                                                 <TableCell className="text-right pr-6">
                                                     {renderActionMenu(log)}
                                                 </TableCell>

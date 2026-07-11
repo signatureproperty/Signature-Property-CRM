@@ -79,8 +79,13 @@ export function UpdateServicePaymentDialog({ isOpen, setIsOpen, log }: UpdateSer
 
     const docRef = doc(firestore, 'agencies', profile.agency_id, 'providedServices', log.id);
     
+    const updateData: any = { ...values };
+    if (values.paymentStatus === 'Paid') {
+        updateData.paymentCompletedAt = new Date().toISOString();
+    }
+    
     // Update non-blocking
-    updateDoc(docRef, values).catch(async () => {
+    updateDoc(docRef, updateData).catch(async () => {
         const permissionError = new FirestorePermissionError({
             path: docRef.path,
             operation: 'update',

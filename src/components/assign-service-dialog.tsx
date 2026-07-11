@@ -225,7 +225,7 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-md border-none shadow-3xl rounded-[2rem] p-0 overflow-hidden max-h-[80vh] sm:max-h-[95vh] flex flex-col">
+      <DialogContent className="sm:max-w-lg border-none shadow-3xl rounded-[2rem] p-0 overflow-hidden max-h-[80vh] sm:max-h-[95vh] flex flex-col">
         <div className="p-6 pb-2 shrink-0">
             <DialogHeader>
                 <div className="flex items-center gap-3 mb-2">
@@ -240,7 +240,7 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
             </DialogHeader>
         </div>
 
-        <ScrollArea className="flex-1">
+        <ScrollArea className="flex-1 min-h-0">
             <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-6 pt-2">
                 <div className="space-y-6">
@@ -496,16 +496,18 @@ export function AssignServiceDialog({ isOpen, setIsOpen, service }: AssignServic
                         </div>
                     )}
                 </div>
-                <DialogFooter className="pt-4 flex gap-2">
-                    <Button type="button" variant="ghost" onClick={() => setIsOpen(false)} className="rounded-xl h-11 px-6 font-bold flex-1 sm:flex-none">Cancel</Button>
-                    <Button type="submit" disabled={isLoading} className="rounded-xl h-11 px-8 glowing-btn font-black flex-1 sm:flex-none">
-                        {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4 mr-2" />}
-                        Confirm Sale
-                    </Button>
-                </DialogFooter>
             </form>
             </Form>
         </ScrollArea>
+        <div className="p-6 pt-0 shrink-0 border-t bg-background">
+            <DialogFooter className="pt-4 flex gap-2">
+                <Button type="button" variant="ghost" onClick={() => setIsOpen(false)} className="rounded-xl h-11 px-6 font-bold flex-1 sm:flex-none">Cancel</Button>
+                <Button type="submit" disabled={isLoading} className="rounded-xl h-11 px-8 glowing-btn font-black flex-1 sm:flex-none" onClick={form.handleSubmit(onSubmit)}>
+                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4 mr-2" />}
+                    Confirm Sale
+                </Button>
+            </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
