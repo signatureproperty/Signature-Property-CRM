@@ -62,6 +62,8 @@ export function UpdateServicePaymentDialog({ isOpen, setIsOpen, log }: UpdateSer
     },
   });
 
+  const watchedStatus = form.watch('paymentStatus');
+
   useEffect(() => {
     if (isOpen) {
         form.reset({
@@ -72,6 +74,12 @@ export function UpdateServicePaymentDialog({ isOpen, setIsOpen, log }: UpdateSer
         });
     }
   }, [isOpen, log, form]);
+
+  useEffect(() => {
+    if (watchedStatus === 'Paid') {
+        form.setValue('amountPaid', log.priceCharged);
+    }
+  }, [watchedStatus, log.priceCharged, form]);
 
   const onSubmit = async (values: FormValues) => {
     if (!profile.agency_id) return;
