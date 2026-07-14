@@ -296,6 +296,13 @@ export default function OverviewPage() {
         const sold30d = activeProps.filter(p => p.status === 'Sold' && p.sale_date && parseISO(p.sale_date) >= last30DaysStart);
         const revenue30d = sold30d.reduce((sum, p) => sum + (p.total_commission || 0), 0);
 
+        // Current month services
+        const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const currentMonthName = format(now, 'MMMM');
+        const monthServices = (providedServices || []).filter(s => s.created_at && parseISO(s.created_at) >= currentMonthStart);
+        const monthServiceRevenue = monthServices.reduce((sum, s) => sum + (s.amountPaid || 0), 0);
+        const monthServiceDue = monthServices.filter(s => s.paymentStatus !== 'Paid').reduce((sum, s) => sum + (s.priceCharged - (s.amountPaid || 0)), 0);
+
         return {
             totalProperties: activeProps.filter(p => !p.is_for_rent).length,
             totalBuyers: activeBuyers.filter(b => b.listing_type !== 'For Rent').length,
@@ -312,6 +319,10 @@ export default function OverviewPage() {
             serviceRevenueCount: (providedServices || []).filter(s => s.paymentStatus === 'Paid').length,
             serviceDue: (providedServices || []).filter(s => s.paymentStatus !== 'Paid').reduce((sum, s) => sum + (s.priceCharged - (s.amountPaid || 0)), 0),
             serviceDueCount: (providedServices || []).filter(s => s.paymentStatus !== 'Paid').length,
+            monthServiceCount: monthServices.length,
+            monthServiceRevenue,
+            monthServiceDue,
+            currentMonthName,
         };
     }, [properties, buyers, allAppointments, providedServices, last30DaysStart, now]);
 
@@ -325,8 +336,9 @@ export default function OverviewPage() {
 
     if (!isAgent) {
         statCards.splice(4, 0, { title: "Revenue (30d)", value: formatCurrency(stats.revenue, currency, { notation: 'compact' }), change: `From ${stats.soldCount} deals`, icon: <DollarSign className="h-5 w-5" />, color: "bg-amber-500/10 text-amber-600", href: "/reports", isLoading });
-        statCards.splice(5, 0, { title: "Services Revenue", value: formatCurrency(stats.serviceRevenue, currency, { notation: 'compact' }), change: `${stats.serviceRevenueCount} paid`, icon: <Briefcase className="h-5 w-5" />, color: "bg-cyan-500/10 text-cyan-600", href: "/services", isLoading });
-        statCards.splice(6, 0, { title: "Due Payments", value: formatCurrency(stats.serviceDue, currency, { notation: 'compact' }), change: `${stats.serviceDueCount} pending`, icon: <Wallet className="h-5 w-5" />, color: "bg-rose-500/10 text-rose-600", href: "/services", isLoading });
+        statCards.splice(5, 0, { title: "Services Revenue", value: formatCurrency(stats.serviceRevenue, currency, { notation: 'compact' }), change: `${stats.currentMonthName}: ${formatCurrency(stats.monthServiceRevenue, currency, { notation: 'compact' })}`, icon: <Briefcase className="h-5 w-5" />, color: "bg-cyan-500/10 text-cyan-600", href: "/services", isLoading });
+        statCards.splice(6, 0, { title: "Due Payments", value: formatCurrency(stats.serviceDue, currency, { notation: 'compact' }), change: `${stats.currentMonthName}: ${formatCurrency(stats.monthServiceDue, currency, { notation: 'compact' })}`, icon: <Wallet className="h-5 w-5" />, color: "bg-rose-500/10 text-rose-600", href: "/services", isLoading });
+        statCards.splice(7, 0, { title: "Services Sold", value: stats.monthServiceCount, change: `${stats.currentMonthName} total`, icon: <CheckCircle className="h-5 w-5" />, color: "bg-violet-500/10 text-violet-600", href: "/services", isLoading });
     }
 
     if (!isAgent && !isRecorder) {
