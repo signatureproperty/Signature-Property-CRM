@@ -194,9 +194,11 @@ export function BuyerNotesDialog({
                                 </AlertDialogContent>
                             </AlertDialog>
                         )}
-                        <Button variant="outline" size="sm" className="rounded-full h-8 gap-2 font-bold px-3" onClick={() => setIsDetailsOpen(true)}>
-                            <Eye className="h-3.5 w-3.5" /> {isMobile ? '' : 'File'}
-                        </Button>
+                        {!isMobile && (
+                            <Button variant="outline" size="sm" className="rounded-full h-8 gap-2 font-bold px-3" onClick={() => setIsDetailsOpen(true)}>
+                                <Eye className="h-3.5 w-3.5" /> File
+                            </Button>
+                        )}
                     </div>
                 </div>
             </DialogHeader>
@@ -283,8 +285,13 @@ export function BuyerNotesDialog({
             </div>
         </div>
 
-        <DialogFooter className="p-4 bg-muted/30 border-t flex justify-end">
-          <Button variant="secondary" className="rounded-full px-6" onClick={() => setIsOpen(false)}>
+        <DialogFooter className="p-4 bg-muted/30 border-t flex items-center justify-between">
+          {isMobile ? (
+              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" onClick={() => setIsDetailsOpen(true)}>
+                  <Eye className="h-4 w-4" />
+              </Button>
+          ) : <div />}
+          <Button variant="secondary" className={cn("rounded-full font-bold", isMobile ? "h-9 px-5 text-xs" : "h-10 px-6")} onClick={() => setIsOpen(false)}>
             Close
           </Button>
         </DialogFooter>
