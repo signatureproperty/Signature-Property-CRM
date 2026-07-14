@@ -228,8 +228,8 @@ export function BuyerNotesDialog({
                                                             <Check className={cn(isMobile ? "h-2 w-2" : "h-3 w-3")} /> {isMobile ? '' : 'Seen'}
                                                         </span>
                                                     )}
-                                                    {!isMobile && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {format(new Date(note.timestamp), 'MMM d')}</span>}
-                                                    <span className="flex items-center gap-1"><Clock className={cn(isMobile ? "h-2 w-2" : "h-3 w-3")} /> {format(new Date(note.timestamp), isMobile ? 'p' : 'p')}</span>
+                                                    <span className="flex items-center gap-1"><Calendar className={cn(isMobile ? "h-2 w-2" : "h-3 w-3")} /> {format(new Date(note.timestamp), isMobile ? 'MMM d' : 'MMM d')}</span>
+                                                    <span className="flex items-center gap-1"><Clock className={cn(isMobile ? "h-2 w-2" : "h-3 w-3")} /> {format(new Date(note.timestamp), 'p')}</span>
                                                     {profile.role === 'Admin' && (
                                                         <button 
                                                             onClick={() => handleDeleteNote(note)}
