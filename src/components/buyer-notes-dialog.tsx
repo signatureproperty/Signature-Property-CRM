@@ -280,7 +280,7 @@ export function BuyerNotesDialog({
             </div>
         </div>
 
-        <DialogFooter className="p-4 bg-muted/30 border-t flex items-center justify-between">
+        <DialogFooter className="p-4 bg-muted/30 border-t flex flex-row items-center justify-between w-full">
           <Button variant="outline" size="sm" className="rounded-full h-9 gap-1.5 font-bold px-3" onClick={() => setIsDetailsOpen(true)}>
               <Eye className="h-3.5 w-3.5" /> File
           </Button>
