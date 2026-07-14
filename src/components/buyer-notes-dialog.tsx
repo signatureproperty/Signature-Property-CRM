@@ -56,6 +56,11 @@ export function BuyerNotesDialog({
   const [newNote, setNewNote] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [localNotes, setLocalNotes] = useState<LeadNote[]>([]);
+
+  const sortedNotes = [...localNotes, ...(buyer.timeline_notes || [])].sort(
+    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  );
 
   // Mark all notes as read by current user when dialog opens
   useEffect(() => {
@@ -71,6 +76,12 @@ export function BuyerNotesDialog({
         }
     }
   }, [isOpen, buyer.timeline_notes, profile.user_id, profile.agency_id, firestore, buyer.id]);
+
+  useEffect(() => {
+    if (isOpen) {
+        setLocalNotes([]);
+    }
+  }, [isOpen]);
 
   const handleAddNote = async () => {
     if (!newNote.trim() || !profile.agency_id) return;
@@ -88,16 +99,19 @@ export function BuyerNotesDialog({
             readBy: [profile.user_id]
         };
 
+        setLocalNotes(prev => [note, ...prev]);
+        setNewNote('');
+
         const buyerRef = doc(firestore, 'agencies', profile.agency_id, 'buyers', buyer.id);
         await updateDoc(buyerRef, {
             timeline_notes: arrayUnion(note),
             last_remark_at: timestamp
         });
 
-        setNewNote('');
         toast({ title: "Remark Added" });
     } catch (error) {
         console.error("Error adding note:", error);
+        setLocalNotes(prev => prev.slice(1));
         toast({ title: "Failed to add remark", variant: "destructive" });
     } finally {
         setIsSaving(false);
@@ -139,10 +153,6 @@ export function BuyerNotesDialog({
         errorEmitter.emit('permission-error', permissionError);
     });
   };
-
-  const sortedNotes = [...(buyer.timeline_notes || [])].sort(
-    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-  );
 
   return (
     <>
