@@ -7,7 +7,7 @@ import {
     CheckCircle, Video, PlayCircle, Gem, ArrowRight, 
     VideoOff, Circle, Clock, History, FilePlus, UserPlus, Edit, ArrowUpRight,
     Plus, MessageSquareText, Calendar, MapPin, User, MessageSquare, Eye,
-    Briefcase, Trash2, Undo2
+    Briefcase, Trash2, Undo2, Wallet
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useProfile } from '@/context/profile-context';
@@ -310,6 +310,8 @@ export default function OverviewPage() {
             returnedLeads: activeBuyers.filter(b => b.tags?.includes('Returned') && !b.assignedTo).length,
             serviceRevenue: (providedServices || []).reduce((sum, s) => sum + (s.amountPaid || 0), 0),
             serviceRevenueCount: (providedServices || []).filter(s => s.paymentStatus === 'Paid').length,
+            serviceDue: (providedServices || []).filter(s => s.paymentStatus !== 'Paid').reduce((sum, s) => sum + (s.priceCharged - (s.amountPaid || 0)), 0),
+            serviceDueCount: (providedServices || []).filter(s => s.paymentStatus !== 'Paid').length,
         };
     }, [properties, buyers, allAppointments, providedServices, last30DaysStart, now]);
 
@@ -324,6 +326,7 @@ export default function OverviewPage() {
     if (!isAgent) {
         statCards.splice(4, 0, { title: "Revenue (30d)", value: formatCurrency(stats.revenue, currency, { notation: 'compact' }), change: `From ${stats.soldCount} deals`, icon: <DollarSign className="h-5 w-5" />, color: "bg-amber-500/10 text-amber-600", href: "/reports", isLoading });
         statCards.splice(5, 0, { title: "Services Revenue", value: formatCurrency(stats.serviceRevenue, currency, { notation: 'compact' }), change: `${stats.serviceRevenueCount} paid`, icon: <Briefcase className="h-5 w-5" />, color: "bg-cyan-500/10 text-cyan-600", href: "/services", isLoading });
+        statCards.splice(6, 0, { title: "Due Payments", value: formatCurrency(stats.serviceDue, currency, { notation: 'compact' }), change: `${stats.serviceDueCount} pending`, icon: <Wallet className="h-5 w-5" />, color: "bg-rose-500/10 text-rose-600", href: "/services", isLoading });
     }
 
     if (!isAgent && !isRecorder) {

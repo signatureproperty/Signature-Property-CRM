@@ -34,7 +34,8 @@ import {
     ListChecks,
     Check,
     Building2,
-    X
+    X,
+    Calendar
 } from 'lucide-react';
 import { 
     DropdownMenu, 
@@ -306,44 +307,64 @@ export default function ServicesPage() {
     }, [services, serviceSearch]);
 
     const renderMobileLogs = () => (
-        <div className="space-y-4">
-            {filteredLeads?.map(log => (
-                <Card key={log.id} className="border-none shadow-xl bg-card/60 backdrop-blur-sm overflow-hidden border-l-4 border-l-primary/40">
-                    <CardContent className="p-5">
-                        <div className="flex justify-between items-start mb-4">
-                            <div>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-0.5">{log.serviceName}</p>
-                                <div className="flex items-center gap-2 cursor-pointer" onClick={() => handleClientClick(log)}>
-                                    <span className="font-bold text-sm underline decoration-primary/20 underline-offset-4 line-clamp-1">{log.leadName || log.externalName}</span>
+        <div className="space-y-3">
+            {filteredLeads?.map(log => {
+                const parentService = services?.find(s => s.id === log.serviceId);
+                return (
+                <Card key={log.id} className="overflow-hidden border-l-4 border-l-primary/40 bg-background">
+                    <CardHeader className="p-4 pb-2 flex flex-row items-start justify-between space-y-0">
+                        <div className="flex gap-3">
+                            <div onClick={() => handleClientClick(log)} className="cursor-pointer">
+                                <div className="flex items-center gap-2">
+                                    <CardTitle className="text-base font-bold font-headline">{log.leadName || log.externalName}</CardTitle>
                                     <Badge variant="secondary" className="text-[8px] h-4 font-black">{log.assignedToType.toUpperCase()}</Badge>
                                 </div>
-                            </div>
-                            {renderActionMenu(log)}
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-1">
-                                <Label className="text-[9px] font-black uppercase opacity-50">Status & Step</Label>
-                                <Badge className={cn("rounded-lg border font-black gap-1.5 px-2 py-0.5 text-[9px] uppercase w-fit", getStatusColor(log.status))}>
-                                    {getStatusIcon(log.status)} {log.status}
-                                </Badge>
-                            </div>
-                            <div className="space-y-1">
-                                <Label className="text-[9px] font-black uppercase opacity-50">Billing</Label>
-                                <div className="flex flex-col">
-                                    <span className="text-xs font-black text-primary">{formatCurrency(log.priceCharged, currency)}</span>
-                                    {getPaymentBadge(log.paymentStatus)}
+                                <div className="flex items-center gap-2 mt-1">
+                                    <Badge variant="outline" className="text-[9px] bg-background font-mono">{log.serviceName}</Badge>
                                 </div>
                             </div>
                         </div>
-                        <div className="mt-3 pt-3 border-t border-border/30 flex items-center justify-between text-[10px] font-bold text-muted-foreground">
-                            <span>Added: {format(new Date(log.created_at), 'PP')}</span>
+                        <div className="flex items-center gap-2">
+                            <Badge className={cn("text-[9px] font-bold px-2 rounded-full", getStatusColor(log.status))}>
+                                {getStatusIcon(log.status)} {log.status}
+                            </Badge>
+                            {renderActionMenu(log)}
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0 cursor-pointer" onClick={() => handleClientClick(log)}>
+                        <div className="grid grid-cols-2 gap-y-2 gap-x-4 mt-2">
+                            <div className="flex items-center gap-1.5 text-xs">
+                                <Wallet className="h-3.5 w-3.5 text-muted-foreground" />
+                                <span className="font-bold text-primary">{formatCurrency(log.priceCharged, currency)}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-xs">
+                                {getPaymentBadge(log.paymentStatus)}
+                            </div>
+                            {log.tags && log.tags.length > 0 && (
+                                <div className="col-span-2 flex flex-wrap gap-1 mt-1">
+                                    {log.tags.map(t => (
+                                        <Badge key={t} variant="outline" className="text-[8px] h-4 px-1.5 py-0 border-indigo-200 text-indigo-600 dark:border-indigo-800 dark:text-indigo-400 font-bold">{t}</Badge>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        
+                        <div className="mt-3 pt-3 border-t border-dashed flex items-center justify-between">
+                            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                                <Calendar className="h-3 w-3" />
+                                <span className="font-medium">{format(new Date(log.created_at), 'MMM d, yyyy')}</span>
+                            </div>
                             {log.paymentCompletedAt && (
-                                <span className="text-emerald-600">Paid: {format(new Date(log.paymentCompletedAt), 'PP')}</span>
+                                <div className="flex items-center gap-1.5 text-[10px] text-emerald-600 font-bold">
+                                    <Check className="h-3 w-3" />
+                                    <span>Paid {format(new Date(log.paymentCompletedAt), 'MMM d')}</span>
+                                </div>
                             )}
                         </div>
                     </CardContent>
                 </Card>
-            ))}
+                );
+            })}
         </div>
     );
 
