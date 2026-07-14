@@ -332,22 +332,56 @@ export default function ServicesPage() {
                         </div>
                     </CardHeader>
                     <CardContent className="p-4 pt-0 cursor-pointer" onClick={() => handleClientClick(log)}>
-                        <div className="grid grid-cols-2 gap-y-2 gap-x-4 mt-2">
-                            <div className="flex items-center gap-1.5 text-xs">
-                                <Wallet className="h-3.5 w-3.5 text-muted-foreground" />
-                                <span className="font-bold text-primary">{formatCurrency(log.priceCharged, currency)}</span>
-                            </div>
-                            <div className="flex items-center gap-1.5 text-xs">
+                        {/* Payment Details Box */}
+                        <div className={cn(
+                            "mt-2 p-3 rounded-xl border",
+                            log.paymentStatus === 'Paid' ? "bg-emerald-500/5 border-emerald-500/20" : 
+                            log.paymentStatus === 'Partial' ? "bg-amber-500/5 border-amber-500/20" : 
+                            "bg-rose-500/5 border-rose-500/20"
+                        )}>
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Payment</span>
                                 {getPaymentBadge(log.paymentStatus)}
                             </div>
-                            {log.tags && log.tags.length > 0 && (
-                                <div className="col-span-2 flex flex-wrap gap-1 mt-1">
-                                    {log.tags.map(t => (
-                                        <Badge key={t} variant="outline" className="text-[8px] h-4 px-1.5 py-0 border-indigo-200 text-indigo-600 dark:border-indigo-800 dark:text-indigo-400 font-bold">{t}</Badge>
-                                    ))}
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-[9px] font-bold text-muted-foreground">Total</p>
+                                    <p className="text-sm font-black">{formatCurrency(log.priceCharged, currency)}</p>
+                                </div>
+                                {log.paymentStatus !== 'Pending' && (
+                                    <div className="text-right">
+                                        <p className="text-[9px] font-bold text-muted-foreground">Paid</p>
+                                        <p className="text-sm font-black text-emerald-600">{formatCurrency(log.amountPaid || 0, currency)}</p>
+                                    </div>
+                                )}
+                                {log.paymentStatus !== 'Paid' && (
+                                    <div className="text-right">
+                                        <p className="text-[9px] font-bold text-muted-foreground">Due</p>
+                                        <p className="text-sm font-black text-rose-600">{formatCurrency(log.priceCharged - (log.amountPaid || 0), currency)}</p>
+                                    </div>
+                                )}
+                            </div>
+                            {log.paymentMethod && log.paymentMethod !== 'N/A' && (
+                                <div className="mt-2 pt-2 border-t border-border/30 flex items-center gap-1.5">
+                                    <span className="text-[9px] font-bold text-muted-foreground">Method:</span>
+                                    <Badge variant="outline" className="text-[8px] h-3.5 px-1.5 py-0 font-bold">{log.paymentMethod}</Badge>
+                                </div>
+                            )}
+                            {log.paymentNote && (
+                                <div className="mt-1.5 text-[10px] text-muted-foreground italic line-clamp-1">
+                                    "{log.paymentNote}"
                                 </div>
                             )}
                         </div>
+
+                        {/* Labels */}
+                        {log.tags && log.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                                {log.tags.map(t => (
+                                    <Badge key={t} variant="outline" className="text-[8px] h-4 px-1.5 py-0 border-indigo-200 text-indigo-600 dark:border-indigo-800 dark:text-indigo-400 font-bold">{t}</Badge>
+                                ))}
+                            </div>
+                        )}
                         
                         <div className="mt-3 pt-3 border-t border-dashed flex items-center justify-between">
                             <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
