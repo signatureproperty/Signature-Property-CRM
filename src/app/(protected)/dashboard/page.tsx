@@ -15,7 +15,7 @@ import { useFirestore } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useMemoFirebase } from '@/firebase/hooks';
 import { collection, query, where, addDoc, doc, setDoc, deleteDoc, orderBy, limit, or, updateDoc, arrayRemove } from 'firebase/firestore';
-import type { Property, Buyer, Appointment, AppointmentContactType, Activity, LeadNote } from '@/lib/types';
+import type { Property, Buyer, Appointment, AppointmentContactType, Activity, LeadNote, ProvidedService } from '@/lib/types';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { subDays, parseISO, format, formatDistanceToNow } from 'date-fns';
@@ -205,6 +205,12 @@ export default function OverviewPage() {
     }, [canFetch, firestore, profile.agency_id]);
     const { data: activities, isLoading: isActivitiesLoading } = useCollection<any>(activitiesQuery);
 
+    const providedServicesQuery = useMemoFirebase(() => 
+        canFetch ? collection(firestore, 'agencies', profile.agency_id, 'providedServices') : null,
+        [canFetch, firestore, profile.agency_id]
+    );
+    const { data: providedServices } = useCollection<ProvidedService>(providedServicesQuery);
+
     const isLoading = isProfileLoading || isPropertiesLoading || isBuyersLoading || isAppointmentsLoading;
 
     // Collect all remarks from both properties and buyers
@@ -301,9 +307,11 @@ export default function OverviewPage() {
             newBuyers30d,
             interested: activeBuyers.filter(b => b.status === 'Interested').length,
             upcomingAppts: (allAppointments || []).filter(a => a.status === 'Scheduled' && new Date(a.date) >= now).length,
-            returnedLeads: activeBuyers.filter(b => b.tags?.includes('Returned') && !b.assignedTo).length
+            returnedLeads: activeBuyers.filter(b => b.tags?.includes('Returned') && !b.assignedTo).length,
+            serviceRevenue: (providedServices || []).reduce((sum, s) => sum + (s.amountPaid || 0), 0),
+            serviceRevenueCount: (providedServices || []).filter(s => s.paymentStatus === 'Paid').length,
         };
-    }, [properties, buyers, allAppointments, last30DaysStart, now]);
+    }, [properties, buyers, allAppointments, providedServices, last30DaysStart, now]);
 
     const statCards: StatCardProps[] = [
         { title: "Sale Properties", value: stats.totalProperties, change: `+${stats.newProps30d} new`, icon: <Home className="h-5 w-5" />, color: "bg-blue-500/10 text-blue-600", href: "/properties", isLoading },
@@ -315,6 +323,7 @@ export default function OverviewPage() {
 
     if (!isAgent) {
         statCards.splice(4, 0, { title: "Revenue (30d)", value: formatCurrency(stats.revenue, currency, { notation: 'compact' }), change: `From ${stats.soldCount} deals`, icon: <DollarSign className="h-5 w-5" />, color: "bg-amber-500/10 text-amber-600", href: "/reports", isLoading });
+        statCards.splice(5, 0, { title: "Services Revenue", value: formatCurrency(stats.serviceRevenue, currency, { notation: 'compact' }), change: `${stats.serviceRevenueCount} paid`, icon: <Briefcase className="h-5 w-5" />, color: "bg-cyan-500/10 text-cyan-600", href: "/services", isLoading });
     }
 
     if (!isAgent && !isRecorder) {
